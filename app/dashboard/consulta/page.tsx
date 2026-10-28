@@ -60,6 +60,11 @@ export default function ConsultaPage() {
     </div>
   )
 
+  // Datos del vehículo del primer servicio
+  const primerServicio = resultado?.servicios?.[0]
+  const nombreCliente = primerServicio?.nombre || ''
+  const vehiculo = [primerServicio?.marca, primerServicio?.modelo].filter(Boolean).join(' ') || ''
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
@@ -82,35 +87,49 @@ export default function ConsultaPage() {
       {error && (
         <div className="px-4 py-3 rounded-xl font-bold text-sm mb-4 border"
           style={{ background: 'rgba(255,106,31,0.08)', borderColor: 'rgba(255,106,31,0.3)', color: 'var(--accent)' }}>
-          ❌ {error}
+          ⚠ {error}
         </div>
       )}
 
       {resultado && (
-        <div className="card">
-          {/* Header placa */}
-          <div className="flex items-center gap-4 mb-5 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
-            <div className="font-display w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-xl"
-              style={{ background: 'rgba(33,199,184,0.12)', border: '1px solid rgba(33,199,184,0.4)', color: 'var(--accent-teal)' }}>
+        <div className="card space-y-4">
+          {/* Cabecera del vehículo */}
+          <div className="flex items-center gap-4 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center font-display font-bold text-sm shrink-0"
+              style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>
               {resultado.placa.slice(0, 3)}
             </div>
             <div>
-              <p className="font-mono text-2xl font-bold tracking-widest" style={{ color: 'var(--text)' }}>{resultado.placa}</p>
-              <p className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>
-                {resultado.servicios.length} atención(es) registrada(s)
-                {resultado.servicios[0] && ` · ${resultado.servicios[0].marca} ${resultado.servicios[0].modelo}`}
+              <p className="font-display text-2xl font-bold uppercase tracking-tighter" style={{ color: 'var(--text)' }}>
+                {resultado.placa}
               </p>
-              {resultado.servicios[0]?.proximo_km && (
-                <p className="font-display text-[10px] font-bold px-2 py-0.5 rounded-lg inline-block mt-1"
-                  style={{ background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)' }}>
-                  Próximo servicio: {Number(resultado.servicios[0].proximo_km).toLocaleString()} km
+              <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                <p className="font-display text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                  {resultado.servicios.length} atención(es) registrada(s)
                 </p>
+                {vehiculo && (
+                  <>
+                    <span style={{ color: 'var(--border)' }}>·</span>
+                    <p className="font-display text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                      {vehiculo}
+                    </p>
+                  </>
+                )}
+              </div>
+              {/* NOMBRE DEL CLIENTE */}
+              {nombreCliente && (
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <span className="text-xs">👤</span>
+                  <p className="font-display text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--accent-teal)' }}>
+                    {nombreCliente}
+                  </p>
+                </div>
               )}
             </div>
           </div>
 
           {resultado.servicios.length === 0 ? (
-            <div className="text-center py-8">
+            <div className="flex flex-col items-center justify-center py-10" style={{ color: 'var(--text-muted)' }}>
               <p className="text-4xl mb-3">🔍</p>
               <p className="font-display font-bold text-sm uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Sin atenciones para esta placa</p>
             </div>
@@ -159,7 +178,7 @@ export default function ConsultaPage() {
           {detalle && (
             <div className="mt-4 rounded-2xl p-5 space-y-3" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
               <div className="flex items-center justify-between mb-2">
-                <p className="font-display font-bold text-sm uppercase tracking-widest" style={{ color: 'var(--text)' }}>Detalle del servicio — {detalle.fecha}</p>
+                <p className="font-display font-bold text-sm uppercase tracking-widest" style={{ color: 'var(--text)' }}>Detalle del servicio – {detalle.fecha}</p>
                 <button onClick={() => setDetalle(null)} className="font-bold transition-colors" style={{ color: 'var(--text-muted)' }}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--text)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>✕</button>
               </div>
