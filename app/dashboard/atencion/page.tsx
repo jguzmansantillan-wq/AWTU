@@ -7,6 +7,13 @@ type ProductoAdicional = { nombre: string; precio: string }
 type OtroServicio = { detalle: string; precio: string }
 type ItemInventario = { id: string; nombre: string; categoria: string; precio: number; costo: number; stock: number }
 
+const METODOS_PAGO = [
+  { key: 'efectivo', icon: '💵', label: 'Efectivo' },
+  { key: 'yape', icon: '📱', label: 'Yape/Plin' },
+  { key: 'transferencia', icon: '🏦', label: 'Transferencia' },
+  { key: 'tarjeta', icon: '💳', label: 'Tarjeta' },
+]
+
 function AutocompleteInput({
   value, onChange, onSelect, placeholder, className, items
 }: {
@@ -143,6 +150,9 @@ export default function AtencionPage() {
   const [productosAd, setProductosAd] = useState<ProductoAdicional[]>([])
   const [otrosServicios, setOtrosServicios] = useState<OtroServicio[]>([])
 
+  // ── MÉTODO DE PAGO ──────────────────────────────────────────────────────
+  const [metodoPago, setMetodoPago] = useState('efectivo')
+
   const total =
     (parseFloat(precioAceite) || 0) +
     (parseFloat(precioCaja) || 0) +
@@ -199,6 +209,7 @@ export default function AtencionPage() {
     setRefrigMarca(''); setRefrigColor(''); setPrecioRefrig('')
     setBujaMarca(''); setBujaModelo(''); setPrecioBujias('')
     setProductosAd([]); setOtrosServicios([])
+    setMetodoPago('efectivo')
   }
 
   const generarCartillaJPG = async (datos: any) => {
@@ -256,6 +267,7 @@ export default function AtencionPage() {
       precio_otros: precioOtrosTotal,
       productos_adicionales: productosAd,
       monto: total, estado_facturacion: 'Pendiente',
+      metodo_pago: metodoPago,
     })
 
     if (e) { setError(e.message); setLoading(false); return }
@@ -281,6 +293,8 @@ export default function AtencionPage() {
 
   const inp = "inp"
   const lbl = "lbl"
+
+  const metodoActual = METODOS_PAGO.find(m => m.key === metodoPago)
 
   const invAceites = inventario.filter(i => i.categoria?.toLowerCase().includes('aceite') && !i.categoria?.toLowerCase().includes('caja'))
   const invFiltros = inventario.filter(i => i.categoria?.toLowerCase().includes('filtro'))
@@ -699,6 +713,27 @@ export default function AtencionPage() {
                   ))}
                 </div>
               )}
+
+              {/* ── MÉTODO DE PAGO ─────────────────────────────────────── */}
+              <div>
+                <p className="font-display text-[9px] font-bold uppercase tracking-widest text-center mb-2" style={{ color: 'var(--text-muted)' }}>Método de Pago</p>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {METODOS_PAGO.map(m => (
+                    <button
+                      key={m.key}
+                      onClick={() => setMetodoPago(m.key)}
+                      className="font-display flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all"
+                      style={metodoPago === m.key
+                        ? { background: 'rgba(33,199,184,0.15)', border: '1px solid rgba(33,199,184,0.5)', color: 'var(--accent-teal)' }
+                        : { background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                      <span>{m.icon}</span>
+                      <span>{m.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* ──────────────────────────────────────────────────────── */}
+
               <div style={{ borderTop: '1px solid var(--border)' }} />
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -721,7 +756,7 @@ export default function AtencionPage() {
               <button onClick={guardar} disabled={loading}
                 className="font-display w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
                 style={{ background: 'var(--accent)', color: 'var(--bg)' }}>
-                ☁️ {loading ? 'Guardando...' : 'Guardar y Generar Cartilla'}
+                {metodoActual?.icon} {loading ? 'Guardando...' : `Guardar · ${metodoActual?.label}`}
               </button>
             </div>
           </div>
