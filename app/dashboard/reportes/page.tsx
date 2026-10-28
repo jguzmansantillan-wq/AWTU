@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 type Servicio = {
   id: string; placa: string; nombre: string; marca: string; modelo: string
   monto: number; fecha: string; created_at: string; tipo: 'servicio'
+  metodo_pago?: string
 }
 
 type Venta = {
@@ -41,7 +42,7 @@ export default function ReportesPage() {
       const { data: t } = await supabase.from('talleres').select('id').eq('user_id', user.id).single()
       if (!t) return
       const { data: svcs } = await supabase.from('servicios')
-        .select('id, placa, nombre, marca, modelo, monto, fecha, created_at')
+        .select('id, placa, nombre, marca, modelo, monto, fecha, created_at, metodo_pago')
         .eq('taller_id', t.id).order('created_at', { ascending: false })
       const { data: vnts } = await supabase.from('ventas')
         .select('id, nombre, items, monto, fecha, created_at, metodo_pago')
@@ -72,13 +73,13 @@ export default function ReportesPage() {
   const totalVentas    = ventasF.reduce((s, r) => s + (r.monto || 0), 0)
   const totalGeneral   = totalServicios + totalVentas
 
-  // Totales por método de pago (solo ventas de tienda)
+  // Totales por método de pago (servicios + ventas)
   const totalesPorMetodo = METODOS_PAGO.map(m => ({
     ...m,
-    total: ventasF
-      .filter(v => (v.metodo_pago || 'efectivo') === m.key)
-      .reduce((s, v) => s + (v.monto || 0), 0),
-    cantidad: ventasF.filter(v => (v.metodo_pago || 'efectivo') === m.key).length,
+    total: filtrados
+      .filter(r => (r.metodo_pago || 'efectivo') === m.key)
+      .reduce((s, r) => s + (r.monto || 0), 0),
+    cantidad: filtrados.filter(r => (r.metodo_pago || 'efectivo') === m.key).length,
   }))
 
   const etiquetaPeriodo = () => {
@@ -97,8 +98,8 @@ export default function ReportesPage() {
     return items.map((i: any) => `${i.cantidad}x ${i.nombre}`).join(', ') || 'Venta'
   }
 
-  const etiquetaMetodo = (v: Venta) => {
-    const m = METODOS_PAGO.find(m => m.key === (v.metodo_pago || 'efectivo'))
+  const etiquetaMetodo = (r: Registro) => {
+    const m = METODOS_PAGO.find(m => m.key === (r.metodo_pago || 'efectivo'))
     return m ? `${m.icon} ${m.label}` : '💵 Efectivo'
   }
 
@@ -109,7 +110,7 @@ export default function ReportesPage() {
       'PLACA': r.tipo === 'servicio' ? r.placa : '',
       'CLIENTE': r.nombre || (r.tipo === 'venta' ? 'CLIENTE AL CONTADO' : '-'),
       'DETALLE': detalleDescripcion(r),
-      'MÉTODO DE PAGO': r.tipo === 'venta' ? (METODOS_PAGO.find(m => m.key === (r as Venta).metodo_pago)?.label || 'Efectivo') : '-',
+      'MÉTODO DE PAGO': METODOS_PAGO.find(m => m.key === (r.metodo_pago || 'efectivo'))?.label || 'Efectivo',
       'MONTO': r.monto || 0,
     }))
 
@@ -127,10 +128,10 @@ export default function ReportesPage() {
       ['Cantidad de Servicios', serviciosF.length],
       ['Cantidad de Ventas', ventasF.length],
       [],
-      ['--- VENTAS POR MÉTODO DE PAGO ---'],
-      ...totalesPorMetodo.map(m => [`${m.icon} ${m.label}`, m.total, `(${m.cantidad} venta(s))`]),
+      ['--- INGRESOS POR MÉTODO DE PAGO ---'],
+      ...totalesPorMetodo.map(m => [`${m.icon} ${m.label}`, m.total, `(${m.cantidad} transacción(es))`]),
     ])
-    wsResumen['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 16 }]
+    wsResumen['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 20 }]
 
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
@@ -214,14 +215,14 @@ export default function ReportesPage() {
         </div>
       </div>
 
-      {/* Ventas por método de pago */}
-      {ventasF.length > 0 && (
+      {/* Ingresos por método de pago */}
+      {filtrados.length > 0 && (
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
             <div className="w-7 h-7 rounded-xl flex items-center justify-center text-xs"
               style={{ background: 'rgba(33,199,184,0.12)', border: '1px solid rgba(33,199,184,0.35)' }}>💳</div>
-            <p className="font-display font-bold text-sm uppercase tracking-widest" style={{ color: 'var(--text)' }}>Ventas por Método de Pago</p>
-            <span className="font-display ml-auto text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Solo tienda</span>
+            <p className="font-display font-bold text-sm uppercase tracking-widest" style={{ color: 'var(--text)' }}>Ingresos por Método de Pago</p>
+            <span className="font-display ml-auto text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Servicios y Tienda</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-0">
             {totalesPorMetodo.map((m, idx) => (
@@ -240,7 +241,7 @@ export default function ReportesPage() {
                   S/ {m.total.toFixed(2)}
                 </p>
                 <p className="font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                  {m.cantidad} venta(s)
+                  {m.cantidad} transacción(es)
                 </p>
               </div>
             ))}
@@ -278,7 +279,7 @@ export default function ReportesPage() {
             <div className="max-h-[480px] overflow-y-auto">
               {filtrados.map(r => {
                 const accentColor = r.tipo === 'servicio' ? 'var(--accent-teal)' : 'var(--accent)'
-                const metodo = r.tipo === 'venta' ? METODOS_PAGO.find(m => m.key === ((r as Venta).metodo_pago || 'efectivo')) : null
+                const metodo = METODOS_PAGO.find(m => m.key === (r.metodo_pago || 'efectivo'))
                 return (
                   <div key={r.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center" style={{ borderBottom: '1px solid var(--border)' }}>
                     <div className="col-span-2 font-mono text-xs font-bold" style={{ color: 'var(--text)' }}>{fechaDe(r)}</div>
