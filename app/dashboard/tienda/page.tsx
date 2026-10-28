@@ -5,7 +5,14 @@ import { supabase } from '@/lib/supabase'
 
 type Producto = { id: string; nombre: string; categoria: string; precio: number; stock: number; ubicacion: string }
 type ItemCarrito = Producto & { cantidad: number; precioEditado: number }
-type TicketData = { nombre: string; telefono: string; fecha: string; items: any[]; total: number; tallerNombre: string }
+type TicketData = { nombre: string; telefono: string; fecha: string; items: any[]; total: number; tallerNombre: string; metodoPago: string }
+
+const METODOS_PAGO = [
+  { key: 'efectivo',      icon: '💵', label: 'Efectivo' },
+  { key: 'yape',          icon: '📱', label: 'Yape / Plin' },
+  { key: 'transferencia', icon: '🏦', label: 'Transferencia' },
+  { key: 'tarjeta',       icon: '💳', label: 'Tarjeta' },
+]
 
 export default function TiendaPage() {
   const [productos, setProductos] = useState<Producto[]>([])
@@ -17,6 +24,7 @@ export default function TiendaPage() {
   const [clienteNombre, setClienteNombre] = useState('')
   const [clienteTelefono, setClienteTelefono] = useState('')
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
+  const [metodoPago, setMetodoPago] = useState('efectivo')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [ticket, setTicket] = useState<TicketData | null>(null)
@@ -90,6 +98,7 @@ export default function TiendaPage() {
       taller_id: tallerID, items, monto: total,
       nombre: clienteNombre || null,
       telefono: clienteTelefono || null, fecha,
+      metodo_pago: metodoPago,
     })
 
     if (ventaError) { setError('Error: ' + ventaError.message); setLoading(false); return }
@@ -108,22 +117,24 @@ export default function TiendaPage() {
       nombre: clienteNombre || 'CLIENTE AL CONTADO',
       telefono: clienteTelefono,
       fecha: fecha.split('-').reverse().join('/'),
-      items, total, tallerNombre,
+      items, total, tallerNombre, metodoPago,
     })
 
     setCarrito([])
     setClienteNombre('')
     setClienteTelefono('')
     setFecha(new Date().toISOString().slice(0, 10))
+    setMetodoPago('efectivo')
     setLoading(false)
   }
 
   const compartirTicketWhatsApp = (t: TicketData) => {
     if (!t.telefono) { alert('Este cliente no tiene teléfono registrado'); return }
     const tel = t.telefono.replace(/\D/g, '')
+    const metodo = METODOS_PAGO.find(m => m.key === t.metodoPago)
     const lineas = t.items.map((i: any) => `  ${i.cantidad}x ${i.nombre} - S/ ${i.subtotal.toFixed(2)}`).join('\n')
     const msg = encodeURIComponent(
-      `🧾 *TICKET DE VENTA - ${t.tallerNombre}*\n📅 Fecha: ${t.fecha}\n👤 Cliente: ${t.nombre}\n\n*PRODUCTOS:*\n${lineas}\n\n*TOTAL: S/ ${t.total.toFixed(2)}*\n\n¡Gracias por su compra! 🛒`
+      `🧾 *TICKET DE VENTA - ${t.tallerNombre}*\n📅 Fecha: ${t.fecha}\n👤 Cliente: ${t.nombre}\n${metodo ? `${metodo.icon} Pago: ${metodo.label}` : ''}\n\n*PRODUCTOS:*\n${lineas}\n\n*TOTAL: S/ ${t.total.toFixed(2)}*\n\n¡Gracias por su compra! 🛒`
     )
     window.open(`https://wa.me/51${tel}?text=${msg}`, '_blank')
   }
@@ -141,6 +152,8 @@ export default function TiendaPage() {
     if (c.includes('caja')) return 'var(--accent)'
     return 'var(--text-muted)'
   }
+
+  const metodoActual = METODOS_PAGO.find(m => m.key === metodoPago)
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -165,6 +178,14 @@ export default function TiendaPage() {
             <div className="pt-4 mb-4" style={{ borderTop: '1px dashed var(--border)' }}>
               <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Cliente</p>
               <p className="font-display font-bold uppercase" style={{ color: 'var(--text)' }}>{ticket.nombre}</p>
+            </div>
+            {/* Método de pago en ticket */}
+            <div className="pt-4 mb-4" style={{ borderTop: '1px dashed var(--border)' }}>
+              <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Método de Pago</p>
+              <p className="font-display font-bold uppercase" style={{ color: 'var(--accent-teal)' }}>
+                {METODOS_PAGO.find(m => m.key === ticket.metodoPago)?.icon}{' '}
+                {METODOS_PAGO.find(m => m.key === ticket.metodoPago)?.label}
+              </p>
             </div>
             <div className="pt-4 mb-4" style={{ borderTop: '1px dashed var(--border)' }}>
               <div className="flex justify-between text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>
@@ -300,6 +321,7 @@ export default function TiendaPage() {
             )}
           </div>
 
+          {/* Datos cliente */}
           <div className="px-5 py-3 space-y-2" style={{ borderBottom: '1px solid var(--border)' }}>
             <div className="flex items-center gap-2 rounded-xl px-3 py-2.5" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
               <span className="text-sm" style={{ color: 'var(--text-muted)' }}>👤</span>
@@ -318,8 +340,30 @@ export default function TiendaPage() {
               <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
                 className="font-mono bg-transparent outline-none text-xs font-bold flex-1" style={{ color: 'var(--text)', colorScheme: 'dark' }} />
             </div>
+
+            {/* MÉTODO DE PAGO */}
+            <div>
+              <p className="font-display text-[9px] font-bold uppercase tracking-widest mb-1.5 px-1" style={{ color: 'var(--text-muted)' }}>
+                Método de pago
+              </p>
+              <div className="grid grid-cols-2 gap-1.5">
+                {METODOS_PAGO.map(m => (
+                  <button
+                    key={m.key}
+                    onClick={() => setMetodoPago(m.key)}
+                    className="flex items-center gap-2 rounded-xl px-3 py-2 transition-all"
+                    style={metodoPago === m.key
+                      ? { background: 'rgba(33,199,184,0.15)', border: '1px solid rgba(33,199,184,0.5)', color: 'var(--accent-teal)' }
+                      : { background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+                    <span className="text-sm">{m.icon}</span>
+                    <span className="font-display text-[10px] font-bold uppercase tracking-widest">{m.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
+          {/* Items carrito */}
           <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
             {carrito.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center opacity-25 py-10">
@@ -328,55 +372,59 @@ export default function TiendaPage() {
               </div>
             ) : carrito.map(i => (
               <div key={i.id} className="rounded-xl p-3" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-                <div className="flex items-start justify-between mb-2">
-                  <p className="font-display text-xs font-bold uppercase leading-tight flex-1 mr-2" style={{ color: 'var(--text)' }}>{i.nombre}</p>
-                  <button onClick={() => quitarDelCarrito(i.id)} className="text-xs transition-colors shrink-0" style={{ color: 'var(--text-muted)' }}
+                {/* Nombre + quitar */}
+                <div className="flex items-start justify-between mb-3">
+                  <p className="font-display text-sm font-bold uppercase leading-tight flex-1 mr-2" style={{ color: 'var(--text)' }}>{i.nombre}</p>
+                  <button onClick={() => quitarDelCarrito(i.id)} className="text-xs transition-colors shrink-0 mt-0.5" style={{ color: 'var(--text-muted)' }}
                     onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>✕</button>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 mr-3">
-                    <div className="flex items-center gap-1 mb-1">
-                      <span className="text-[9px] font-bold" style={{ color: 'var(--text-muted)' }}>Precio:</span>
-                      <div className="flex items-center gap-1 rounded-lg px-2 py-0.5" style={{ background: 'var(--surface)' }}>
-                        <span className="font-display text-[9px] font-bold" style={{ color: 'var(--accent-teal)' }}>S/</span>
-                        <input
-                          type="number"
-                          value={i.precioEditado}
-                          onChange={e => cambiarPrecio(i.id, e.target.value)}
-                          step="0.50"
-                          className="font-mono bg-transparent outline-none text-xs font-bold w-14"
-                          style={{ color: 'var(--text)' }}
-                        />
-                        {i.precioEditado !== i.precio && (
-                          <span className="text-[8px] font-bold" style={{ color: 'var(--accent-yellow)' }}>✏️</span>
-                        )}
-                      </div>
-                    </div>
-                    <p className="font-mono text-[10px] font-bold" style={{ color: 'var(--accent-teal)' }}>Sub: S/ {(i.precioEditado * i.cantidad).toFixed(2)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => cambiarCantidad(i.id, -1)}
-                      className="w-7 h-7 rounded-lg font-bold text-sm flex items-center justify-center transition-all"
-                      style={{ background: 'var(--surface)', color: 'var(--text)' }}>−</button>
-                    <span className="font-mono font-bold text-sm w-5 text-center" style={{ color: 'var(--text)' }}>{i.cantidad}</span>
-                    <button onClick={() => cambiarCantidad(i.id, 1)}
-                      className="w-7 h-7 rounded-lg font-bold text-sm flex items-center justify-center transition-all"
-                      style={{ background: 'var(--surface)', color: 'var(--text)' }}>+</button>
-                  </div>
+
+                {/* Precio editable — GRANDE */}
+                <div className="flex items-center gap-2 rounded-xl px-3 py-2 mb-3"
+                  style={{ background: 'var(--surface)', border: `1px solid ${i.precioEditado !== i.precio ? 'rgba(255,194,60,0.5)' : 'var(--border)'}` }}>
+                  <span className="font-display text-base font-bold" style={{ color: 'var(--accent-teal)' }}>S/</span>
+                  <input
+                    type="number"
+                    value={i.precioEditado}
+                    onChange={e => cambiarPrecio(i.id, e.target.value)}
+                    step="0.50"
+                    className="font-mono bg-transparent outline-none font-bold flex-1"
+                    style={{ color: 'var(--text)', fontSize: '1.5rem' }}
+                  />
+                  {i.precioEditado !== i.precio && (
+                    <span className="text-xs font-bold" style={{ color: 'var(--accent-yellow)' }}>✏️</span>
+                  )}
                 </div>
+
+                {/* Restaurar precio original */}
                 {i.precioEditado !== i.precio && (
-                  <div className="mt-1.5 flex items-center justify-between">
-                    <span className="font-mono text-[9px] font-bold" style={{ color: 'var(--text-muted)' }}>Original: S/ {i.precio.toFixed(2)}</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-mono text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>Original: S/ {i.precio.toFixed(2)}</span>
                     <button onClick={() => cambiarPrecio(i.id, String(i.precio))}
-                      className="font-display text-[9px] font-bold uppercase tracking-widest transition-colors" style={{ color: 'var(--accent-yellow)' }}>
+                      className="font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--accent-yellow)' }}>
                       Restaurar
                     </button>
                   </div>
                 )}
+
+                {/* Cantidad */}
+                <div className="flex items-center justify-between">
+                  <span className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Cantidad</span>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => cambiarCantidad(i.id, -1)}
+                      className="w-8 h-8 rounded-lg font-bold text-base flex items-center justify-center transition-all"
+                      style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}>−</button>
+                    <span className="font-mono font-bold text-lg w-6 text-center" style={{ color: 'var(--text)' }}>{i.cantidad}</span>
+                    <button onClick={() => cambiarCantidad(i.id, 1)}
+                      className="w-8 h-8 rounded-lg font-bold text-base flex items-center justify-center transition-all"
+                      style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}>+</button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
 
+          {/* Total + botón */}
           <div className="px-5 py-5" style={{ borderTop: '1px solid var(--border)', background: 'var(--surface-2)' }}>
             <div className="flex items-center justify-between mb-4">
               <span className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Total a Cobrar</span>
@@ -388,7 +436,7 @@ export default function TiendaPage() {
             <button onClick={handleVender} disabled={loading || carrito.length === 0}
               className="font-display w-full active:scale-95 disabled:opacity-40 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3"
               style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>
-              💳 {loading ? 'Procesando...' : 'Procesar Venta'}
+              {metodoActual?.icon} {loading ? 'Procesando...' : `Procesar Venta · ${metodoActual?.label}`}
             </button>
           </div>
         </div>
