@@ -37,8 +37,11 @@ export default function InventarioPage() {
     stock: '0', costo: '0', precio: '0',
   })
 
-  const [editID, setEditID] = useState<string | null>(null)
-  const [editData, setEditData] = useState<Partial<Item>>({})
+  // Modal editor
+  const [modalItem, setModalItem] = useState<Item | null>(null)
+  const [modalData, setModalData] = useState<Partial<Item>>({})
+  const [guardandoModal, setGuardandoModal] = useState(false)
+  const [modalOk, setModalOk] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -108,37 +111,48 @@ export default function InventarioPage() {
   }
 
   const eliminarItem = async (id: string) => {
+    if (!confirm('¿Eliminar este producto del inventario?')) return
     await supabase.from('inventario').delete().eq('id', id)
     setItems(prev => prev.filter(i => i.id !== id))
   }
 
-  const iniciarEdit = (item: Item) => {
-    setEditID(item.id)
-    setEditData({ ...item })
+  const abrirModal = (item: Item) => {
+    setModalItem(item)
+    setModalData({ ...item })
+    setModalOk(false)
   }
 
-  const saveEdit = async (id: string) => {
-    const original = items.find(i => i.id === id)
-    if (!original) return
+  const cerrarModal = () => {
+    setModalItem(null)
+    setModalData({})
+    setModalOk(false)
+  }
+
+  const guardarModal = async () => {
+    if (!modalItem) return
+    setGuardandoModal(true)
 
     const payload = {
-      nombre: (editData.nombre ?? original.nombre).toString().toUpperCase().trim(),
-      ubicacion: (editData.ubicacion ?? original.ubicacion).toString().toUpperCase().trim(),
-      stock: Number.isFinite(Number(editData.stock)) ? Number(editData.stock) : original.stock,
-      costo: Number.isFinite(Number(editData.costo)) ? Number(editData.costo) : original.costo,
-      precio: Number.isFinite(Number(editData.precio)) ? Number(editData.precio) : original.precio,
+      nombre: (modalData.nombre ?? modalItem.nombre).toString().toUpperCase().trim(),
+      categoria: modalData.categoria ?? modalItem.categoria,
+      ubicacion: (modalData.ubicacion ?? modalItem.ubicacion).toString().toUpperCase().trim(),
+      stock: Number.isFinite(Number(modalData.stock)) ? Number(modalData.stock) : modalItem.stock,
+      costo: Number.isFinite(Number(modalData.costo)) ? Number(modalData.costo) : modalItem.costo,
+      precio: Number.isFinite(Number(modalData.precio)) ? Number(modalData.precio) : modalItem.precio,
     }
 
-    const { error } = await supabase.from('inventario').update(payload).eq('id', id)
+    const { error } = await supabase.from('inventario').update(payload).eq('id', modalItem.id)
 
     if (error) {
       setErrMsg('Error al guardar: ' + error.message)
+      setGuardandoModal(false)
       return
     }
 
-    setItems(prev => prev.map(i => i.id === id ? { ...i, ...payload } : i))
-    setEditID(null)
-    setEditData({})
+    setItems(prev => prev.map(i => i.id === modalItem.id ? { ...i, ...payload } : i))
+    setModalOk(true)
+    setGuardandoModal(false)
+    setTimeout(() => cerrarModal(), 1000)
   }
 
   const ajustarStock = async (item: Item, delta: number) => {
@@ -164,9 +178,6 @@ export default function InventarioPage() {
   const coloresUbic = ['var(--text-muted)', 'var(--accent-teal)', '#34d399', 'var(--accent-yellow)', '#a78bfa', 'var(--accent)', '#22d3ee']
   const colorUbic = (u: string) => coloresUbic[(u?.charCodeAt(0) || 0) % coloresUbic.length]
 
-  const inp = "inp"
-  const lbl = "lbl"
-
   // PANTALLA DE CLAVE
   if (claveRequerida && !accesoConcedido) {
     return (
@@ -176,17 +187,8 @@ export default function InventarioPage() {
             style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
             <span className="text-4xl">🔐</span>
           </div>
-          <h2 className="font-display text-xl font-bold uppercase tracking-tighter mb-2" style={{ color: 'var(--text)' }}>Acceso Restringido</h2>
-          <p className="text-sm font-semibold mb-8" style={{ color: 'var(--text-muted)' }}>
-            Este módulo está protegido. Ingresa la clave de acceso para continuar.
-          </p>
-
-          {claveError && (
-            <div className="mb-4 px-4 py-3 rounded-xl font-bold text-sm border"
-              style={{ background: 'rgba(255,106,31,0.08)', borderColor: 'rgba(255,106,31,0.3)', color: 'var(--accent)' }}>
-              ❌ {claveError}
-            </div>
-          )}
+          <h2 className="font-display text-xl font-bold uppercase tracking-tighter mb-1" style={{ color: 'var(--text)' }}>Acceso Restringido</h2>
+          <p className="text-xs font-bold mb-8 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Ingresa la clave para continuar</p>
 
           <div className="relative mb-4">
             <input
@@ -194,19 +196,24 @@ export default function InventarioPage() {
               value={claveIngresada}
               onChange={e => setClaveIngresada(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && verificarClave()}
-              placeholder="Ingresa tu clave..."
-              className="font-mono w-full rounded-2xl px-5 py-4 text-center text-xl font-bold tracking-widest outline-none transition-all pr-12"
-              style={{ background: 'var(--surface-2)', border: '2px solid var(--border)', color: 'var(--text)' }}
-              onFocus={e => e.currentTarget.style.borderColor = 'var(--accent-teal)'}
-              onBlur={e => e.currentTarget.style.borderColor = 'var(--border)'}
+              placeholder="••••••••"
+              className="inp text-center text-xl tracking-widest pr-12"
             />
             <button
-              onClick={() => setMostrarClave(!mostrarClave)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-lg transition-colors"
+              type="button"
+              onClick={() => setMostrarClave(v => !v)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-sm"
               style={{ color: 'var(--text-muted)' }}>
               {mostrarClave ? '🙈' : '👁️'}
             </button>
           </div>
+
+          {claveError && (
+            <p className="text-xs font-bold mb-4 px-3 py-2 rounded-xl border"
+              style={{ background: 'rgba(255,106,31,0.08)', borderColor: 'rgba(255,106,31,0.3)', color: 'var(--accent)' }}>
+              ⚠ {claveError}
+            </p>
+          )}
 
           <button
             onClick={verificarClave}
@@ -226,6 +233,145 @@ export default function InventarioPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
+      {/* MODAL EDITOR */}
+      {modalItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+          onClick={e => { if (e.target === e.currentTarget) cerrarModal() }}>
+          <div className="w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+
+            {/* Header modal */}
+            <div className="flex items-center justify-between px-6 py-5"
+              style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-sm"
+                  style={{ background: 'rgba(33,199,184,0.15)', border: '1px solid rgba(33,199,184,0.4)' }}>✏️</div>
+                <div>
+                  <p className="font-display font-bold text-sm uppercase tracking-widest" style={{ color: 'var(--text)' }}>Editar Producto</p>
+                  <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{modalItem.nombre}</p>
+                </div>
+              </div>
+              <button onClick={cerrarModal}
+                className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-lg transition-all"
+                style={{ background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                ×
+              </button>
+            </div>
+
+            {/* Body modal */}
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="lbl">Nombre del Producto</label>
+                  <input
+                    value={modalData.nombre ?? ''}
+                    onChange={e => setModalData(p => ({ ...p, nombre: e.target.value }))}
+                    className="inp uppercase"
+                    placeholder="Nombre del producto"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="lbl">Categoría</label>
+                  <select
+                    value={modalData.categoria ?? ''}
+                    onChange={e => setModalData(p => ({ ...p, categoria: e.target.value }))}
+                    className="inp">
+                    {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="lbl">Ubicación</label>
+                  <input
+                    value={modalData.ubicacion ?? ''}
+                    onChange={e => setModalData(p => ({ ...p, ubicacion: e.target.value.toUpperCase() }))}
+                    className="inp uppercase text-center"
+                    placeholder="A1"
+                  />
+                </div>
+
+                <div>
+                  <label className="lbl">Stock (unidades)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={modalData.stock ?? 0}
+                    onChange={e => setModalData(p => ({ ...p, stock: parseInt(e.target.value) || 0 }))}
+                    className="inp text-center font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="lbl">Costo (S/)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-sm" style={{ color: 'var(--text-muted)' }}>S/</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={modalData.costo ?? 0}
+                      onChange={e => setModalData(p => ({ ...p, costo: parseFloat(e.target.value) || 0 }))}
+                      className="inp pl-9 text-right font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="lbl">Precio de Venta (S/)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-sm" style={{ color: 'var(--text-muted)' }}>S/</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={modalData.precio ?? 0}
+                      onChange={e => setModalData(p => ({ ...p, precio: parseFloat(e.target.value) || 0 }))}
+                      className="inp pl-9 text-right font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Margen en tiempo real */}
+              {(modalData.precio !== undefined && modalData.costo !== undefined) && (
+                <div className="px-4 py-3 rounded-2xl flex items-center justify-between"
+                  style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                  <span className="font-display text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Margen de ganancia</span>
+                  <span className="font-mono font-bold text-lg"
+                    style={{
+                      color: margen(Number(modalData.precio), Number(modalData.costo)) >= 30
+                        ? 'var(--accent-teal)'
+                        : margen(Number(modalData.precio), Number(modalData.costo)) >= 10
+                          ? 'var(--accent-yellow)'
+                          : 'var(--accent)'
+                    }}>
+                    {margen(Number(modalData.precio), Number(modalData.costo))}%
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Footer modal */}
+            <div className="flex gap-3 px-6 pb-6">
+              <button onClick={cerrarModal}
+                className="flex-1 font-display font-bold text-sm uppercase tracking-widest py-3 rounded-2xl transition-all"
+                style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>
+                Cancelar
+              </button>
+              <button onClick={guardarModal}
+                disabled={guardandoModal}
+                className="flex-2 font-display font-bold text-sm uppercase tracking-widest py-3 px-6 rounded-2xl transition-all disabled:opacity-50"
+                style={{ background: modalOk ? 'var(--accent-teal)' : 'var(--accent-teal)', color: 'var(--bg)', flex: 2 }}>
+                {guardandoModal ? '⏳ Guardando...' : modalOk ? '✓ Guardado' : '💾 Guardar Cambios'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-end justify-between mb-5">
         <div>
           <h2 className="font-display text-2xl font-bold uppercase tracking-tighter" style={{ color: 'var(--text)' }}>Control de Inventario</h2>
@@ -247,79 +393,67 @@ export default function InventarioPage() {
       {errMsg && (
         <div className="mb-4 px-4 py-3 rounded-xl font-bold text-sm border"
           style={{ background: 'rgba(255,106,31,0.08)', borderColor: 'rgba(255,106,31,0.3)', color: 'var(--accent)' }}>
-          ❌ {errMsg}
+          ⚠ {errMsg}
         </div>
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
-
-        {/* FORMULARIO */}
+        {/* FORMULARIO AGREGAR */}
         <div className="xl:col-span-4">
           <div className="card">
-            <div className="flex items-center gap-3 mb-5 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
-              <div className="font-display w-8 h-8 rounded-xl flex items-center justify-center font-bold text-sm"
-                style={{ background: 'rgba(33,199,184,0.12)', border: '1px solid rgba(33,199,184,0.35)', color: 'var(--accent-teal)' }}>+</div>
-              <div>
-                <h3 className="font-display text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text)' }}>Añadir Producto</h3>
-                <p className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>Ingresa los datos del nuevo item</p>
-              </div>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-sm"
+                style={{ background: 'rgba(255,106,31,0.12)', border: '1px solid rgba(255,106,31,0.3)' }}>➕</div>
+              <p className="font-display font-bold text-sm uppercase tracking-widest" style={{ color: 'var(--text)' }}>Nuevo Producto</p>
             </div>
-
-            {okMsg && (
-              <div className="mb-4 px-3 py-2 rounded-xl font-bold text-xs border"
-                style={{ background: 'rgba(33,199,184,0.08)', borderColor: 'rgba(33,199,184,0.3)', color: 'var(--accent-teal)' }}>
-                ✅ Producto guardado
-              </div>
-            )}
 
             <form onSubmit={submitForm} className="space-y-4">
               <div>
-                <label className={lbl}>Nombre del Producto</label>
-                <input name="nombre" value={formData.nombre} onChange={onFieldChange}
-                  placeholder="Ej: Aceite Castrol 5W-30" className={inp} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={lbl}>Ubicación</label>
-                  <input name="ubicacion" value={formData.ubicacion} onChange={onFieldChange}
-                    placeholder="A1" className={inp + ' font-mono text-center text-lg uppercase'} />
-                  <p className="text-[9px] font-bold mt-1 text-center" style={{ color: 'var(--text-muted)' }}>Estante/Zona</p>
-                </div>
-                <div>
-                  <label className={lbl}>Categoría</label>
-                  <select name="categoria" value={formData.categoria} onChange={onFieldChange} className={inp}>
-                    {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
+                <label className="lbl">Nombre del producto</label>
+                <input name="nombre" value={formData.nombre} onChange={onFieldChange} required
+                  className="inp uppercase" placeholder="CASTROL 5W30 1L" />
               </div>
               <div>
-                <label className={lbl}>Stock Inicial</label>
-                <input name="stock" type="number" value={formData.stock} onChange={onFieldChange}
-                  min="0" className={inp + ' font-mono text-center text-2xl'} />
+                <label className="lbl">Categoría</label>
+                <select name="categoria" value={formData.categoria} onChange={onFieldChange} className="inp">
+                  {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={lbl}>Costo (S/)</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-display font-bold text-sm" style={{ color: 'var(--accent)' }}>S/</span>
-                    <input name="costo" type="number" step="0.01" value={formData.costo} onChange={onFieldChange}
-                      className={inp + ' font-mono pl-8 font-bold'} style={{ color: 'var(--accent)' }} placeholder="0.00" />
-                  </div>
-                  <p className="text-[9px] font-bold mt-1" style={{ color: 'var(--text-muted)' }}>Lo que pagas</p>
+                  <label className="lbl">Ubicación</label>
+                  <input name="ubicacion" value={formData.ubicacion} onChange={onFieldChange}
+                    className="inp uppercase text-center" placeholder="A1" />
                 </div>
                 <div>
-                  <label className={lbl}>Precio Venta (S/)</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-display font-bold text-sm" style={{ color: 'var(--accent-teal)' }}>S/</span>
-                    <input name="precio" type="number" step="0.01" value={formData.precio} onChange={onFieldChange}
-                      className={inp + ' font-mono pl-8 font-bold'} style={{ color: 'var(--accent-teal)' }} placeholder="0.00" />
-                  </div>
-                  <p className="text-[9px] font-bold mt-1" style={{ color: 'var(--text-muted)' }}>Lo que cobras</p>
+                  <label className="lbl">Stock inicial</label>
+                  <input name="stock" type="number" min="0" value={formData.stock} onChange={onFieldChange}
+                    className="inp text-center" />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="lbl">Costo (S/)</label>
+                  <input name="costo" type="number" step="0.01" min="0" value={formData.costo} onChange={onFieldChange}
+                    className="inp text-right font-mono" />
+                </div>
+                <div>
+                  <label className="lbl">P. Venta (S/)</label>
+                  <input name="precio" type="number" step="0.01" min="0" value={formData.precio} onChange={onFieldChange}
+                    className="inp text-right font-mono" />
+                </div>
+              </div>
+
+              {okMsg && (
+                <p className="text-xs font-bold px-3 py-2 rounded-xl border text-center"
+                  style={{ background: 'rgba(33,199,184,0.08)', borderColor: 'rgba(33,199,184,0.3)', color: 'var(--accent-teal)' }}>
+                  ✓ Producto agregado
+                </p>
+              )}
+
               <button type="submit" disabled={guardando}
-                className="font-display w-full disabled:opacity-50 font-bold py-3.5 rounded-xl transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95"
-                style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>
+                className="w-full font-display font-bold text-sm uppercase tracking-widest py-4 rounded-2xl transition-all disabled:opacity-50"
+                style={{ background: 'var(--accent)', color: 'var(--bg)' }}>
                 {guardando ? '⏳ Guardando...' : '💾 Guardar Producto'}
               </button>
             </form>
@@ -353,13 +487,12 @@ export default function InventarioPage() {
               <>
                 <div className="grid grid-cols-12 gap-2 px-4 py-2" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
                   {[
-                    { label: 'Producto', span: 'col-span-3' },
+                    { label: 'Producto', span: 'col-span-4' },
                     { label: 'Ubic.', span: 'col-span-1 text-center' },
                     { label: 'Categoría', span: 'col-span-2' },
                     { label: 'Stock', span: 'col-span-2 text-center' },
                     { label: 'Costo', span: 'col-span-1 text-right' },
-                    { label: 'P. Venta', span: 'col-span-1 text-right' },
-                    { label: 'Margen', span: 'col-span-1 text-right' },
+                    { label: 'P.Vta', span: 'col-span-1 text-right' },
                     { label: 'Acc.', span: 'col-span-1 text-center' },
                   ].map(h => (
                     <div key={h.label} className={`font-display text-[9px] font-bold uppercase tracking-widest ${h.span}`} style={{ color: 'var(--text-muted)' }}>{h.label}</div>
@@ -374,86 +507,73 @@ export default function InventarioPage() {
                     return (
                       <div key={item.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center transition-all"
                         style={{ borderBottom: '1px solid var(--border)' }}>
-                        <div className="col-span-3">
-                          {editID === item.id ? (
-                            <input value={editData.nombre || ''} onChange={e => setEditData(p => ({ ...p, nombre: e.target.value }))}
-                              className="inp w-full px-2 py-1 text-xs" />
-                          ) : (
-                            <p className="font-display font-bold text-xs uppercase leading-tight" style={{ color: 'var(--text)' }}>{item.nombre}</p>
-                          )}
+
+                        {/* Nombre — click abre modal */}
+                        <div className="col-span-4">
+                          <button
+                            onClick={() => abrirModal(item)}
+                            className="text-left w-full group"
+                            title="Click para editar">
+                            <p className="font-display font-bold text-xs uppercase leading-tight transition-colors"
+                              style={{ color: 'var(--text)' }}>
+                              {item.nombre}
+                            </p>
+                            <p className="font-display text-[8px] font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity"
+                              style={{ color: 'var(--accent-teal)' }}>
+                              ✏ editar
+                            </p>
+                          </button>
                         </div>
+
                         <div className="col-span-1 flex justify-center">
-                          {editID === item.id ? (
-                            <input value={editData.ubicacion ?? ''}
-                              onChange={e => setEditData(p => ({ ...p, ubicacion: e.target.value.toUpperCase() }))}
-                              className="inp w-full px-1 py-1 text-[10px] text-center uppercase" />
-                          ) : (
-                            <span className="font-display min-w-7 h-7 px-1.5 rounded-lg flex items-center justify-center text-[9px] font-bold uppercase"
-                              style={{ background: ubicColor + '1a', border: `1px solid ${ubicColor}50`, color: ubicColor }}>
-                              {item.ubicacion}
-                            </span>
-                          )}
+                          <span className="font-display min-w-7 h-7 px-1.5 rounded-lg flex items-center justify-center text-[9px] font-bold uppercase"
+                            style={{ background: ubicColor + '1a', border: `1px solid ${ubicColor}50`, color: ubicColor }}>
+                            {item.ubicacion}
+                          </span>
                         </div>
+
                         <div className="col-span-2">
                           <span className="font-display text-[9px] font-bold uppercase leading-tight" style={{ color: 'var(--text-muted)' }}>{item.categoria}</span>
                         </div>
+
                         <div className="col-span-2 flex items-center justify-center gap-1">
                           <button onClick={() => ajustarStock(item, -1)}
                             className="w-6 h-6 rounded-lg font-bold text-sm flex items-center justify-center transition-all"
                             style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>−</button>
                           <div className="text-center w-8">
-                            {editID === item.id ? (
-                              <input type="number" value={editData.stock || 0}
-                                onChange={e => setEditData(p => ({ ...p, stock: parseInt(e.target.value) }))}
-                                className="inp w-full px-1 py-0.5 text-xs text-center" />
-                            ) : (
-                              <div>
-                                <p className="font-mono font-bold text-sm" style={{ color: stockBajo ? 'var(--accent)' : 'var(--text)' }}>{item.stock}</p>
-                                {stockBajo && <p className="font-display text-[7px] font-bold uppercase" style={{ color: 'var(--accent)' }}>Stock bajo</p>}
-                              </div>
-                            )}
+                            <p className="font-mono font-bold text-sm" style={{ color: stockBajo ? 'var(--accent)' : 'var(--text)' }}>{item.stock}</p>
+                            {stockBajo && <p className="font-display text-[7px] font-bold uppercase" style={{ color: 'var(--accent)' }}>bajo</p>}
                           </div>
                           <button onClick={() => ajustarStock(item, 1)}
                             className="w-6 h-6 rounded-lg font-bold text-sm flex items-center justify-center transition-all"
                             style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>+</button>
                         </div>
+
                         <div className="col-span-1 text-right">
-                          {editID === item.id ? (
-                            <input type="number" step="0.01" value={editData.costo || 0}
-                              onChange={e => setEditData(p => ({ ...p, costo: parseFloat(e.target.value) }))}
-                              className="inp w-full px-1 py-0.5 text-xs text-right" />
-                          ) : (
-                            <p className="font-mono font-bold text-xs" style={{ color: 'var(--accent)' }}>S/<br />{(item.costo || 0).toFixed(2)}</p>
-                          )}
+                          <p className="font-mono font-bold text-xs" style={{ color: 'var(--accent)' }}>
+                            S/ {(item.costo || 0).toFixed(2)}
+                          </p>
                         </div>
+
                         <div className="col-span-1 text-right">
-                          {editID === item.id ? (
-                            <input type="number" step="0.01" value={editData.precio || 0}
-                              onChange={e => setEditData(p => ({ ...p, precio: parseFloat(e.target.value) }))}
-                              className="inp w-full px-1 py-0.5 text-xs text-right" />
-                          ) : (
-                            <p className="font-mono font-bold text-xs" style={{ color: 'var(--text)' }}>S/<br />{(item.precio || 0).toFixed(2)}</p>
-                          )}
-                        </div>
-                        <div className="col-span-1 text-right">
-                          <span className="font-mono text-xs font-bold"
+                          <p className="font-mono font-bold text-xs" style={{ color: 'var(--text)' }}>
+                            S/ {(item.precio || 0).toFixed(2)}
+                          </p>
+                          <p className="font-mono text-[9px] font-bold"
                             style={{ color: mg >= 30 ? 'var(--accent-teal)' : mg >= 10 ? 'var(--accent-yellow)' : 'var(--accent)' }}>
                             {mg}%
-                          </span>
+                          </p>
                         </div>
+
                         <div className="col-span-1 flex items-center justify-center gap-1">
-                          {editID === item.id ? (
-                            <button onClick={() => saveEdit(item.id)}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-all"
-                              style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>✓</button>
-                          ) : (
-                            <button onClick={() => iniciarEdit(item)}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-all"
-                              style={{ background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)' }}>✏️</button>
-                          )}
+                          <button onClick={() => abrirModal(item)}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-all"
+                            style={{ background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)' }}
+                            title="Editar">✏️</button>
                           <button onClick={() => eliminarItem(item.id)}
                             className="w-7 h-7 rounded-lg flex items-center justify-center text-xs transition-all"
-                            style={{ background: 'rgba(255,106,31,0.12)', color: 'var(--accent)' }}>🗑️</button>
+                            style={{ background: 'rgba(255,106,31,0.12)', color: 'var(--accent)' }}
+                            title="Eliminar">🗑️</button>
                         </div>
                       </div>
                     )
