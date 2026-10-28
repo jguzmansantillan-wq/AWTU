@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
-export default function RegistroPage() {
+function RegistroForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [form, setForm] = useState({ nombre: '', email: '', password: '', plan: 'basico' })
@@ -60,28 +60,40 @@ export default function RegistroPage() {
           <div>
             <label className="lbl">Plan</label>
             <select name="plan" value={form.plan} onChange={handleChange} className="inp">
-              <option value="basico">Básico — S/ 49/mes</option>
-              <option value="pro">Pro — S/ 99/mes</option>
-              <option value="exclusive">Exclusive — S/ 199/mes</option>
+              <option value="basico">Básico – S/ 49/mes</option>
+              <option value="pro">Pro – S/ 99/mes</option>
+              <option value="exclusive">Exclusive – S/ 199/mes</option>
             </select>
           </div>
           {error && (
             <p className="text-sm font-semibold px-4 py-3 rounded-xl border"
               style={{ background: 'rgba(255,106,31,0.08)', borderColor: 'rgba(255,106,31,0.3)', color: 'var(--accent)' }}>
-              ❌ {error}
+              ⚠ {error}
             </p>
           )}
           <button type="submit" disabled={loading}
-            className="font-display w-full disabled:opacity-50 font-bold py-3.5 rounded-xl transition-all uppercase tracking-widest text-sm active:scale-95"
-            style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>
-            {loading ? 'Registrando...' : 'Crear cuenta'}
+            className="w-full font-display font-bold text-sm uppercase tracking-widest py-4 rounded-2xl transition-all"
+            style={{ background: loading ? 'var(--surface-2)' : 'var(--accent)', color: loading ? 'var(--text-muted)' : 'var(--bg)' }}>
+            {loading ? 'Creando cuenta...' : 'Crear cuenta'}
           </button>
         </form>
         <p className="text-center text-sm font-semibold mt-6" style={{ color: 'var(--text-muted)' }}>
           ¿Ya tienes cuenta?{' '}
-          <Link href="/login" className="font-bold" style={{ color: 'var(--accent-teal)' }}>Inicia sesión</Link>
+          <Link href="/login" className="font-bold" style={{ color: 'var(--accent-teal)' }}>Iniciar sesión</Link>
         </p>
       </div>
     </main>
+  )
+}
+
+export default function RegistroPage() {
+  return (
+    <Suspense fallback={
+      <main className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
+        <div className="w-12 h-12 rounded-full animate-spin" style={{ border: '4px solid var(--accent-teal)', borderTopColor: 'transparent' }} />
+      </main>
+    }>
+      <RegistroForm />
+    </Suspense>
   )
 }
