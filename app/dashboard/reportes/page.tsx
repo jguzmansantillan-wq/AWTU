@@ -12,11 +12,18 @@ type Servicio = {
 type Venta = {
   id: string; nombre: string; items: any[]
   monto: number; fecha: string; created_at: string; tipo: 'venta'
+  metodo_pago?: string
 }
 
 type Registro = Servicio | Venta
-
 type FiltroTipo = 'dia' | 'mes' | 'anio'
+
+const METODOS_PAGO = [
+  { key: 'efectivo',      icon: '💵', label: 'Efectivo',      color: '#34d399' },
+  { key: 'yape',          icon: '📱', label: 'Yape / Plin',   color: 'var(--accent-teal)' },
+  { key: 'transferencia', icon: '🏦', label: 'Transferencia', color: '#a78bfa' },
+  { key: 'tarjeta',       icon: '💳', label: 'Tarjeta',       color: 'var(--accent-yellow)' },
+]
 
 export default function ReportesPage() {
   const [registros, setRegistros] = useState<Registro[]>([])
@@ -37,7 +44,7 @@ export default function ReportesPage() {
         .select('id, placa, nombre, marca, modelo, monto, fecha, created_at')
         .eq('taller_id', t.id).order('created_at', { ascending: false })
       const { data: vnts } = await supabase.from('ventas')
-        .select('id, nombre, items, monto, fecha, created_at')
+        .select('id, nombre, items, monto, fecha, created_at, metodo_pago')
         .eq('taller_id', t.id).order('created_at', { ascending: false })
       const todos: Registro[] = [
         ...(svcs || []).map(s => ({ ...s, tipo: 'servicio' as const })),
@@ -59,11 +66,20 @@ export default function ReportesPage() {
   })
 
   const serviciosF = filtrados.filter(r => r.tipo === 'servicio') as Servicio[]
-  const ventasF = filtrados.filter(r => r.tipo === 'venta') as Venta[]
+  const ventasF    = filtrados.filter(r => r.tipo === 'venta')    as Venta[]
 
   const totalServicios = serviciosF.reduce((s, r) => s + (r.monto || 0), 0)
-  const totalVentas = ventasF.reduce((s, r) => s + (r.monto || 0), 0)
-  const totalGeneral = totalServicios + totalVentas
+  const totalVentas    = ventasF.reduce((s, r) => s + (r.monto || 0), 0)
+  const totalGeneral   = totalServicios + totalVentas
+
+  // Totales por método de pago (solo ventas de tienda)
+  const totalesPorMetodo = METODOS_PAGO.map(m => ({
+    ...m,
+    total: ventasF
+      .filter(v => (v.metodo_pago || 'efectivo') === m.key)
+      .reduce((s, v) => s + (v.monto || 0), 0),
+    cantidad: ventasF.filter(v => (v.metodo_pago || 'efectivo') === m.key).length,
+  }))
 
   const etiquetaPeriodo = () => {
     if (filtroTipo === 'dia') return new Date(diaSel + 'T00:00:00').toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
@@ -81,6 +97,11 @@ export default function ReportesPage() {
     return items.map((i: any) => `${i.cantidad}x ${i.nombre}`).join(', ') || 'Venta'
   }
 
+  const etiquetaMetodo = (v: Venta) => {
+    const m = METODOS_PAGO.find(m => m.key === (v.metodo_pago || 'efectivo'))
+    return m ? `${m.icon} ${m.label}` : '💵 Efectivo'
+  }
+
   const exportarExcel = () => {
     const filas = filtrados.map(r => ({
       'FECHA': fechaDe(r),
@@ -88,11 +109,12 @@ export default function ReportesPage() {
       'PLACA': r.tipo === 'servicio' ? r.placa : '',
       'CLIENTE': r.nombre || (r.tipo === 'venta' ? 'CLIENTE AL CONTADO' : '-'),
       'DETALLE': detalleDescripcion(r),
+      'MÉTODO DE PAGO': r.tipo === 'venta' ? (METODOS_PAGO.find(m => m.key === (r as Venta).metodo_pago)?.label || 'Efectivo') : '-',
       'MONTO': r.monto || 0,
     }))
 
     const ws = XLSX.utils.json_to_sheet(filas)
-    ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 24 }, { wch: 40 }, { wch: 12 }]
+    ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 10 }, { wch: 24 }, { wch: 40 }, { wch: 16 }, { wch: 12 }]
 
     const wsResumen = XLSX.utils.aoa_to_sheet([
       ['REPORTE AWTU'],
@@ -104,8 +126,11 @@ export default function ReportesPage() {
       [],
       ['Cantidad de Servicios', serviciosF.length],
       ['Cantidad de Ventas', ventasF.length],
+      [],
+      ['--- VENTAS POR MÉTODO DE PAGO ---'],
+      ...totalesPorMetodo.map(m => [`${m.icon} ${m.label}`, m.total, `(${m.cantidad} venta(s))`]),
     ])
-    wsResumen['!cols'] = [{ wch: 26 }, { wch: 20 }]
+    wsResumen['!cols'] = [{ wch: 30 }, { wch: 20 }, { wch: 16 }]
 
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
@@ -155,7 +180,6 @@ export default function ReportesPage() {
               </button>
             ))}
           </div>
-
           <div className="flex-1 min-w-48">
             {filtroTipo === 'dia' && (
               <input type="date" value={diaSel} onChange={e => setDiaSel(e.target.value)} className="inp font-mono" />
@@ -171,7 +195,7 @@ export default function ReportesPage() {
         </div>
       </div>
 
-      {/* Totales */}
+      {/* Totales generales */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="card">
           <p className="font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--accent-teal)' }}>Ingresos por Servicios</p>
@@ -190,6 +214,40 @@ export default function ReportesPage() {
         </div>
       </div>
 
+      {/* Ventas por método de pago */}
+      {ventasF.length > 0 && (
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div className="w-7 h-7 rounded-xl flex items-center justify-center text-xs"
+              style={{ background: 'rgba(33,199,184,0.12)', border: '1px solid rgba(33,199,184,0.35)' }}>💳</div>
+            <p className="font-display font-bold text-sm uppercase tracking-widest" style={{ color: 'var(--text)' }}>Ventas por Método de Pago</p>
+            <span className="font-display ml-auto text-[10px] font-bold uppercase" style={{ color: 'var(--text-muted)' }}>Solo tienda</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-0">
+            {totalesPorMetodo.map((m, idx) => (
+              <div key={m.key}
+                className="p-5 flex flex-col gap-2"
+                style={{
+                  borderRight: idx < 3 ? '1px solid var(--border)' : 'none',
+                  borderBottom: idx < 2 ? '1px solid var(--border)' : 'none',
+                  opacity: m.total === 0 ? 0.4 : 1,
+                }}>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{m.icon}</span>
+                  <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{m.label}</p>
+                </div>
+                <p className="font-mono text-xl font-bold" style={{ color: m.total > 0 ? m.color : 'var(--text-muted)' }}>
+                  S/ {m.total.toFixed(2)}
+                </p>
+                <p className="font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                  {m.cantidad} venta(s)
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Detalle de transacciones */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -207,11 +265,12 @@ export default function ReportesPage() {
           <>
             <div className="grid grid-cols-12 gap-2 px-4 py-2" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
               {[
-                { label: 'Fecha', span: 'col-span-2' },
-                { label: 'Tipo', span: 'col-span-2' },
-                { label: 'Cliente', span: 'col-span-3' },
+                { label: 'Fecha',   span: 'col-span-2' },
+                { label: 'Tipo',    span: 'col-span-1' },
+                { label: 'Cliente', span: 'col-span-2' },
                 { label: 'Detalle', span: 'col-span-4' },
-                { label: 'Monto', span: 'col-span-1 text-right' },
+                { label: 'Pago',    span: 'col-span-2' },
+                { label: 'Monto',   span: 'col-span-1 text-right' },
               ].map(h => (
                 <div key={h.label} className={`font-display text-[9px] font-bold uppercase tracking-widest ${h.span}`} style={{ color: 'var(--text-muted)' }}>{h.label}</div>
               ))}
@@ -219,20 +278,31 @@ export default function ReportesPage() {
             <div className="max-h-[480px] overflow-y-auto">
               {filtrados.map(r => {
                 const accentColor = r.tipo === 'servicio' ? 'var(--accent-teal)' : 'var(--accent)'
+                const metodo = r.tipo === 'venta' ? METODOS_PAGO.find(m => m.key === ((r as Venta).metodo_pago || 'efectivo')) : null
                 return (
                   <div key={r.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center" style={{ borderBottom: '1px solid var(--border)' }}>
                     <div className="col-span-2 font-mono text-xs font-bold" style={{ color: 'var(--text)' }}>{fechaDe(r)}</div>
-                    <div className="col-span-2">
+                    <div className="col-span-1">
                       <span className="font-display text-[9px] px-2 py-0.5 rounded-lg font-bold uppercase"
                         style={{ background: accentColor + '1a', color: accentColor }}>
-                        {r.tipo === 'servicio' ? 'Servicio' : 'Venta'}
+                        {r.tipo === 'servicio' ? 'Serv.' : 'Venta'}
                       </span>
                     </div>
-                    <div className="col-span-3 text-xs font-semibold truncate" style={{ color: 'var(--text)' }}>
-                      {r.nombre || (r.tipo === 'venta' ? 'Cliente directo' : '-')}
-                      {r.tipo === 'servicio' && <span className="font-mono ml-2" style={{ color: 'var(--text-muted)' }}>{r.placa}</span>}
+                    <div className="col-span-2 text-xs font-semibold truncate" style={{ color: 'var(--text)' }}>
+                      {r.nombre || (r.tipo === 'venta' ? 'Directo' : '-')}
+                      {r.tipo === 'servicio' && <span className="font-mono ml-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>{r.placa}</span>}
                     </div>
                     <div className="col-span-4 text-xs truncate" style={{ color: 'var(--text-muted)' }}>{detalleDescripcion(r)}</div>
+                    <div className="col-span-2">
+                      {metodo ? (
+                        <span className="font-display text-[9px] font-bold flex items-center gap-1" style={{ color: metodo.color }}>
+                          <span>{metodo.icon}</span>
+                          <span className="uppercase tracking-widest">{metodo.label}</span>
+                        </span>
+                      ) : (
+                        <span className="font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>—</span>
+                      )}
+                    </div>
                     <div className="col-span-1 text-right font-mono text-xs font-bold" style={{ color: 'var(--text)' }}>S/ {(r.monto || 0).toFixed(2)}</div>
                   </div>
                 )
