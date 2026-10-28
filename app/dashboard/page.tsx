@@ -12,7 +12,7 @@ type Servicio = {
   fecha_proxima?: string; cumpleanos?: string; created_at: string
 }
 
-type Venta = { id: string; total: number; monto: number; created_at: string }
+type Venta = { id: string; total?: number; monto: number; created_at: string }
 
 export default function ResumenPage() {
   const router = useRouter()
