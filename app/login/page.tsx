@@ -38,7 +38,16 @@ export default function LoginPage() {
               placeholder="taller@email.com" />
           </div>
           <div>
-            <label className="lbl">Contraseña</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="lbl" style={{ marginBottom: 0 }}>Contraseña</label>
+              <Link href="/recuperar"
+                className="font-display text-[10px] font-bold uppercase tracking-widest transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent-teal)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}>
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
               className="inp"
               placeholder="••••••••" />
