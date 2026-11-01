@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
-// Capitaliza cada palabra: "juan perez" → "Juan Perez"
 const toTitleCase = (str: string) =>
   str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
 
@@ -21,29 +20,445 @@ type Comprobante = {
 }
 
 type MetodoPago = { tipo: string; numero: string; titular: string }
-type Sucursal = { nombre: string; direccion: string; telefono: string }
+type Sucursal  = { nombre: string; direccion: string; telefono: string }
 
+// ── Modal de acciones del comprobante ──────────────────────────────────────
+function ModalAcciones({
+  c, tallerNombre, tallerRuc, tallerTelefono, onClose, onAnulado,
+}: {
+  c: Comprobante
+  tallerNombre: string; tallerRuc: string; tallerTelefono: string
+  onClose: () => void
+  onAnulado: () => void
+}) {
+  const nro          = `${c.serie}-${String(c.numero).padStart(6, '0')}`
+  const external_id  = c.payload?.external_id
+  const modo         = c.payload?.entorno === 'produccion' ? 'produccion' : 'demo'
+  const hasPDF       = !!c.payload?.pdf_base64
+
+  const [loadingAccion, setLoadingAccion] = useState<string | null>(null)
+  const [notaModal, setNotaModal]         = useState<'credito' | 'debito' | null>(null)
+  const [motivoAnular, setMotivoAnular]   = useState('')
+  const [confirmarAnular, setConfirmarAnular] = useState(false)
+  const [error, setError]                 = useState('')
+
+  // ── Visualizar PDF en nueva pestaña ─────────────────────────────────────
+  const visualizarPDF = () => {
+    if (!hasPDF) return
+    const byteString = atob(c.payload.pdf_base64.split(',')[1])
+    const ab = new ArrayBuffer(byteString.length)
+    const ia = new Uint8Array(ab)
+    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i)
+    const blob = new Blob([ab], { type: 'application/pdf' })
+    window.open(URL.createObjectURL(blob), '_blank')
+  }
+
+  // ── Descargar PDF ────────────────────────────────────────────────────────
+  const descargarPDF = () => {
+    if (!hasPDF) return
+    const link = document.createElement('a')
+    link.href     = c.payload.pdf_base64
+    link.download = `${nro}.pdf`
+    link.click()
+  }
+
+  // ── Imprimir ─────────────────────────────────────────────────────────────
+  const imprimir = () => {
+    if (!hasPDF) return
+    const byteString = atob(c.payload.pdf_base64.split(',')[1])
+    const ab = new ArrayBuffer(byteString.length)
+    const ia = new Uint8Array(ab)
+    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i)
+    const blob = new Blob([ab], { type: 'application/pdf' })
+    const url  = URL.createObjectURL(blob)
+    const win  = window.open(url, '_blank')
+    win?.addEventListener('load', () => win.print())
+  }
+
+  // ── WhatsApp con link de visualización ──────────────────────────────────
+  const enviarWhatsApp = async () => {
+    const tel = (c.payload?.telefono || '').replace(/\D/g, '')
+    const texto =
+      `🧾 *COMPROBANTE: ${nro}*\n` +
+      `🏪 ${tallerNombre}${tallerRuc ? ` · RUC: ${tallerRuc}` : ''}\n` +
+      `📅 ${c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}\n` +
+      `👤 ${toTitleCase(c.cliente_nombre || '')}\n` +
+      `💰 *Total: S/ ${(c.monto || 0).toFixed(2)}*\n\n` +
+      `📎 Puede ver su comprobante aquí:\n` +
+      `https://awtu-app.vercel.app/comprobante/${c.id}\n\n` +
+      `¡Gracias por su preferencia! 🙏`
+
+    // Descargar PDF al mismo tiempo
+    if (hasPDF) {
+      const link = document.createElement('a')
+      link.href     = c.payload.pdf_base64
+      link.download = `${nro}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      await new Promise(r => setTimeout(r, 800))
+    }
+
+    const num = tel || prompt('Ingresa el número WhatsApp del cliente:')?.replace(/\D/g, '')
+    if (!num) return
+    window.open(`https://wa.me/51${num}?text=${encodeURIComponent(texto)}`, '_blank')
+  }
+
+  // ── Descargar XML ────────────────────────────────────────────────────────
+  const descargarXML = async () => {
+    if (!external_id) { setError('No hay external_id para este comprobante'); return }
+    setLoadingAccion('xml')
+    try {
+      const res  = await fetch(`/api/factusmart/xml?external_id=${external_id}&modo=${modo}`)
+      if (!res.ok) throw new Error('No se pudo obtener el XML')
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href     = url
+      link.download = `${nro}.xml`
+      link.click()
+    } catch (e: any) { setError(e.message) }
+    setLoadingAccion(null)
+  }
+
+  // ── Descargar CDR ────────────────────────────────────────────────────────
+  const descargarCDR = async () => {
+    if (!external_id) { setError('No hay external_id para este comprobante'); return }
+    setLoadingAccion('cdr')
+    try {
+      const res  = await fetch(`/api/factusmart/cdr?external_id=${external_id}&modo=${modo}`)
+      if (!res.ok) throw new Error('No se pudo obtener el CDR')
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href     = url
+      link.download = `CDR-${nro}.zip`
+      link.click()
+    } catch (e: any) { setError(e.message) }
+    setLoadingAccion(null)
+  }
+
+  // ── Anular comprobante ───────────────────────────────────────────────────
+  const anular = async () => {
+    if (!external_id) { setError('No hay external_id'); return }
+    if (!motivoAnular.trim()) { setError('Ingresa un motivo de anulación'); return }
+    setLoadingAccion('anular')
+    setError('')
+    try {
+      const res  = await fetch('/api/factusmart/anular', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ external_id, motivo: motivoAnular, modo }),
+      })
+      const data = await res.json()
+      if (!data.ok) throw new Error(JSON.stringify(data.detalle || data.error))
+      // Actualizar estado en Supabase
+      await supabase.from('comprobantes').update({ estado_sunat: 'anulado' }).eq('id', c.id)
+      onAnulado()
+      onClose()
+    } catch (e: any) { setError(e.message) }
+    setLoadingAccion(null)
+  }
+
+  const btnBase    = "flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40"
+  const btnBlue    = `${btnBase} bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200`
+  const btnGreen   = `${btnBase} bg-green-600 hover:bg-green-700 text-white shadow-sm shadow-green-200`
+  const btnSlate   = `${btnBase} bg-slate-100 hover:bg-slate-200 text-slate-700`
+  const btnRed     = `${btnBase} bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-200`
+  const btnOrange  = `${btnBase} bg-orange-500 hover:bg-orange-600 text-white shadow-sm shadow-orange-200`
+  const btnPurple  = `${btnBase} bg-purple-600 hover:bg-purple-700 text-white shadow-sm shadow-purple-200`
+  const btnTeal    = `${btnBase} bg-teal-600 hover:bg-teal-700 text-white shadow-sm shadow-teal-200`
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="bg-blue-600 px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className="font-black text-white text-base">Comprobante electrónico</p>
+            <p className="text-blue-200 text-xs font-bold mt-0.5">{nro}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-black text-sm transition-all">✕</button>
+        </div>
+
+        {/* Info comprobante */}
+        <div className="px-5 py-4 space-y-3 border-b border-slate-100">
+          <div className="flex items-center justify-between">
+            <span className={`text-xs px-3 py-1 rounded-full font-black uppercase ${
+              c.tipo === 'factura' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+            }`}>{c.tipo === 'factura' ? 'Factura Electrónica' : 'Boleta de Venta'}</span>
+            <span className={`text-xs px-3 py-1 rounded-full font-black uppercase ${
+              c.estado_sunat === 'emitido'  ? 'bg-green-100 text-green-700' :
+              c.estado_sunat === 'anulado'  ? 'bg-red-100 text-red-700' :
+              'bg-yellow-100 text-yellow-700'
+            }`}>{c.estado_sunat?.toUpperCase()}</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Cliente</p>
+              <p className="font-black text-slate-800 mt-0.5">{toTitleCase(c.cliente_nombre || '')}</p>
+              {c.cliente_doc && <p className="text-slate-500 font-semibold">{c.tipo === 'factura' ? 'RUC' : 'DNI'}: {c.cliente_doc}</p>}
+            </div>
+            <div className="text-right">
+              <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Total</p>
+              <p className="font-black text-blue-600 text-xl mt-0.5">S/ {(c.monto || 0).toFixed(2)}</p>
+              <p className="text-slate-400 font-semibold text-[10px]">{c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}</p>
+            </div>
+          </div>
+
+          {modo === 'demo' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-center">
+              <p className="text-amber-700 font-black text-[10px] uppercase tracking-wider">🧪 Modo Demo — Sin validez fiscal</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <p className="text-red-700 font-bold text-xs">❌ {error}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Botones de acción */}
+        {!confirmarAnular && !notaModal && (
+          <div className="px-5 py-4 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              {/* Visualizar PDF */}
+              <button onClick={visualizarPDF} disabled={!hasPDF} className={btnBlue}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                Visualizar PDF
+              </button>
+
+              {/* Descargar PDF */}
+              <button onClick={descargarPDF} disabled={!hasPDF} className={btnBlue}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                Descargar PDF
+              </button>
+
+              {/* Enviar por WhatsApp */}
+              <button onClick={enviarWhatsApp} className={btnGreen}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.532 5.86L0 24l6.302-1.507A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
+                Enviar por WhatsApp
+              </button>
+
+              {/* Imprimir */}
+              <button onClick={imprimir} disabled={!hasPDF} className={btnSlate}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+                Imprimir
+              </button>
+
+              {/* Descargar XML */}
+              <button onClick={descargarXML} disabled={!external_id || loadingAccion === 'xml'} className={btnSlate}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 7V3.5L18.5 9H13zM8 13l-1.25 2L8 17H6.5l-.75-1.5L5 17H3.5l1.25-2L3.5 13H5l.75 1.5.75-1.5H8zm4.5 4h-1.25l-.5-3.75L10 17H8.75l1.5-4h1.5l.75 2.5.75-2.5h1.5l1.5 4H14.5l-.75-3.75L13 17h-.5zm6.25 0H17l-1.5-4h1.25l.75 2.5.75-2.5H19.5l-1.5 4z"/></svg>
+                {loadingAccion === 'xml' ? 'Descargando...' : 'Descargar XML'}
+              </button>
+
+              {/* Descargar CDR */}
+              <button onClick={descargarCDR} disabled={!external_id || loadingAccion === 'cdr'} className={btnSlate}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.06 15.96 0 13.36 0c-1.31 0-2.48.52-3.34 1.36L9 2.38 7.98 1.36C7.12.52 5.95 0 4.64 0 2.04 0 0 2.06 0 4.64c0 .48.11.92.18 1.36H0v14h20V6zm-9.5 11L7 13.5l1.41-1.41L10.5 14.17l4.09-4.08L16 11.5 10.5 17z"/></svg>
+                {loadingAccion === 'cdr' ? 'Descargando...' : 'Descargar CDR'}
+              </button>
+
+              {/* Nota de Crédito */}
+              <button onClick={() => setNotaModal('credito')} disabled={c.estado_sunat === 'anulado'} className={btnOrange}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
+                Nota de Crédito
+              </button>
+
+              {/* Nota de Débito */}
+              <button onClick={() => setNotaModal('debito')} disabled={c.estado_sunat === 'anulado'} className={btnPurple}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                Nota de Débito
+              </button>
+
+              {/* Guía de Remisión */}
+              <button onClick={() => alert('Próximamente: Guía de Remisión')} className={btnTeal}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+                Guía de Remisión
+              </button>
+            </div>
+
+            {/* Dar de Baja */}
+            {c.estado_sunat !== 'anulado' && (
+              <button onClick={() => { setConfirmarAnular(true); setError('') }} className={`${btnRed} w-full`}>
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                Dar de Baja (Anular)
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Confirmar anulación */}
+        {confirmarAnular && (
+          <div className="px-5 py-4 space-y-3">
+            <p className="font-black text-red-700 text-sm">⚠️ ¿Anular comprobante {nro}?</p>
+            <p className="text-xs text-slate-500 font-semibold">Esta acción no se puede deshacer. El comprobante quedará marcado como anulado ante SUNAT.</p>
+            <div>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Motivo de anulación *</label>
+              <input
+                value={motivoAnular}
+                onChange={e => setMotivoAnular(e.target.value)}
+                placeholder="Ej: Error en el monto, cliente incorrecto..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-red-400 transition-all"
+              />
+            </div>
+            {error && <p className="text-red-600 text-xs font-bold">❌ {error}</p>}
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => { setConfirmarAnular(false); setError('') }} className={btnSlate}>Cancelar</button>
+              <button onClick={anular} disabled={loadingAccion === 'anular'} className={btnRed}>
+                {loadingAccion === 'anular' ? '⏳ Anulando...' : '🗑️ Confirmar Anulación'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Nota de Crédito / Débito */}
+        {notaModal && (
+          <NotaForm
+            tipo={notaModal}
+            comprobante={c}
+            modo={modo}
+            onClose={() => setNotaModal(null)}
+            onSuccess={onClose}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Formulario para Nota de Crédito / Débito ───────────────────────────────
+function NotaForm({
+  tipo, comprobante, modo, onClose, onSuccess,
+}: {
+  tipo: 'credito' | 'debito'
+  comprobante: Comprobante
+  modo: string
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const [motivo,  setMotivo]  = useState('')
+  const [codigo,  setCodigo]  = useState('01')
+  const [monto,   setMonto]   = useState(String(comprobante.monto))
+  const [loading, setLoading] = useState(false)
+  const [error,   setError]   = useState('')
+
+  const motivosCredito = [
+    { value: '01', label: '01 — Anulación de la operación' },
+    { value: '02', label: '02 — Anulación por error en el RUC' },
+    { value: '03', label: '03 — Corrección por error en la descripción' },
+    { value: '04', label: '04 — Descuento global' },
+    { value: '06', label: '06 — Devolución total' },
+    { value: '07', label: '07 — Devolución por item' },
+    { value: '13', label: '13 — Ajuste en operación de exportación' },
+  ]
+  const motivosDebito = [
+    { value: '01', label: '01 — Intereses por mora' },
+    { value: '02', label: '02 — Aumento en el valor' },
+    { value: '03', label: '03 — Penalidades / otros conceptos' },
+  ]
+
+  const motivos = tipo === 'credito' ? motivosCredito : motivosDebito
+
+  const emitir = async () => {
+    if (!motivo.trim()) { setError('Ingresa una descripción del motivo'); return }
+    setLoading(true); setError('')
+    try {
+      const nroRef = `${comprobante.serie}-${String(comprobante.numero).padStart(6, '0')}`
+      const res = await fetch('/api/factusmart/nota', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo_nota:        tipo === 'credito' ? '07' : '08',
+          external_id_ref:  comprobante.payload?.external_id,
+          serie_numero_ref: nroRef,
+          tipo_doc_ref:     comprobante.tipo === 'factura' ? '01' : '03',
+          codigo_motivo:    codigo,
+          motivo,
+          items: [{ descripcion: motivo, cantidad: 1, precio_unitario: parseFloat(monto) || comprobante.monto }],
+          modo,
+        }),
+      })
+      const data = await res.json()
+      if (!data.ok) throw new Error(JSON.stringify(data.detalle || data.error))
+      alert(`✅ Nota de ${tipo} emitida: ${data.serie_numero}`)
+      onSuccess()
+    } catch (e: any) { setError(e.message) }
+    setLoading(false)
+  }
+
+  return (
+    <div className="px-5 py-4 space-y-3">
+      <div className="flex items-center justify-between mb-1">
+        <p className="font-black text-slate-800 text-sm">
+          {tipo === 'credito' ? '📋 Nota de Crédito' : '📋 Nota de Débito'}
+        </p>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg font-black">←</button>
+      </div>
+      <p className="text-[10px] text-slate-400 font-bold">Referencia: {comprobante.serie}-{String(comprobante.numero).padStart(6, '0')}</p>
+
+      <div>
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Código de motivo</label>
+        <select value={codigo} onChange={e => setCodigo(e.target.value)}
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold focus:outline-none focus:border-blue-400 transition-all">
+          {motivos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+      </div>
+
+      <div>
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Descripción del motivo</label>
+        <input value={motivo} onChange={e => setMotivo(e.target.value)}
+          placeholder="Describe el motivo detalladamente..."
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-blue-400 transition-all" />
+      </div>
+
+      <div>
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Monto (S/)</label>
+        <input type="number" value={monto} onChange={e => setMonto(e.target.value)} step="0.01"
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-blue-400 transition-all" />
+      </div>
+
+      {error && <p className="text-red-600 text-xs font-bold">❌ {error}</p>}
+
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={onClose}
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all">
+          Cancelar
+        </button>
+        <button onClick={emitir} disabled={loading}
+          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white transition-all disabled:opacity-50">
+          {loading ? '⏳ Emitiendo...' : `Emitir Nota`}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Página principal ───────────────────────────────────────────────────────
 export default function DocumentosPage() {
   const comprobanteRef = useRef<HTMLDivElement>(null)
-  const [tallerID, setTallerID] = useState('')
-  const [tallerNombre, setTallerNombre] = useState('AWTU')
-  const [tallerLogo, setTallerLogo] = useState('')
-  const [tallerRuc, setTallerRuc] = useState('')
-  const [tallerDireccion, setTallerDireccion] = useState('')
+  const [tallerID,       setTallerID]       = useState('')
+  const [tallerNombre,   setTallerNombre]   = useState('AWTU')
+  const [tallerLogo,     setTallerLogo]     = useState('')
+  const [tallerRuc,      setTallerRuc]      = useState('')
+  const [tallerDireccion,setTallerDireccion]= useState('')
   const [tallerTelefono, setTallerTelefono] = useState('')
-  const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([])
-  const [sucursales, setSucursales] = useState<Sucursal[]>([])
-  const [operaciones, setOperaciones] = useState<Operacion[]>([])
-  const [comprobantes, setComprobantes] = useState<Comprobante[]>([])
-  const [vista, setVista] = useState<'operaciones' | 'emitir' | 'historial'>('operaciones')
+  const [metodosPago,    setMetodosPago]    = useState<MetodoPago[]>([])
+  const [sucursales,     setSucursales]     = useState<Sucursal[]>([])
+  const [operaciones,    setOperaciones]    = useState<Operacion[]>([])
+  const [comprobantes,   setComprobantes]   = useState<Comprobante[]>([])
+  const [vista,          setVista]          = useState<'operaciones' | 'emitir' | 'historial'>('operaciones')
   const [opSeleccionada, setOpSeleccionada] = useState<Operacion | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [ok, setOk] = useState(false)
-  const [error, setError] = useState('')
-  const [busqueda, setBusqueda] = useState('')
+  const [loading,        setLoading]        = useState(false)
+  const [ok,             setOk]             = useState(false)
+  const [error,          setError]          = useState('')
+  const [busqueda,       setBusqueda]       = useState('')
   const [comprobanteParaDescargar, setComprobanteParaDescargar] = useState<Comprobante | null>(null)
-  const [resultadoFactusmart, setResultadoFactusmart] = useState<any>(null)
-  const [consultandoDoc, setConsultandoDoc] = useState(false)
+  const [resultadoFactusmart,      setResultadoFactusmart]      = useState<any>(null)
+  const [consultandoDoc,           setConsultandoDoc]           = useState(false)
+  const [modalComprobante,         setModalComprobante]         = useState<Comprobante | null>(null)
 
   const [form, setForm] = useState({
     tipo: 'boleta', cliente_nombre: '', cliente_doc: '',
@@ -84,9 +499,9 @@ export default function DocumentosPage() {
       ...(svcs || []).map(s => {
         const items: { descripcion: string; precio: number }[] = []
         if (s.aceite_marca && s.precio_aceite > 0) items.push({ descripcion: `Aceite Motor: ${s.aceite_marca} ${s.aceite_visc || ''}${s.aceite_cantidad ? ` ${s.aceite_cantidad}LT` : ''}`.trim(), precio: s.precio_aceite })
-        if (s.caja_marca && s.precio_caja > 0) items.push({ descripcion: `Aceite Caja: ${s.caja_marca}`, precio: s.precio_caja })
+        if (s.caja_marca   && s.precio_caja   > 0) items.push({ descripcion: `Aceite Caja: ${s.caja_marca}`,   precio: s.precio_caja })
         if (s.refrig_marca && s.precio_refrig > 0) items.push({ descripcion: `Refrigerante: ${s.refrig_marca}`, precio: s.precio_refrig })
-        if (s.bujia_marca && s.precio_bujias > 0) items.push({ descripcion: `Bujías: ${s.bujia_marca}`, precio: s.precio_bujias })
+        if (s.bujia_marca  && s.precio_bujias > 0) items.push({ descripcion: `Bujías: ${s.bujia_marca}`,        precio: s.precio_bujias })
         if (Array.isArray(s.productos_adicionales)) {
           s.productos_adicionales.forEach((p: any) => {
             if (p.nombre && parseFloat(p.precio) > 0) items.push({ descripcion: p.nombre, precio: parseFloat(p.precio) })
@@ -144,22 +559,17 @@ export default function DocumentosPage() {
     const { name, value } = e.target
     if (name === 'cliente_doc') {
       setForm(prev => ({ ...prev, cliente_doc: value, tipo: value.length === 11 ? 'factura' : 'boleta' }))
-    } else if (name === 'cliente_nombre') {
-      // Capitalizar mientras escribe
-      setForm(prev => ({ ...prev, cliente_nombre: value }))
     } else {
       setForm(prev => ({ ...prev, [name]: value }))
     }
   }
 
-  // Al salir del campo nombre, aplicar Title Case
   const handleNombreBlur = () => {
     if (form.cliente_nombre.trim()) {
       setForm(prev => ({ ...prev, cliente_nombre: toTitleCase(prev.cliente_nombre.trim()) }))
     }
   }
 
-  // Consulta automática de DNI/RUC al salir del campo
   const consultarCliente = async (doc: string) => {
     const docLimpio = doc.trim().replace(/\D/g, '')
     if (docLimpio.length !== 8 && docLimpio.length !== 11) return
@@ -171,7 +581,7 @@ export default function DocumentosPage() {
         setForm(prev => ({
           ...prev,
           cliente_nombre: data.nombre ? toTitleCase(data.nombre) : prev.cliente_nombre,
-          cliente_dir: data.direccion ? toTitleCase(data.direccion) : prev.cliente_dir,
+          cliente_dir:    data.direccion ? toTitleCase(data.direccion) : prev.cliente_dir,
         }))
       }
     } catch {}
@@ -181,32 +591,27 @@ export default function DocumentosPage() {
   const handleEmitir = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true); setError(''); setOk(false); setResultadoFactusmart(null)
-
-    // Asegurar Title Case antes de emitir
     const nombreFinal = toTitleCase(form.cliente_nombre.trim())
-
     try {
-      // 1. Verificar límite
       const { data: limite } = await supabase.rpc('verificar_limite', { p_taller_id: tallerID, p_tipo: 'comprobantes' })
       if (!limite) { setError('Límite mensual de comprobantes alcanzado'); setLoading(false); return }
 
-      // 2. Llamar a Factusmart API
       const itemsParaFS = (opSeleccionada?.items_detalle || []).map(i => ({
-        descripcion: i.descripcion,
-        cantidad: 1,
+        descripcion:     i.descripcion,
+        cantidad:        1,
         precio_unitario: i.precio,
       }))
 
       const fsRes = await fetch('/api/factusmart/emitir', {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tipo: form.tipo,
-          cliente_nombre: nombreFinal,
-          cliente_doc: form.cliente_doc,
-          cliente_dir: form.cliente_dir,
-          items: itemsParaFS,
-          modo: form.modo,
+        body:    JSON.stringify({
+          tipo:            form.tipo,
+          cliente_nombre:  nombreFinal,
+          cliente_doc:     form.cliente_doc,
+          cliente_dir:     form.cliente_dir,
+          items:           itemsParaFS,
+          modo:            form.modo,
         }),
       })
 
@@ -215,42 +620,40 @@ export default function DocumentosPage() {
 
       if (!fsData.ok) {
         setError(`Error Factusmart: ${JSON.stringify(fsData.detalle || fsData.error)}`)
-        setLoading(false)
-        return
+        setLoading(false); return
       }
 
-      // 3. Guardar en Supabase con datos reales de Factusmart
-      const igvPct = parseFloat(form.igv)
+      const igvPct  = parseFloat(form.igv)
       const igvRate = igvPct / 100
       const montoNum = opSeleccionada?.monto || 0
-      const sub = parseFloat((montoNum / (1 + igvRate)).toFixed(2))
-      const igvMon = parseFloat((montoNum - sub).toFixed(2))
+      const sub      = parseFloat((montoNum / (1 + igvRate)).toFixed(2))
+      const igvMon   = parseFloat((montoNum - sub).toFixed(2))
 
-      const partes = (fsData.serie_numero || '').split('-')
-      const serieFS = partes[0] || (form.tipo === 'factura' ? 'F001' : 'B001')
+      const partes   = (fsData.serie_numero || '').split('-')
+      const serieFS  = partes[0] || (form.tipo === 'factura' ? 'F001' : 'B001')
       const numeroFS = parseInt(partes[1] || '1')
 
       const { error: dbError } = await supabase.from('comprobantes').insert({
-        taller_id: tallerID,
-        servicio_id: opSeleccionada?.tipo === 'servicio' ? opSeleccionada.id : null,
-        tipo: form.tipo,
-        serie: serieFS,
-        numero: numeroFS,
-        fecha_emision: new Date().toISOString().slice(0, 10),
-        cliente_nombre: nombreFinal,
-        cliente_doc: form.cliente_doc,
-        cliente_dir: form.cliente_dir,
-        monto: montoNum,
-        estado_sunat: fsData.aceptado_por_sunat ? 'emitido' : 'pendiente',
+        taller_id:       tallerID,
+        servicio_id:     opSeleccionada?.tipo === 'servicio' ? opSeleccionada.id : null,
+        tipo:            form.tipo,
+        serie:           serieFS,
+        numero:          numeroFS,
+        fecha_emision:   new Date().toISOString().slice(0, 10),
+        cliente_nombre:  nombreFinal,
+        cliente_doc:     form.cliente_doc,
+        cliente_dir:     form.cliente_dir,
+        monto:           montoNum,
+        estado_sunat:    fsData.aceptado_por_sunat ? 'emitido' : 'pendiente',
         payload: {
-          items: opSeleccionada?.items_detalle || [],
-          igv_pct: igvPct,
-          subtotal: sub,
-          igv: igvMon,
-          telefono: opSeleccionada?.telefono || '',
-          external_id: fsData.external_id,
-          entorno: fsData.entorno,
-          pdf_base64: fsData.pdf_base64,
+          items:            opSeleccionada?.items_detalle || [],
+          igv_pct:          igvPct,
+          subtotal:         sub,
+          igv:              igvMon,
+          telefono:         opSeleccionada?.telefono || '',
+          external_id:      fsData.external_id,
+          entorno:          fsData.entorno,
+          pdf_base64:       fsData.pdf_base64,
           sunat_descripcion: fsData.sunat_descripcion,
         },
       })
@@ -258,7 +661,6 @@ export default function DocumentosPage() {
       if (dbError) { setError(dbError.message); setLoading(false); return }
 
       await supabase.rpc('incrementar_uso', { p_taller_id: tallerID, p_tipo: 'comprobantes' })
-
       if (opSeleccionada?.tipo === 'servicio') {
         await supabase.from('servicios').update({ estado_facturacion: 'Facturado' }).eq('id', opSeleccionada.id)
       }
@@ -275,15 +677,6 @@ export default function DocumentosPage() {
     }
   }
 
-  const descargarPDF = (c: Comprobante) => {
-    const pdfBase64 = c.payload?.pdf_base64
-    if (!pdfBase64) { alert('PDF no disponible para este comprobante'); return }
-    const link = document.createElement('a')
-    link.href = pdfBase64
-    link.download = `${c.serie}-${String(c.numero).padStart(6, '0')}.pdf`
-    link.click()
-  }
-
   const descargarJPG = async (c: Comprobante) => {
     setComprobanteParaDescargar(c)
     await new Promise(r => setTimeout(r, 600))
@@ -295,47 +688,15 @@ export default function DocumentosPage() {
     })
     const link = document.createElement('a')
     link.download = `${c.serie}-${String(c.numero).padStart(6, '0')}.jpg`
-    link.href = canvas.toDataURL('image/jpeg', 0.95)
+    link.href     = canvas.toDataURL('image/jpeg', 0.95)
     link.click()
     setComprobanteParaDescargar(null)
   }
 
-  // Enviar PDF por WhatsApp: abre WhatsApp con mensaje + descarga el PDF automáticamente
-  const enviarWhatsApp = (c: Comprobante) => {
-    const tel = (c.payload?.telefono || '').replace(/\D/g, '')
-    const nro = `${c.serie}-${String(c.numero).padStart(6, '0')}`
-
-    // Primero descargar el PDF para que el usuario lo adjunte
-    if (c.payload?.pdf_base64) {
-      const link = document.createElement('a')
-      link.href = c.payload.pdf_base64
-      link.download = `${nro}.pdf`
-      link.click()
-    }
-
-    // Mensaje corto para acompañar el PDF
-    const texto =
-      `🧾 *${nro}* · ${c.tipo?.toUpperCase()}\n` +
-      `🏪 ${tallerNombre}${tallerRuc ? ` · RUC: ${tallerRuc}` : ''}\n` +
-      `📅 ${c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}\n` +
-      `👤 ${toTitleCase(c.cliente_nombre || '')}\n` +
-      `💰 *Total: S/ ${(c.monto || 0).toFixed(2)}*\n\n` +
-      `📎 Adjunto encontrará su comprobante en PDF.\n` +
-      `¡Gracias por su preferencia! 🙏`
-
-    if (!tel) {
-      const num = prompt('Ingresa el número WhatsApp del cliente (sin código de país):')
-      if (!num) return
-      window.open(`https://wa.me/51${num.replace(/\D/g, '')}?text=${encodeURIComponent(texto)}`, '_blank')
-      return
-    }
-    window.open(`https://wa.me/51${tel}?text=${encodeURIComponent(texto)}`, '_blank')
-  }
-
-  const igvRate = parseFloat(form.igv) / 100
-  const montoOp = opSeleccionada?.monto || 0
+  const igvRate         = parseFloat(form.igv) / 100
+  const montoOp         = opSeleccionada?.monto || 0
   const subtotalPreview = montoOp / (1 + igvRate)
-  const igvPreview = montoOp - subtotalPreview
+  const igvPreview      = montoOp - subtotalPreview
 
   const filtradas = operaciones.filter(op =>
     op.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
@@ -346,63 +707,53 @@ export default function DocumentosPage() {
   const inp = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
   const lbl = "text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block"
 
-  const EncabezadoComercial = ({ modo }: { modo: 'jpg' }) => (
+  const EncabezadoComercial = () => (
     <div style={{ marginBottom: '24px', paddingBottom: '20px', borderBottom: '2px solid #f1f5f9' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
         {tallerLogo
           ? <img src={tallerLogo} style={{ width: '64px', height: '64px', objectFit: 'contain', borderRadius: '12px', border: '1px solid #f1f5f9' }} crossOrigin="anonymous" />
           : <div style={{ width: '64px', height: '64px', background: '#0f172a', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>🔧</div>}
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 900, fontSize: '18px', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{tallerNombre}</div>
-          {tallerRuc && <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>RUC: {tallerRuc}</div>}
+          <div style={{ fontWeight: 900, fontSize: '18px', color: '#0f172a', textTransform: 'uppercase' }}>{tallerNombre}</div>
+          {tallerRuc       && <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>RUC: {tallerRuc}</div>}
           {tallerDireccion && <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginTop: '1px' }}>{tallerDireccion}</div>}
-          {tallerTelefono && <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginTop: '1px' }}>Tel: {tallerTelefono}</div>}
+          {tallerTelefono  && <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginTop: '1px' }}>Tel: {tallerTelefono}</div>}
         </div>
       </div>
-      {(metodosPago.length > 0 || sucursales.length > 0) && (
-        <div style={{ display: 'grid', gridTemplateColumns: metodosPago.length && sucursales.length ? '1fr 1fr' : '1fr', gap: '12px', marginTop: '12px' }}>
-          {metodosPago.length > 0 && (
-            <div style={{ background: '#f0fdf4', borderRadius: '10px', padding: '10px 14px' }}>
-              <div style={{ fontSize: '9px', fontWeight: 800, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '6px' }}>Métodos de Pago</div>
-              {metodosPago.map((m, i) => (
-                <div key={i} style={{ fontSize: '10px', color: '#334155', fontWeight: 600, marginBottom: '2px' }}>
-                  <span style={{ fontWeight: 900, color: '#0f172a' }}>{m.tipo}:</span> {m.numero}{m.titular ? ` — ${m.titular}` : ''}
-                </div>
-              ))}
-            </div>
-          )}
-          {sucursales.length > 0 && (
-            <div style={{ background: '#eff6ff', borderRadius: '10px', padding: '10px 14px' }}>
-              <div style={{ fontSize: '9px', fontWeight: 800, color: '#1d4ed8', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '6px' }}>Sucursales</div>
-              {sucursales.map((s, i) => (
-                <div key={i} style={{ fontSize: '10px', color: '#334155', fontWeight: 600, marginBottom: '2px' }}>
-                  <span style={{ fontWeight: 900, color: '#0f172a' }}>{s.nombre}:</span> {s.direccion}{s.telefono ? ` · ${s.telefono}` : ''}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 
   return (
     <div className="max-w-5xl mx-auto">
 
+      {/* Modal de acciones */}
+      {modalComprobante && (
+        <ModalAcciones
+          c={modalComprobante}
+          tallerNombre={tallerNombre}
+          tallerRuc={tallerRuc}
+          tallerTelefono={tallerTelefono}
+          onClose={() => setModalComprobante(null)}
+          onAnulado={() => cargarTodo(tallerID)}
+        />
+      )}
+
+      {/* Canvas oculto para JPG */}
       {comprobanteParaDescargar && (
         <div style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -1 }}>
           <div ref={comprobanteRef} style={{ width: '420px', background: '#ffffff', fontFamily: 'Arial, sans-serif', padding: '40px 32px' }}>
-            <EncabezadoComercial modo="jpg" />
+            <EncabezadoComercial />
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
               <div style={{
-                display: 'inline-block', background: comprobanteParaDescargar.tipo === 'factura' ? '#dbeafe' : '#d1fae5',
+                display: 'inline-block',
+                background: comprobanteParaDescargar.tipo === 'factura' ? '#dbeafe' : '#d1fae5',
                 color: comprobanteParaDescargar.tipo === 'factura' ? '#1e40af' : '#065f46',
                 fontWeight: 900, fontSize: '13px', textTransform: 'uppercase',
                 letterSpacing: '0.12em', padding: '8px 20px', borderRadius: '20px',
               }}>
                 {comprobanteParaDescargar.tipo === 'factura' ? 'FACTURA ELECTRÓNICA' : 'BOLETA DE VENTA'}
               </div>
-              <div style={{ marginTop: '10px', fontWeight: 900, fontSize: '18px', color: '#1e40af', letterSpacing: '0.1em' }}>
+              <div style={{ marginTop: '10px', fontWeight: 900, fontSize: '18px', color: '#1e40af' }}>
                 {comprobanteParaDescargar.serie}-{String(comprobanteParaDescargar.numero).padStart(6, '0')}
               </div>
               <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, marginTop: '4px' }}>
@@ -417,54 +768,22 @@ export default function DocumentosPage() {
                   {comprobanteParaDescargar.tipo === 'factura' ? 'RUC' : 'DNI'}: {comprobanteParaDescargar.cliente_doc}
                 </div>
               )}
-              {comprobanteParaDescargar.cliente_dir && (
-                <div style={{ color: '#64748b', fontSize: '11px', fontWeight: 600, marginTop: '2px' }}>{comprobanteParaDescargar.cliente_dir}</div>
-              )}
             </div>
             <div style={{ marginBottom: '16px', border: '1px solid #f1f5f9', borderRadius: '12px', overflow: 'hidden' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 14px', background: '#0f172a' }}>
-                <span style={{ fontSize: '9px', fontWeight: 800, color: 'white', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Descripción</span>
-                <span style={{ fontSize: '9px', fontWeight: 800, color: 'white', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Precio</span>
+                <span style={{ fontSize: '9px', fontWeight: 800, color: 'white', textTransform: 'uppercase' }}>Descripción</span>
+                <span style={{ fontSize: '9px', fontWeight: 800, color: 'white', textTransform: 'uppercase' }}>Precio</span>
               </div>
               {(Array.isArray(comprobanteParaDescargar.payload?.items) ? comprobanteParaDescargar.payload.items : []).map((item: any, i: number) => (
                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 14px', borderBottom: '1px solid #f8fafc', background: i % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
                   <span style={{ fontSize: '11px', fontWeight: 600, color: '#0f172a', textTransform: 'uppercase', flex: 1, marginRight: '8px' }}>{item.descripcion}</span>
-                  <span style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a', flexShrink: 0 }}>S/ {(item.precio || 0).toFixed(2)}</span>
+                  <span style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a' }}>S/ {(item.precio || 0).toFixed(2)}</span>
                 </div>
               ))}
             </div>
-            <div style={{ marginBottom: '20px' }}>
-              {comprobanteParaDescargar.payload?.subtotal != null && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
-                  <span style={{ color: '#64748b', fontSize: '12px', fontWeight: 600 }}>Subtotal</span>
-                  <span style={{ color: '#0f172a', fontSize: '12px', fontWeight: 700 }}>S/ {Number(comprobanteParaDescargar.payload.subtotal).toFixed(2)}</span>
-                </div>
-              )}
-              {comprobanteParaDescargar.payload?.igv != null && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
-                  <span style={{ color: '#64748b', fontSize: '12px', fontWeight: 600 }}>IGV ({comprobanteParaDescargar.payload.igv_pct || 18}%)</span>
-                  <span style={{ color: '#0f172a', fontSize: '12px', fontWeight: 700 }}>S/ {Number(comprobanteParaDescargar.payload.igv).toFixed(2)}</span>
-                </div>
-              )}
-              <div style={{ background: '#0f172a', borderRadius: '12px', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
-                <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Total</span>
-                <span style={{ color: '#ffffff', fontSize: '28px', fontWeight: 900, letterSpacing: '-0.02em' }}>S/ {(comprobanteParaDescargar.monto || 0).toFixed(2)}</span>
-              </div>
-            </div>
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-              <span style={{
-                background: comprobanteParaDescargar.estado_sunat === 'emitido' ? '#d1fae5' : '#fef3c7',
-                color: comprobanteParaDescargar.estado_sunat === 'emitido' ? '#065f46' : '#92400e',
-                fontSize: '10px', fontWeight: 800, textTransform: 'uppercase',
-                letterSpacing: '0.1em', padding: '6px 16px', borderRadius: '20px', display: 'inline-block',
-              }}>
-                Estado: {comprobanteParaDescargar.estado_sunat?.toUpperCase()}
-              </span>
-            </div>
-            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px', textAlign: 'center' }}>
-              <div style={{ color: '#94a3b8', fontSize: '9px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                {tallerNombre}{tallerRuc ? ` · RUC ${tallerRuc}` : ''}{tallerTelefono ? ` · ${tallerTelefono}` : ''}
-              </div>
+            <div style={{ background: '#0f172a', borderRadius: '12px', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
+              <span style={{ color: '#94a3b8', fontSize: '12px', fontWeight: 800, textTransform: 'uppercase' }}>Total</span>
+              <span style={{ color: '#ffffff', fontSize: '28px', fontWeight: 900 }}>S/ {(comprobanteParaDescargar.monto || 0).toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -479,7 +798,7 @@ export default function DocumentosPage() {
         <div className="flex gap-2">
           {[
             { key: 'operaciones', label: `📋 Operaciones (${operaciones.length})` },
-            { key: 'historial', label: `🧾 Comprobantes (${comprobantes.length})` },
+            { key: 'historial',   label: `🧾 Comprobantes (${comprobantes.length})` },
           ].map(v => (
             <button key={v.key} onClick={() => setVista(v.key as any)}
               className={`px-4 py-2.5 text-xs rounded-xl font-black uppercase tracking-widest transition-all ${
@@ -576,15 +895,8 @@ export default function DocumentosPage() {
                 <div>
                   <label className={lbl}>Cliente / Razón Social</label>
                   <div className="relative">
-                    <input
-                      name="cliente_nombre"
-                      value={form.cliente_nombre}
-                      onChange={handleChange}
-                      onBlur={handleNombreBlur}
-                      required
-                      placeholder="Nombre del cliente"
-                      className={inp}
-                    />
+                    <input name="cliente_nombre" value={form.cliente_nombre} onChange={handleChange}
+                      onBlur={handleNombreBlur} required placeholder="Nombre del cliente" className={inp} />
                     {consultandoDoc && (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
                         <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -595,18 +907,12 @@ export default function DocumentosPage() {
                 <div>
                   <label className={lbl}>
                     DNI / RUC
-                    {consultandoDoc && <span className="ml-2 text-[9px] text-blue-500 font-bold animate-pulse">⏳ Consultando RENIEC/SUNAT...</span>}
+                    {consultandoDoc && <span className="ml-2 text-[9px] text-blue-500 font-bold animate-pulse">⏳ Consultando...</span>}
                   </label>
-                  <input
-                    name="cliente_doc"
-                    value={form.cliente_doc}
-                    onChange={handleChange}
+                  <input name="cliente_doc" value={form.cliente_doc} onChange={handleChange}
                     onBlur={(e) => consultarCliente(e.target.value)}
-                    placeholder="DNI (8) o RUC (11)"
-                    maxLength={11}
-                    className={inp}
-                  />
-                  {form.cliente_doc.length === 8 && !consultandoDoc && <p className="text-[10px] text-blue-500 font-bold mt-1">→ Boleta de Venta</p>}
+                    placeholder="DNI (8) o RUC (11)" maxLength={11} className={inp} />
+                  {form.cliente_doc.length === 8  && !consultandoDoc && <p className="text-[10px] text-blue-500 font-bold mt-1">→ Boleta de Venta</p>}
                   {form.cliente_doc.length === 11 && !consultandoDoc && <p className="text-[10px] text-emerald-500 font-bold mt-1">→ Factura</p>}
                 </div>
               </div>
@@ -614,7 +920,7 @@ export default function DocumentosPage() {
               <div>
                 <label className={lbl}>Dirección</label>
                 <input name="cliente_dir" value={form.cliente_dir} onChange={handleChange}
-                  placeholder="Dirección del cliente (se completa automáticamente con RUC)" className={inp} />
+                  placeholder="Dirección del cliente" className={inp} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -653,28 +959,13 @@ export default function DocumentosPage() {
               </button>
             </form>
 
-            {/* Resultado Factusmart */}
             {resultadoFactusmart && resultadoFactusmart.ok && (
               <div className="mt-4 bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
                 <p className="font-black text-emerald-700 text-sm mb-3">✅ Comprobante emitido por Factusmart</p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div><span className="text-slate-500 font-bold">Serie/Número:</span> <span className="font-black">{resultadoFactusmart.serie_numero}</span></div>
-                  <div><span className="text-slate-500 font-bold">Estado:</span> <span className="font-black">{resultadoFactusmart.estado_descripcion}</span></div>
                   <div><span className="text-slate-500 font-bold">SUNAT:</span> <span className="font-black">{resultadoFactusmart.aceptado_por_sunat ? '✓ Aceptado' : 'Pendiente'}</span></div>
-                  <div><span className="text-slate-500 font-bold">Entorno:</span> <span className="font-black capitalize">{resultadoFactusmart.entorno}</span></div>
                 </div>
-                {resultadoFactusmart.pdf_base64 && (
-                  <button
-                    onClick={() => {
-                      const link = document.createElement('a')
-                      link.href = resultadoFactusmart.pdf_base64
-                      link.download = `${resultadoFactusmart.serie_numero}.pdf`
-                      link.click()
-                    }}
-                    className="mt-3 w-full bg-blue-600 text-white font-black text-xs uppercase tracking-widest py-2.5 rounded-xl">
-                    ⬇️ Descargar PDF oficial
-                  </button>
-                )}
               </div>
             )}
           </div>
@@ -682,27 +973,6 @@ export default function DocumentosPage() {
           {/* Preview */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 h-fit">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Vista previa</p>
-            <div className="border-b border-slate-100 pb-4 mb-4">
-              <div className="flex items-center gap-3 mb-3">
-                {tallerLogo
-                  ? <img src={tallerLogo} className="w-10 h-10 object-contain rounded-lg border border-slate-100" />
-                  : <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-sm">🔧</div>}
-                <div>
-                  <p className="font-black text-slate-800 text-xs uppercase">{tallerNombre}</p>
-                  {tallerRuc && <p className="text-[10px] text-slate-500 font-bold">RUC: {tallerRuc}</p>}
-                  {tallerDireccion && <p className="text-[10px] text-slate-500 font-bold truncate max-w-40">{tallerDireccion}</p>}
-                  {tallerTelefono && <p className="text-[10px] text-slate-500 font-bold">Tel: {tallerTelefono}</p>}
-                </div>
-              </div>
-              {metodosPago.length > 0 && (
-                <div className="bg-green-50 rounded-lg p-2">
-                  <p className="text-[8px] font-black text-green-700 uppercase tracking-widest mb-1">Métodos de pago</p>
-                  {metodosPago.slice(0, 2).map((m, i) => (
-                    <p key={i} className="text-[9px] text-slate-600 font-semibold">{m.tipo}: {m.numero}</p>
-                  ))}
-                </div>
-              )}
-            </div>
             <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 space-y-3">
               <div className="text-center border-b border-slate-100 pb-3">
                 <p className="font-black text-slate-700 uppercase text-sm mt-1">{form.tipo === 'boleta' ? 'BOLETA DE VENTA' : 'FACTURA'}</p>
@@ -714,22 +984,6 @@ export default function DocumentosPage() {
                 <div className="flex justify-between text-xs">
                   <span className="text-slate-500 font-bold">Cliente</span>
                   <span className="font-black text-slate-800 text-right max-w-32 truncate">{form.cliente_nombre}</span>
-                </div>
-              )}
-              {form.cliente_doc && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500 font-bold">{form.tipo === 'factura' ? 'RUC' : 'DNI'}</span>
-                  <span className="font-black text-slate-800">{form.cliente_doc}</span>
-                </div>
-              )}
-              {(opSeleccionada.items_detalle || []).length > 0 && (
-                <div className="border-t border-slate-100 pt-2 space-y-1">
-                  {(opSeleccionada.items_detalle || []).map((item, i) => (
-                    <div key={i} className="flex justify-between text-[10px]">
-                      <span className="text-slate-600 font-semibold truncate flex-1 mr-2">{item.descripcion}</span>
-                      <span className="font-black text-slate-800 shrink-0">S/ {item.precio.toFixed(2)}</span>
-                    </div>
-                  ))}
                 </div>
               )}
               {montoOp > 0 && (
@@ -749,14 +1003,6 @@ export default function DocumentosPage() {
                 </div>
               )}
             </div>
-            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3">
-              <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">
-                {form.modo === 'demo' ? '🧪 Modo Demo activo' : '🚀 Modo Producción'}
-              </p>
-              <p className="text-[10px] text-blue-700 font-bold mt-1">
-                {form.modo === 'demo' ? 'El comprobante no tendrá validez fiscal.' : 'El comprobante será enviado a SUNAT.'}
-              </p>
-            </div>
           </div>
         </div>
       )}
@@ -774,7 +1020,11 @@ export default function DocumentosPage() {
               </button>
             </div>
           ) : comprobantes.map(c => (
-            <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4">
+            <div key={c.id}
+              onClick={() => setModalComprobante(c)}
+              className={`bg-white rounded-2xl border shadow-sm p-4 flex items-center gap-4 cursor-pointer transition-all hover:shadow-md hover:border-blue-200 active:scale-[0.99] ${
+                c.estado_sunat === 'anulado' ? 'opacity-60 border-red-100' : 'border-slate-100'
+              }`}>
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 overflow-hidden ${
                 c.tipo === 'factura' ? 'bg-blue-100' : 'bg-emerald-100'
               }`}>
@@ -783,12 +1033,12 @@ export default function DocumentosPage() {
                   : (c.tipo === 'factura' ? '📄' : '🧾')}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
+                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                   <span className="font-black text-slate-900 text-sm">{c.serie}-{String(c.numero).padStart(6, '0')}</span>
                   <span className={`text-[9px] px-2 py-0.5 rounded-lg font-black uppercase ${
-                    c.estado_sunat === 'emitido' ? 'bg-green-100 text-green-700' :
-                    c.estado_sunat === 'pendiente' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-red-100 text-red-700'
+                    c.estado_sunat === 'emitido'  ? 'bg-green-100 text-green-700' :
+                    c.estado_sunat === 'anulado'  ? 'bg-red-100 text-red-700' :
+                    'bg-yellow-100 text-yellow-700'
                   }`}>{c.estado_sunat}</span>
                   <span className="text-[9px] px-2 py-0.5 rounded-lg font-black uppercase bg-slate-100 text-slate-500 capitalize">{c.tipo}</span>
                   {c.payload?.entorno === 'prueba' && (
@@ -799,58 +1049,14 @@ export default function DocumentosPage() {
                 {c.cliente_doc && (
                   <p className="text-[10px] text-slate-400 font-bold">{c.tipo === 'factura' ? 'RUC' : 'DNI'}: {c.cliente_doc}</p>
                 )}
-                {Array.isArray(c.payload?.items) && c.payload.items.length > 0 && (
-                  <p className="text-[10px] text-slate-400 font-bold truncate">
-                    {c.payload.items.slice(0, 2).map((i: any) => i.descripcion).join(' · ')}
-                    {c.payload.items.length > 2 ? ` +${c.payload.items.length - 2} más` : ''}
-                  </p>
-                )}
               </div>
               <div className="text-right shrink-0">
                 <p className="font-black text-slate-900 text-lg">S/ {(c.monto || 0).toFixed(2)}</p>
                 <p className="text-[10px] text-slate-400 font-bold">
                   {c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}
                 </p>
-                <div className="flex items-center gap-1.5 justify-end mt-2">
-                  {/* WhatsApp: descarga PDF + abre chat */}
-                  <button onClick={() => enviarWhatsApp(c)} title="Enviar PDF por WhatsApp"
-                    className="flex items-center gap-1.5 px-2.5 h-8 bg-green-100 hover:bg-green-200 rounded-lg transition-all text-xs font-black uppercase tracking-wider text-green-800">
-                    {/* WhatsApp SVG */}
-                    <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="12" fill="#25D366"/>
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="white"/>
-                    </svg>
-                    <span>WhatsApp</span>
-                  </button>
-                  {/* Descargar PDF o JPG */}
-                  {c.payload?.pdf_base64 ? (
-                    <button onClick={() => descargarPDF(c)} title="Descargar PDF"
-                      className="flex items-center gap-1.5 px-2.5 h-8 bg-red-100 hover:bg-red-200 rounded-lg transition-all text-xs font-black uppercase tracking-wider text-red-800">
-                      {/* PDF SVG */}
-                      <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#E53E3E"/>
-                        <path d="M14 2v6h6" fill="#FC8181"/>
-                        <path d="M14 2v6h6" stroke="#C53030" strokeWidth="0.5"/>
-                        <text x="12" y="18.5" textAnchor="middle" fill="white" fontSize="5.5" fontWeight="900" fontFamily="Arial, sans-serif" letterSpacing="0.3">PDF</text>
-                        <rect x="7" y="11" width="5" height="0.8" rx="0.4" fill="white"/>
-                        <rect x="7" y="13" width="7" height="0.8" rx="0.4" fill="white"/>
-                      </svg>
-                      <span>PDF</span>
-                    </button>
-                  ) : (
-                    <button onClick={() => descargarJPG(c)} title="Descargar JPG"
-                      className="flex items-center gap-1.5 px-2.5 h-8 bg-blue-100 hover:bg-blue-200 rounded-lg transition-all text-xs font-black uppercase tracking-wider text-blue-800">
-                      {/* JPG/Image SVG */}
-                      <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#3182CE"/>
-                        <path d="M14 2v6h6" fill="#63B3ED"/>
-                        <text x="12" y="18.5" textAnchor="middle" fill="white" fontSize="5" fontWeight="900" fontFamily="Arial, sans-serif" letterSpacing="0.2">IMG</text>
-                        <rect x="7" y="11" width="5" height="0.8" rx="0.4" fill="white"/>
-                        <rect x="7" y="13" width="7" height="0.8" rx="0.4" fill="white"/>
-                      </svg>
-                      <span>JPG</span>
-                    </button>
-                  )}
+                <div className="mt-2 flex items-center justify-end gap-1">
+                  <span className="text-[10px] text-blue-500 font-bold">Ver acciones →</span>
                 </div>
               </div>
             </div>
