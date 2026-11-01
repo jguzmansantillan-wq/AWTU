@@ -3,6 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
+// Capitaliza cada palabra: "juan perez" → "Juan Perez"
+const toTitleCase = (str: string) =>
+  str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+
 type Operacion = {
   id: string; tipo: 'servicio' | 'venta'; fecha: string; created_at: string
   nombre: string; telefono?: string; placa?: string; marca?: string
@@ -98,7 +102,7 @@ export default function DocumentosPage() {
           id: s.id, tipo: 'servicio' as const,
           fecha: s.fecha || new Date(s.created_at).toLocaleDateString('es-PE'),
           created_at: s.created_at,
-          nombre: s.nombre || '-', telefono: s.telefono,
+          nombre: s.nombre ? toTitleCase(s.nombre) : '-', telefono: s.telefono,
           placa: s.placa, marca: s.marca, monto: s.monto || 0,
           detalle: items.map(i => i.descripcion).slice(0, 2).join(' · '),
           comprobante_emitido: s.estado_facturacion === 'Facturado',
@@ -114,7 +118,7 @@ export default function DocumentosPage() {
           id: v.id, tipo: 'venta' as const,
           fecha: v.fecha || new Date(v.created_at).toLocaleDateString('es-PE'),
           created_at: v.created_at,
-          nombre: v.nombre || 'Cliente directo', telefono: v.telefono,
+          nombre: v.nombre ? toTitleCase(v.nombre) : 'Cliente Directo', telefono: v.telefono,
           monto: v.monto || 0,
           detalle: items.slice(0, 2).map((i: any) => i.descripcion).join(', '),
           comprobante_emitido: false,
@@ -132,7 +136,7 @@ export default function DocumentosPage() {
   const abrirEmision = (op: Operacion) => {
     setOpSeleccionada(op)
     setResultadoFactusmart(null)
-    setForm({ tipo: 'boleta', cliente_nombre: op.nombre !== 'Cliente directo' ? op.nombre : '', cliente_doc: '', cliente_dir: '', igv: '18', modo: 'demo' })
+    setForm({ tipo: 'boleta', cliente_nombre: op.nombre !== 'Cliente Directo' ? op.nombre : '', cliente_doc: '', cliente_dir: '', igv: '18', modo: 'demo' })
     setVista('emitir')
   }
 
@@ -140,8 +144,18 @@ export default function DocumentosPage() {
     const { name, value } = e.target
     if (name === 'cliente_doc') {
       setForm(prev => ({ ...prev, cliente_doc: value, tipo: value.length === 11 ? 'factura' : 'boleta' }))
+    } else if (name === 'cliente_nombre') {
+      // Capitalizar mientras escribe
+      setForm(prev => ({ ...prev, cliente_nombre: value }))
     } else {
       setForm(prev => ({ ...prev, [name]: value }))
+    }
+  }
+
+  // Al salir del campo nombre, aplicar Title Case
+  const handleNombreBlur = () => {
+    if (form.cliente_nombre.trim()) {
+      setForm(prev => ({ ...prev, cliente_nombre: toTitleCase(prev.cliente_nombre.trim()) }))
     }
   }
 
@@ -156,8 +170,8 @@ export default function DocumentosPage() {
         const data = await res.json()
         setForm(prev => ({
           ...prev,
-          cliente_nombre: data.nombre || prev.cliente_nombre,
-          cliente_dir: data.direccion || prev.cliente_dir,
+          cliente_nombre: data.nombre ? toTitleCase(data.nombre) : prev.cliente_nombre,
+          cliente_dir: data.direccion ? toTitleCase(data.direccion) : prev.cliente_dir,
         }))
       }
     } catch {}
@@ -167,6 +181,9 @@ export default function DocumentosPage() {
   const handleEmitir = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true); setError(''); setOk(false); setResultadoFactusmart(null)
+
+    // Asegurar Title Case antes de emitir
+    const nombreFinal = toTitleCase(form.cliente_nombre.trim())
 
     try {
       // 1. Verificar límite
@@ -185,7 +202,7 @@ export default function DocumentosPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tipo: form.tipo,
-          cliente_nombre: form.cliente_nombre,
+          cliente_nombre: nombreFinal,
           cliente_doc: form.cliente_doc,
           cliente_dir: form.cliente_dir,
           items: itemsParaFS,
@@ -220,7 +237,7 @@ export default function DocumentosPage() {
         serie: serieFS,
         numero: numeroFS,
         fecha_emision: new Date().toISOString().slice(0, 10),
-        cliente_nombre: form.cliente_nombre,
+        cliente_nombre: nombreFinal,
         cliente_doc: form.cliente_doc,
         cliente_dir: form.cliente_dir,
         monto: montoNum,
@@ -283,26 +300,29 @@ export default function DocumentosPage() {
     setComprobanteParaDescargar(null)
   }
 
+  // Enviar PDF por WhatsApp: abre WhatsApp con mensaje + descarga el PDF automáticamente
   const enviarWhatsApp = (c: Comprobante) => {
     const tel = (c.payload?.telefono || '').replace(/\D/g, '')
     const nro = `${c.serie}-${String(c.numero).padStart(6, '0')}`
-    const items = Array.isArray(c.payload?.items) ? c.payload.items : []
-    const lineas = items.map((i: any) => `  • ${i.descripcion}: S/ ${(i.precio || 0).toFixed(2)}`).join('\n')
-    const pagoInfo = metodosPago.length > 0
-      ? `\n💳 *MÉTODOS DE PAGO:*\n${metodosPago.map(m => `  • ${m.tipo}: ${m.numero}${m.titular ? ` (${m.titular})` : ''}`).join('\n')}`
-      : ''
+
+    // Primero descargar el PDF para que el usuario lo adjunte
+    if (c.payload?.pdf_base64) {
+      const link = document.createElement('a')
+      link.href = c.payload.pdf_base64
+      link.download = `${nro}.pdf`
+      link.click()
+    }
+
+    // Mensaje corto para acompañar el PDF
     const texto =
-      `🧾 *COMPROBANTE DE PAGO*\n` +
-      `📋 ${nro} (${c.tipo?.toUpperCase()})\n` +
+      `🧾 *${nro}* · ${c.tipo?.toUpperCase()}\n` +
       `🏪 ${tallerNombre}${tallerRuc ? ` · RUC: ${tallerRuc}` : ''}\n` +
-      `📍 ${tallerDireccion || ''}${tallerTelefono ? ` · Tel: ${tallerTelefono}` : ''}\n` +
-      `📅 ${c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}\n\n` +
-      `👤 Cliente: ${c.cliente_nombre}\n` +
-      (c.cliente_doc ? `📌 ${c.tipo === 'factura' ? 'RUC' : 'DNI'}: ${c.cliente_doc}\n` : '') +
-      `\n*DETALLE:*\n${lineas}\n\n` +
-      `💰 *TOTAL: S/ ${(c.monto || 0).toFixed(2)}*` +
-      pagoInfo +
-      `\n\n¡Gracias por su preferencia! 🙏`
+      `📅 ${c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}\n` +
+      `👤 ${toTitleCase(c.cliente_nombre || '')}\n` +
+      `💰 *Total: S/ ${(c.monto || 0).toFixed(2)}*\n\n` +
+      `📎 Adjunto encontrará su comprobante en PDF.\n` +
+      `¡Gracias por su preferencia! 🙏`
+
     if (!tel) {
       const num = prompt('Ingresa el número WhatsApp del cliente (sin código de país):')
       if (!num) return
@@ -556,8 +576,15 @@ export default function DocumentosPage() {
                 <div>
                   <label className={lbl}>Cliente / Razón Social</label>
                   <div className="relative">
-                    <input name="cliente_nombre" value={form.cliente_nombre} onChange={handleChange} required
-                      placeholder="Nombre del cliente" className={inp} />
+                    <input
+                      name="cliente_nombre"
+                      value={form.cliente_nombre}
+                      onChange={handleChange}
+                      onBlur={handleNombreBlur}
+                      required
+                      placeholder="Nombre del cliente"
+                      className={inp}
+                    />
                     {consultandoDoc && (
                       <div className="absolute right-3 top-1/2 -translate-y-1/2">
                         <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -768,7 +795,7 @@ export default function DocumentosPage() {
                     <span className="text-[9px] px-2 py-0.5 rounded-lg font-black uppercase bg-amber-100 text-amber-700">Demo</span>
                   )}
                 </div>
-                <p className="font-semibold text-slate-700 text-sm">{c.cliente_nombre}</p>
+                <p className="font-semibold text-slate-700 text-sm">{toTitleCase(c.cliente_nombre || '')}</p>
                 {c.cliente_doc && (
                   <p className="text-[10px] text-slate-400 font-bold">{c.tipo === 'factura' ? 'RUC' : 'DNI'}: {c.cliente_doc}</p>
                 )}
@@ -785,19 +812,43 @@ export default function DocumentosPage() {
                   {c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}
                 </p>
                 <div className="flex items-center gap-1.5 justify-end mt-2">
-                  <button onClick={() => enviarWhatsApp(c)} title="Enviar por WhatsApp"
-                    className="w-8 h-8 bg-green-100 hover:bg-green-200 rounded-lg flex items-center justify-center text-green-600 transition-all text-sm">
-                    💬
+                  {/* WhatsApp: descarga PDF + abre chat */}
+                  <button onClick={() => enviarWhatsApp(c)} title="Enviar PDF por WhatsApp"
+                    className="flex items-center gap-1.5 px-2.5 h-8 bg-green-100 hover:bg-green-200 rounded-lg transition-all text-xs font-black uppercase tracking-wider text-green-800">
+                    {/* WhatsApp SVG */}
+                    <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="12" r="12" fill="#25D366"/>
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" fill="white"/>
+                    </svg>
+                    <span>WhatsApp</span>
                   </button>
+                  {/* Descargar PDF o JPG */}
                   {c.payload?.pdf_base64 ? (
-                    <button onClick={() => descargarPDF(c)} title="Descargar PDF oficial"
-                      className="w-8 h-8 bg-red-100 hover:bg-red-200 rounded-lg flex items-center justify-center text-red-600 transition-all text-sm">
-                      📄
+                    <button onClick={() => descargarPDF(c)} title="Descargar PDF"
+                      className="flex items-center gap-1.5 px-2.5 h-8 bg-red-100 hover:bg-red-200 rounded-lg transition-all text-xs font-black uppercase tracking-wider text-red-800">
+                      {/* PDF SVG */}
+                      <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#E53E3E"/>
+                        <path d="M14 2v6h6" fill="#FC8181"/>
+                        <path d="M14 2v6h6" stroke="#C53030" strokeWidth="0.5"/>
+                        <text x="12" y="18.5" textAnchor="middle" fill="white" fontSize="5.5" fontWeight="900" fontFamily="Arial, sans-serif" letterSpacing="0.3">PDF</text>
+                        <rect x="7" y="11" width="5" height="0.8" rx="0.4" fill="white"/>
+                        <rect x="7" y="13" width="7" height="0.8" rx="0.4" fill="white"/>
+                      </svg>
+                      <span>PDF</span>
                     </button>
                   ) : (
                     <button onClick={() => descargarJPG(c)} title="Descargar JPG"
-                      className="w-8 h-8 bg-blue-100 hover:bg-blue-200 rounded-lg flex items-center justify-center text-blue-600 transition-all text-sm">
-                      📥
+                      className="flex items-center gap-1.5 px-2.5 h-8 bg-blue-100 hover:bg-blue-200 rounded-lg transition-all text-xs font-black uppercase tracking-wider text-blue-800">
+                      {/* JPG/Image SVG */}
+                      <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" fill="#3182CE"/>
+                        <path d="M14 2v6h6" fill="#63B3ED"/>
+                        <text x="12" y="18.5" textAnchor="middle" fill="white" fontSize="5" fontWeight="900" fontFamily="Arial, sans-serif" letterSpacing="0.2">IMG</text>
+                        <rect x="7" y="11" width="5" height="0.8" rx="0.4" fill="white"/>
+                        <rect x="7" y="13" width="7" height="0.8" rx="0.4" fill="white"/>
+                      </svg>
+                      <span>JPG</span>
                     </button>
                   )}
                 </div>
