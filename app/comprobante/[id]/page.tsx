@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import DescargarPDF from './DescargarPDF'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,6 +48,7 @@ export default async function ComprobantePage({ params }: { params: Promise<{ id
   const igv    = c.payload?.igv       || (c.monto - sub)
   const fecha  = c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')
   const esDemo = c.payload?.entorno !== 'produccion'
+  const hasPDF = !!c.payload?.pdf_base64
 
   return (
     <div className="min-h-screen bg-slate-100 py-8 px-4">
@@ -135,6 +137,11 @@ export default async function ComprobantePage({ params }: { params: Promise<{ id
               <span className="font-black text-blue-600 text-3xl">S/ {(c.monto || 0).toFixed(2)}</span>
             </div>
           </div>
+
+          {/* Botones PDF — solo si existe el PDF */}
+          {hasPDF && (
+            <DescargarPDF base64={c.payload.pdf_base64} nro={nro} />
+          )}
 
           <div className="px-6 py-4 text-center bg-slate-50">
             <p className="text-slate-400 text-xs font-bold">¡Gracias por su preferencia! 🙏</p>
