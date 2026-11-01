@@ -5,20 +5,20 @@ export const dynamic = 'force-dynamic'
 const toTitleCase = (str: string) =>
   str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
 
-export default async function ComprobantePage({ params }: { params: { id: string } }) {
+export default async function ComprobantePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Primero obtenemos el comprobante
   const { data: c, error } = await supabase
     .from('comprobantes')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
-  // Luego obtenemos el taller por separado
   let taller: any = {}
   if (c?.taller_id) {
     const { data: t } = await supabase
@@ -41,7 +41,6 @@ export default async function ComprobantePage({ params }: { params: { id: string
     )
   }
 
-  // taller ya está definido arriba
   const nro    = `${c.serie}-${String(c.numero).padStart(6, '0')}`
   const items  = Array.isArray(c.payload?.items) ? c.payload.items : []
   const sub    = c.payload?.subtotal  || (c.monto / 1.18)
@@ -53,20 +52,17 @@ export default async function ComprobantePage({ params }: { params: { id: string
     <div className="min-h-screen bg-slate-100 py-8 px-4">
       <div className="max-w-md mx-auto">
 
-        {/* Demo badge */}
         {esDemo && (
           <div className="bg-amber-100 border border-amber-300 rounded-xl px-4 py-2 mb-4 text-center">
             <p className="text-amber-700 font-black text-xs uppercase tracking-wider">🧪 Comprobante de Prueba — Sin validez fiscal</p>
           </div>
         )}
 
-        {/* Card principal */}
         <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
 
-          {/* Header taller */}
           <div className="bg-slate-900 px-6 py-5 flex items-center gap-4">
             {taller.logo_url ? (
-              <img src={taller.logo_url} className="w-14 h-14 rounded-2xl object-contain bg-white p-1" />
+              <img src={taller.logo_url} className="w-14 h-14 rounded-2xl object-contain bg-white p-1" alt="logo" />
             ) : (
               <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-2xl">🔧</div>
             )}
@@ -78,7 +74,6 @@ export default async function ComprobantePage({ params }: { params: { id: string
             </div>
           </div>
 
-          {/* Tipo y número */}
           <div className="px-6 py-5 border-b border-slate-100">
             <div className="flex items-center justify-between mb-1">
               <span className={`text-xs px-3 py-1.5 rounded-full font-black uppercase tracking-wider ${
@@ -98,7 +93,6 @@ export default async function ComprobantePage({ params }: { params: { id: string
             <p className="text-slate-400 text-sm font-bold mt-0.5">Fecha: {fecha}</p>
           </div>
 
-          {/* Datos cliente */}
           <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
             <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Cliente</p>
             <p className="font-black text-slate-800 text-base">{toTitleCase(c.cliente_nombre || '')}</p>
@@ -112,7 +106,6 @@ export default async function ComprobantePage({ params }: { params: { id: string
             )}
           </div>
 
-          {/* Items */}
           {items.length > 0 && (
             <div className="border-b border-slate-100">
               <div className="flex justify-between px-6 py-2 bg-slate-900">
@@ -128,7 +121,6 @@ export default async function ComprobantePage({ params }: { params: { id: string
             </div>
           )}
 
-          {/* Totales */}
           <div className="px-6 py-4 space-y-2 border-b border-slate-100">
             <div className="flex justify-between text-sm text-slate-500">
               <span className="font-semibold">Subtotal</span>
@@ -144,7 +136,6 @@ export default async function ComprobantePage({ params }: { params: { id: string
             </div>
           </div>
 
-          {/* Footer */}
           <div className="px-6 py-4 text-center bg-slate-50">
             <p className="text-slate-400 text-xs font-bold">¡Gracias por su preferencia! 🙏</p>
             {taller.nombre && (
@@ -153,7 +144,6 @@ export default async function ComprobantePage({ params }: { params: { id: string
           </div>
         </div>
 
-        {/* Nota legal */}
         <p className="text-center text-slate-400 text-[10px] font-bold mt-4 uppercase tracking-widest">
           Comprobante electrónico emitido a través de AWTU · SUNAT Perú
         </p>
