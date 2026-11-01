@@ -1,22 +1,35 @@
 import { createClient } from '@supabase/supabase-js'
-import Image from 'next/image'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+export const dynamic = 'force-dynamic'
 
 const toTitleCase = (str: string) =>
   str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
 
 export default async function ComprobantePage({ params }: { params: { id: string } }) {
-  const { data: c } = await supabase
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  // Primero obtenemos el comprobante
+  const { data: c, error } = await supabase
     .from('comprobantes')
-    .select('*, talleres(nombre, logo_url, ruc, direccion, telefono)')
+    .select('*')
     .eq('id', params.id)
     .single()
 
-  if (!c) {
+  // Luego obtenemos el taller por separado
+  let taller: any = {}
+  if (c?.taller_id) {
+    const { data: t } = await supabase
+      .from('talleres')
+      .select('nombre, logo_url, ruc, direccion, telefono')
+      .eq('id', c.taller_id)
+      .single()
+    taller = t || {}
+  }
+
+  if (!c || error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center p-8">
@@ -28,7 +41,7 @@ export default async function ComprobantePage({ params }: { params: { id: string
     )
   }
 
-  const taller = c.talleres || {}
+  // taller ya está definido arriba
   const nro    = `${c.serie}-${String(c.numero).padStart(6, '0')}`
   const items  = Array.isArray(c.payload?.items) ? c.payload.items : []
   const sub    = c.payload?.subtotal  || (c.monto / 1.18)
