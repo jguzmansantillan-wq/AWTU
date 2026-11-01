@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const [serieRef, numRef] = (serie_numero_ref || '').split('-')
 
     const payload = {
-      ruc,
+      ruc: RUC,
       numero_documento:      '#',
       fecha_de_emision:      fecha,
       hora_de_emision:       hora,
