@@ -42,7 +42,6 @@ function ModalAcciones({
   const [confirmarAnular, setConfirmarAnular] = useState(false)
   const [error, setError]                 = useState('')
 
-  // ── Visualizar PDF en nueva pestaña ─────────────────────────────────────
   const visualizarPDF = () => {
     if (!hasPDF) return
     const byteString = atob(c.payload.pdf_base64.split(',')[1])
@@ -53,7 +52,6 @@ function ModalAcciones({
     window.open(URL.createObjectURL(blob), '_blank')
   }
 
-  // ── Descargar PDF ────────────────────────────────────────────────────────
   const descargarPDF = () => {
     if (!hasPDF) return
     const link = document.createElement('a')
@@ -62,7 +60,6 @@ function ModalAcciones({
     link.click()
   }
 
-  // ── Imprimir ─────────────────────────────────────────────────────────────
   const imprimir = () => {
     if (!hasPDF) return
     const byteString = atob(c.payload.pdf_base64.split(',')[1])
@@ -75,7 +72,6 @@ function ModalAcciones({
     win?.addEventListener('load', () => win.print())
   }
 
-  // ── WhatsApp con link de visualización ──────────────────────────────────
   const enviarWhatsApp = async () => {
     const tel = (c.payload?.telefono || '').replace(/\D/g, '')
     const texto =
@@ -88,7 +84,6 @@ function ModalAcciones({
       `https://awtu-app.vercel.app/comprobante/${c.id}\n\n` +
       `¡Gracias por su preferencia! 🙏`
 
-    // Descargar PDF al mismo tiempo
     if (hasPDF) {
       const link = document.createElement('a')
       link.href     = c.payload.pdf_base64
@@ -104,7 +99,6 @@ function ModalAcciones({
     window.open(`https://wa.me/51${num}?text=${encodeURIComponent(texto)}`, '_blank')
   }
 
-  // ── Descargar XML ────────────────────────────────────────────────────────
   const descargarXML = async () => {
     if (!external_id) { setError('No hay external_id para este comprobante'); return }
     setLoadingAccion('xml')
@@ -121,7 +115,6 @@ function ModalAcciones({
     setLoadingAccion(null)
   }
 
-  // ── Descargar CDR ────────────────────────────────────────────────────────
   const descargarCDR = async () => {
     if (!external_id) { setError('No hay external_id para este comprobante'); return }
     setLoadingAccion('cdr')
@@ -138,7 +131,6 @@ function ModalAcciones({
     setLoadingAccion(null)
   }
 
-  // ── Anular comprobante ───────────────────────────────────────────────────
   const anular = async () => {
     if (!external_id) { setError('No hay external_id'); return }
     if (!motivoAnular.trim()) { setError('Ingresa un motivo de anulación'); return }
@@ -152,7 +144,6 @@ function ModalAcciones({
       })
       const data = await res.json()
       if (!data.ok) throw new Error(JSON.stringify(data.detalle || data.error))
-      // Actualizar estado en Supabase
       await supabase.from('comprobantes').update({ estado_sunat: 'anulado' }).eq('id', c.id)
       onAnulado()
       onClose()
@@ -173,7 +164,6 @@ function ModalAcciones({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
 
-        {/* Header */}
         <div className="bg-blue-600 px-5 py-4 flex items-center justify-between">
           <div>
             <p className="font-black text-white text-base">Comprobante electrónico</p>
@@ -182,7 +172,6 @@ function ModalAcciones({
           <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-black text-sm transition-all">✕</button>
         </div>
 
-        {/* Info comprobante */}
         <div className="px-5 py-4 space-y-3 border-b border-slate-100">
           <div className="flex items-center justify-between">
             <span className={`text-xs px-3 py-1 rounded-full font-black uppercase ${
@@ -221,66 +210,47 @@ function ModalAcciones({
           )}
         </div>
 
-        {/* Botones de acción */}
         {!confirmarAnular && !notaModal && (
           <div className="px-5 py-4 space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              {/* Visualizar PDF */}
               <button onClick={visualizarPDF} disabled={!hasPDF} className={btnBlue}>
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
                 Visualizar PDF
               </button>
-
-              {/* Descargar PDF */}
               <button onClick={descargarPDF} disabled={!hasPDF} className={btnBlue}>
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                 Descargar PDF
               </button>
-
-              {/* Enviar por WhatsApp */}
               <button onClick={enviarWhatsApp} className={btnGreen}>
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.532 5.86L0 24l6.302-1.507A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
                 Enviar por WhatsApp
               </button>
-
-              {/* Imprimir */}
               <button onClick={imprimir} disabled={!hasPDF} className={btnSlate}>
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
                 Imprimir
               </button>
-
-              {/* Descargar XML */}
               <button onClick={descargarXML} disabled={!external_id || loadingAccion === 'xml'} className={btnSlate}>
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 7V3.5L18.5 9H13zM8 13l-1.25 2L8 17H6.5l-.75-1.5L5 17H3.5l1.25-2L3.5 13H5l.75 1.5.75-1.5H8zm4.5 4h-1.25l-.5-3.75L10 17H8.75l1.5-4h1.5l.75 2.5.75-2.5h1.5l1.5 4H14.5l-.75-3.75L13 17h-.5zm6.25 0H17l-1.5-4h1.25l.75 2.5.75-2.5H19.5l-1.5 4z"/></svg>
                 {loadingAccion === 'xml' ? 'Descargando...' : 'Descargar XML'}
               </button>
-
-              {/* Descargar CDR */}
               <button onClick={descargarCDR} disabled={!external_id || loadingAccion === 'cdr'} className={btnSlate}>
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.06 15.96 0 13.36 0c-1.31 0-2.48.52-3.34 1.36L9 2.38 7.98 1.36C7.12.52 5.95 0 4.64 0 2.04 0 0 2.06 0 4.64c0 .48.11.92.18 1.36H0v14h20V6zm-9.5 11L7 13.5l1.41-1.41L10.5 14.17l4.09-4.08L16 11.5 10.5 17z"/></svg>
                 {loadingAccion === 'cdr' ? 'Descargando...' : 'Descargar CDR'}
               </button>
-
-              {/* Nota de Crédito */}
               <button onClick={() => setNotaModal('credito')} disabled={c.estado_sunat === 'anulado'} className={btnOrange}>
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
                 Nota de Crédito
               </button>
-
-              {/* Nota de Débito */}
               <button onClick={() => setNotaModal('debito')} disabled={c.estado_sunat === 'anulado'} className={btnPurple}>
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
                 Nota de Débito
               </button>
-
-              {/* Guía de Remisión */}
               <button onClick={() => alert('Próximamente: Guía de Remisión')} className={btnTeal}>
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
                 Guía de Remisión
               </button>
             </div>
 
-            {/* Dar de Baja */}
             {c.estado_sunat !== 'anulado' && (
               <button onClick={() => { setConfirmarAnular(true); setError('') }} className={`${btnRed} w-full`}>
                 <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -290,7 +260,6 @@ function ModalAcciones({
           </div>
         )}
 
-        {/* Confirmar anulación */}
         {confirmarAnular && (
           <div className="px-5 py-4 space-y-3">
             <p className="font-black text-red-700 text-sm">⚠️ ¿Anular comprobante {nro}?</p>
@@ -301,7 +270,7 @@ function ModalAcciones({
                 value={motivoAnular}
                 onChange={e => setMotivoAnular(e.target.value)}
                 placeholder="Ej: Error en el monto, cliente incorrecto..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-red-400 transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-red-400 transition-all"
               />
             </div>
             {error && <p className="text-red-600 text-xs font-bold">❌ {error}</p>}
@@ -314,7 +283,6 @@ function ModalAcciones({
           </div>
         )}
 
-        {/* Nota de Crédito / Débito */}
         {notaModal && (
           <NotaForm
             tipo={notaModal}
@@ -402,7 +370,7 @@ function NotaForm({
       <div>
         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Código de motivo</label>
         <select value={codigo} onChange={e => setCodigo(e.target.value)}
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold focus:outline-none focus:border-blue-400 transition-all">
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all">
           {motivos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
       </div>
@@ -411,13 +379,13 @@ function NotaForm({
         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Descripción del motivo</label>
         <input value={motivo} onChange={e => setMotivo(e.target.value)}
           placeholder="Describe el motivo detalladamente..."
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-blue-400 transition-all" />
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-400 transition-all" />
       </div>
 
       <div>
         <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Monto (S/)</label>
         <input type="number" value={monto} onChange={e => setMonto(e.target.value)} step="0.01"
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-blue-400 transition-all" />
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all" />
       </div>
 
       {error && <p className="text-red-600 text-xs font-bold">❌ {error}</p>}
@@ -459,6 +427,9 @@ export default function DocumentosPage() {
   const [resultadoFactusmart,      setResultadoFactusmart]      = useState<any>(null)
   const [consultandoDoc,           setConsultandoDoc]           = useState(false)
   const [modalComprobante,         setModalComprobante]         = useState<Comprobante | null>(null)
+
+  // ── NUEVO: items editables ──────────────────────────────────────────────
+  const [itemsEditables, setItemsEditables] = useState<{ descripcion: string; precio: number }[]>([])
 
   const [form, setForm] = useState({
     tipo: 'boleta', cliente_nombre: '', cliente_doc: '',
@@ -551,6 +522,8 @@ export default function DocumentosPage() {
   const abrirEmision = (op: Operacion) => {
     setOpSeleccionada(op)
     setResultadoFactusmart(null)
+    // Copiar items al estado editable
+    setItemsEditables(op.items_detalle ? op.items_detalle.map(i => ({ ...i })) : [])
     setForm({ tipo: 'boleta', cliente_nombre: op.nombre !== 'Cliente Directo' ? op.nombre : '', cliente_doc: '', cliente_dir: '', igv: '18', modo: 'demo' })
     setVista('emitir')
   }
@@ -588,6 +561,15 @@ export default function DocumentosPage() {
     setConsultandoDoc(false)
   }
 
+  // ── NUEVO: editar item ──────────────────────────────────────────────────
+  const editarItemDesc = (i: number, val: string) => {
+    setItemsEditables(prev => prev.map((item, idx) => idx === i ? { ...item, descripcion: val } : item))
+  }
+
+  const editarItemPrecio = (i: number, val: string) => {
+    setItemsEditables(prev => prev.map((item, idx) => idx === i ? { ...item, precio: parseFloat(val) || 0 } : item))
+  }
+
   const handleEmitir = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true); setError(''); setOk(false); setResultadoFactusmart(null)
@@ -596,7 +578,8 @@ export default function DocumentosPage() {
       const { data: limite } = await supabase.rpc('verificar_limite', { p_taller_id: tallerID, p_tipo: 'comprobantes' })
       if (!limite) { setError('Límite mensual de comprobantes alcanzado'); setLoading(false); return }
 
-      const itemsParaFS = (opSeleccionada?.items_detalle || []).map(i => ({
+      // Usar itemsEditables en lugar de opSeleccionada.items_detalle
+      const itemsParaFS = itemsEditables.map(i => ({
         descripcion:     i.descripcion,
         cantidad:        1,
         precio_unitario: i.precio,
@@ -646,7 +629,7 @@ export default function DocumentosPage() {
         monto:           montoNum,
         estado_sunat:    fsData.aceptado_por_sunat ? 'emitido' : 'pendiente',
         payload: {
-          items:            opSeleccionada?.items_detalle || [],
+          items:            itemsEditables,
           igv_pct:          igvPct,
           subtotal:         sub,
           igv:              igvMon,
@@ -704,7 +687,9 @@ export default function DocumentosPage() {
     op.detalle?.toLowerCase().includes(busqueda.toLowerCase())
   )
 
-  const inp = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+  // ── Estilos base ────────────────────────────────────────────────────────
+  // CAMBIO 1: placeholder más visible con placeholder:text-slate-400
+  const inp = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
   const lbl = "text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block"
 
   const EncabezadoComercial = () => (
@@ -726,7 +711,6 @@ export default function DocumentosPage() {
   return (
     <div className="max-w-5xl mx-auto">
 
-      {/* Modal de acciones */}
       {modalComprobante && (
         <ModalAcciones
           c={modalComprobante}
@@ -738,7 +722,6 @@ export default function DocumentosPage() {
         />
       )}
 
-      {/* Canvas oculto para JPG */}
       {comprobanteParaDescargar && (
         <div style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -1 }}>
           <div ref={comprobanteRef} style={{ width: '420px', background: '#ffffff', fontFamily: 'Arial, sans-serif', padding: '40px 32px' }}>
@@ -817,7 +800,7 @@ export default function DocumentosPage() {
             <span className="text-slate-400">🔍</span>
             <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
               placeholder="Buscar por cliente, placa o detalle..."
-              className="bg-transparent outline-none text-sm font-semibold text-slate-700 flex-1" />
+              className="bg-transparent outline-none text-sm font-semibold text-slate-700 flex-1 placeholder:text-slate-400" />
           </div>
           {filtradas.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center">
@@ -875,7 +858,7 @@ export default function DocumentosPage() {
               </div>
               <div className="flex-1">
                 <p className="font-black text-slate-800 text-sm uppercase">{opSeleccionada.placa || 'Venta POS'} · {opSeleccionada.nombre}</p>
-                <p className="text-xs text-slate-500 font-bold">{opSeleccionada.items_detalle?.length || 0} item(s) · S/ {opSeleccionada.monto.toFixed(2)}</p>
+                <p className="text-xs text-slate-500 font-bold">{itemsEditables.length} item(s) · S/ {opSeleccionada.monto.toFixed(2)}</p>
               </div>
               <button onClick={() => setVista('operaciones')} className="text-slate-400 hover:text-slate-600 font-black text-lg">✕</button>
             </div>
@@ -909,9 +892,22 @@ export default function DocumentosPage() {
                     DNI / RUC
                     {consultandoDoc && <span className="ml-2 text-[9px] text-blue-500 font-bold animate-pulse">⏳ Consultando...</span>}
                   </label>
-                  <input name="cliente_doc" value={form.cliente_doc} onChange={handleChange}
+                  {/* CAMBIO 2: Enter dispara la consulta, además del onBlur */}
+                  <input
+                    name="cliente_doc"
+                    value={form.cliente_doc}
+                    onChange={handleChange}
                     onBlur={(e) => consultarCliente(e.target.value)}
-                    placeholder="DNI (8) o RUC (11)" maxLength={11} className={inp} />
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        consultarCliente(form.cliente_doc)
+                      }
+                    }}
+                    placeholder="DNI (8) o RUC (11)"
+                    maxLength={11}
+                    className={inp}
+                  />
                   {form.cliente_doc.length === 8  && !consultandoDoc && <p className="text-[10px] text-blue-500 font-bold mt-1">→ Boleta de Venta</p>}
                   {form.cliente_doc.length === 11 && !consultandoDoc && <p className="text-[10px] text-emerald-500 font-bold mt-1">→ Factura</p>}
                 </div>
@@ -937,20 +933,36 @@ export default function DocumentosPage() {
                 </div>
               </div>
 
+              {/* CAMBIO 3: Items editables */}
               <div>
-                <label className={lbl}>Items del comprobante</label>
+                <label className={lbl}>Items del comprobante <span className="normal-case text-blue-500 font-bold">(puedes editar)</span></label>
                 <div className="border border-slate-200 rounded-xl overflow-hidden">
                   <div className="flex justify-between px-3 py-2 bg-slate-900">
                     <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Descripción</span>
                     <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Precio</span>
                   </div>
-                  {(opSeleccionada.items_detalle || []).map((item, i) => (
-                    <div key={i} className="flex justify-between items-center px-3 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50">
-                      <span className="text-xs font-semibold text-slate-700 uppercase flex-1 mr-4">{item.descripcion}</span>
-                      <span className="text-xs font-black text-slate-900 shrink-0">S/ {item.precio.toFixed(2)}</span>
+                  {itemsEditables.map((item, i) => (
+                    <div key={i} className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 last:border-0 bg-white hover:bg-slate-50 transition-colors">
+                      <input
+                        value={item.descripcion}
+                        onChange={e => editarItemDesc(i, e.target.value)}
+                        className="flex-1 text-xs font-semibold text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-400 focus:outline-none py-1 uppercase transition-colors min-w-0"
+                        placeholder="Descripción del item"
+                      />
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className="text-xs text-slate-400 font-bold">S/</span>
+                        <input
+                          type="number"
+                          value={item.precio}
+                          onChange={e => editarItemPrecio(i, e.target.value)}
+                          step="0.01"
+                          className="w-20 text-xs font-black text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-400 focus:outline-none py-1 text-right transition-colors"
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
+                <p className="text-[10px] text-slate-400 font-bold mt-1.5">✏️ Haz click en cualquier campo para editarlo</p>
               </div>
 
               <button type="submit" disabled={loading}
