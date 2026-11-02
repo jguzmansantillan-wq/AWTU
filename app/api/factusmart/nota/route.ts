@@ -47,6 +47,9 @@ export async function POST(req: NextRequest) {
 
     const calcData = await calcRes.json()
 
+    // LOG TEMPORAL para ver estructura de calcData
+    console.log('🔍 calcData.items[0]:', JSON.stringify(calcData.items?.[0], null, 2))
+
     // Asegurar que los items calculados conserven la descripcion original
     // (el endpoint /calcular a veces no la devuelve y el template PDF falla)
     const itemsFinales = (calcData.items || []).map((ci: any, idx: number) => ({
@@ -95,6 +98,8 @@ export async function POST(req: NextRequest) {
       items:   itemsFinales,
       totales: calcData.totales,
     }
+
+    console.log('🚀 payload.items:', JSON.stringify(itemsFinales, null, 2))
 
     const emitRes = await fetch(`${BASE}/documents`, {
       method:  'POST',
