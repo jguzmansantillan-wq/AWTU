@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
       totales: calcData.totales,
     }
 
-    console.log('🚀 payload.items:', JSON.stringify(itemsFinales, null, 2))
+    console.log('🚀 PAYLOAD COMPLETO:', JSON.stringify(payload, null, 2))
 
     const emitRes = await fetch(`${BASE}/documents`, {
       method:  'POST',
