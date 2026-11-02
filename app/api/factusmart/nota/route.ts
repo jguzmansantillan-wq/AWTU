@@ -50,12 +50,16 @@ export async function POST(req: NextRequest) {
     // LOG TEMPORAL para ver estructura de calcData
     console.log('🔍 calcData.items[0]:', JSON.stringify(calcData.items?.[0], null, 2))
 
-    // Asegurar que los items calculados conserven la descripcion original
-    // (el endpoint /calcular a veces no la devuelve y el template PDF falla)
-    const itemsFinales = (calcData.items || []).map((ci: any, idx: number) => ({
-      ...ci,
-      descripcion: itemsCalc[idx]?.descripcion || ci.descripcion || motivo || 'Servicio',
-    }))
+    // El template PDF de Factusmart (note_a4.blade.php) busca $item->description (inglés)
+    // Agregar ambos campos para compatibilidad
+    const itemsFinales = (calcData.items || []).map((ci: any, idx: number) => {
+      const desc = itemsCalc[idx]?.descripcion || ci.descripcion || motivo || 'Servicio'
+      return {
+        ...ci,
+        descripcion: desc,
+        description: desc,   // campo en inglés que requiere el template PDF
+      }
+    })
 
     const ahora = new Date()
     const fecha = ahora.toLocaleDateString('sv-SE', { timeZone: 'America/Lima' })
