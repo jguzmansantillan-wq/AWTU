@@ -58,9 +58,14 @@ export async function POST(req: NextRequest) {
     const tipoDocCli  = tipo_doc_cliente || (tipo_doc_ref === '01' ? '6' : '1')
     const numDocCli   = (cliente_doc || '').replace(/\D/g, '')
 
+    // Serie de la nota según tipo de comprobante origen:
+    // boleta → BN01 | factura → FN01
+    const serieNota = tipo_doc_ref === '01' ? 'FN01' : 'BN01'
+
     const payload: any = {
       ruc:                   RUC,
       numero_documento:      '#',
+      serie_documento:       serieNota,
       fecha_de_emision:      fecha,
       hora_de_emision:       hora,
       codigo_tipo_documento: tipo_nota,   // '07' o '08'
