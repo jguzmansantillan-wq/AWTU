@@ -7,6 +7,18 @@ type ProductoAdicional = { nombre: string; precio: string }
 type OtroServicio = { detalle: string; precio: string }
 type ItemInventario = { id: string; nombre: string; categoria: string; precio: number; costo: number; stock: number }
 
+type ProformaData = {
+  nombre: string
+  telefono: string
+  placa: string
+  fecha: string
+  items: { nombre: string; precio: number }[]
+  total: number
+  tallerNombre: string
+  tallerLogo: string
+  tipo: 'servicio'
+}
+
 const METODOS_PAGO = [
   { key: 'efectivo', icon: '💵', label: 'Efectivo' },
   { key: 'yape', icon: '📱', label: 'Yape/Plin' },
@@ -105,16 +117,231 @@ function SecHead({ icon, title, sub, accent }: { icon: string; title: string; su
   )
 }
 
+// ── MODAL COTIZACIÓN ────────────────────────────────────────────────────────
+function ModalCotizacion({ data, onClose }: { data: ProformaData; onClose: () => void }) {
+  const [descargando, setDescargando] = useState(false)
+
+  const enviarWhatsApp = () => {
+    if (!data.telefono) { alert('Este cliente no tiene teléfono registrado'); return }
+    const tel = data.telefono.replace(/\D/g, '')
+    const lineas = data.items
+      .filter(i => i.precio > 0)
+      .map(i => `  • ${i.nombre} — S/ ${i.precio.toFixed(2)}`)
+      .join('\n')
+    const fechaFmt = data.fecha.split('-').reverse().join('/')
+    const msg = encodeURIComponent(
+      `📋 *COTIZACIÓN DE SERVICIO - ${data.tallerNombre}*\n` +
+      `📅 Fecha: ${fechaFmt}\n` +
+      `👤 Cliente: ${data.nombre}\n` +
+      (data.placa ? `🚗 Vehículo: ${data.placa}\n` : '') +
+      `\n*SERVICIOS COTIZADOS:*\n${lineas}\n\n` +
+      `*TOTAL: S/ ${data.total.toFixed(2)}*\n\n` +
+      `⚠️ Cotización válida por 7 días.\n` +
+      `¡Gracias por contactarnos! 🔧`
+    )
+    window.open(`https://wa.me/51${tel}?text=${msg}`, '_blank')
+  }
+
+  const descargarPDF = async () => {
+    setDescargando(true)
+    try {
+      const { default: jsPDF } = await import('jspdf')
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+      const W = 210
+      const fechaFmt = data.fecha.split('-').reverse().join('/')
+
+      // Fondo header
+      doc.setFillColor(15, 23, 42) // #0f172a
+      doc.rect(0, 0, W, 38, 'F')
+
+      // Título taller
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(16)
+      doc.setFont('helvetica', 'bold')
+      doc.text(data.tallerNombre.toUpperCase(), 20, 16)
+
+      // Subtítulo
+      doc.setTextColor(96, 165, 250) // azul claro
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.text('COTIZACIÓN DE SERVICIO', 20, 23)
+
+      // Fecha
+      doc.setTextColor(200, 200, 200)
+      doc.setFontSize(8)
+      doc.text(`Fecha: ${fechaFmt}`, 20, 30)
+
+      // Badge "COTIZACIÓN"
+      doc.setFillColor(245, 158, 11) // amarillo
+      doc.roundedRect(W - 55, 8, 40, 12, 3, 3, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.text('COTIZACIÓN', W - 50, 16.5)
+
+      // Datos cliente
+      let y = 52
+      doc.setFillColor(241, 245, 249) // #f1f5f9
+      doc.roundedRect(14, y - 8, W - 28, 28, 4, 4, 'F')
+      doc.setTextColor(100, 116, 139)
+      doc.setFontSize(7)
+      doc.setFont('helvetica', 'bold')
+      doc.text('CLIENTE', 20, y)
+      doc.setTextColor(15, 23, 42)
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.text(data.nombre || 'SIN NOMBRE', 20, y + 8)
+      if (data.placa) {
+        doc.setFillColor(219, 234, 254)
+        doc.roundedRect(W - 55, y - 4, 40, 18, 3, 3, 'F')
+        doc.setTextColor(29, 78, 216)
+        doc.setFontSize(14)
+        doc.setFont('helvetica', 'bold')
+        doc.text(data.placa, W - 46, y + 7)
+      }
+
+      // Línea divisoria
+      y += 30
+      doc.setDrawColor(226, 232, 240)
+      doc.setLineWidth(0.5)
+      doc.line(14, y, W - 14, y)
+      y += 8
+
+      // Encabezado tabla
+      doc.setFillColor(15, 23, 42)
+      doc.roundedRect(14, y - 5, W - 28, 10, 2, 2, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(7)
+      doc.setFont('helvetica', 'bold')
+      doc.text('DESCRIPCIÓN DEL SERVICIO / PRODUCTO', 20, y + 1)
+      doc.text('PRECIO', W - 30, y + 1, { align: 'right' })
+      y += 12
+
+      // Ítems
+      const itemsFiltrados = data.items.filter(i => i.nombre && i.precio > 0)
+      itemsFiltrados.forEach((item, idx) => {
+        if (idx % 2 === 0) {
+          doc.setFillColor(248, 250, 252)
+          doc.rect(14, y - 4, W - 28, 9, 'F')
+        }
+        doc.setTextColor(15, 23, 42)
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        const nombre = item.nombre.length > 55 ? item.nombre.slice(0, 52) + '...' : item.nombre
+        doc.text(nombre.toUpperCase(), 20, y + 1.5)
+        doc.setFont('helvetica', 'bold')
+        doc.text(`S/ ${item.precio.toFixed(2)}`, W - 20, y + 1.5, { align: 'right' })
+        y += 10
+      })
+
+      // Total
+      y += 4
+      doc.setFillColor(15, 23, 42)
+      doc.roundedRect(W - 75, y - 5, 61, 16, 3, 3, 'F')
+      doc.setTextColor(100, 116, 139)
+      doc.setFontSize(7)
+      doc.setFont('helvetica', 'bold')
+      doc.text('TOTAL', W - 68, y + 1)
+      doc.setTextColor(255, 255, 255)
+      doc.setFontSize(14)
+      doc.text(`S/ ${data.total.toFixed(2)}`, W - 20, y + 8, { align: 'right' })
+
+      // Validez
+      y += 26
+      doc.setFillColor(255, 251, 235)
+      doc.roundedRect(14, y - 5, W - 28, 14, 3, 3, 'F')
+      doc.setTextColor(146, 64, 14)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.text('⚠  Cotización válida por 7 días a partir de la fecha de emisión.', 20, y + 3)
+
+      // Footer
+      doc.setFillColor(241, 245, 249)
+      doc.rect(0, 277, W, 20, 'F')
+      doc.setTextColor(148, 163, 184)
+      doc.setFontSize(7)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`${data.tallerNombre} · Cotización generada el ${fechaFmt}`, W / 2, 287, { align: 'center' })
+
+      doc.save(`Cotizacion_${data.placa || data.nombre}_${data.fecha}.pdf`)
+    } catch (err) {
+      console.error('Error generando PDF:', err)
+      alert('Error al generar el PDF')
+    }
+    setDescargando(false)
+  }
+
+  return (
+    <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.65)' }}>
+      <div className="rounded-3xl p-8 max-w-sm w-full relative" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+        <button onClick={onClose}
+          className="absolute top-4 right-4 font-bold text-xl transition-colors" style={{ color: 'var(--text-muted)' }}
+          onMouseEnter={e => e.currentTarget.style.color = 'var(--text)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>✕</button>
+
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 rounded-full overflow-hidden flex items-center justify-center mx-auto mb-3" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)' }}>
+            <span className="text-3xl">📋</span>
+          </div>
+          <h3 className="font-display font-bold text-lg uppercase tracking-tight" style={{ color: 'var(--text)' }}>Cotización Guardada</h3>
+          <p className="text-[10px] font-bold uppercase tracking-widest mt-1" style={{ color: 'var(--text-muted)' }}>Guardado en Proformas · {data.fecha.split('-').reverse().join('/')}</p>
+        </div>
+
+        {/* Datos */}
+        <div className="space-y-3 mb-6">
+          <div className="p-3 rounded-xl" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Cliente</p>
+            <p className="font-display font-bold uppercase" style={{ color: 'var(--text)' }}>{data.nombre || 'Sin nombre'}</p>
+            {data.placa && <p className="font-mono text-sm font-bold mt-0.5" style={{ color: 'var(--accent-teal)' }}>{data.placa}</p>}
+          </div>
+          <div className="p-3 rounded-xl" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Servicios / Productos</p>
+            <div className="space-y-1">
+              {data.items.filter(i => i.precio > 0).map((item, idx) => (
+                <div key={idx} className="flex justify-between">
+                  <span className="text-xs font-semibold uppercase" style={{ color: 'var(--text)' }}>{item.nombre}</span>
+                  <span className="font-mono text-xs font-bold" style={{ color: 'var(--text)' }}>S/ {item.precio.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
+            <span className="font-display font-bold text-sm uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Total</span>
+            <span className="font-mono font-bold text-2xl" style={{ color: '#f59e0b' }}>S/ {data.total.toFixed(2)}</span>
+          </div>
+        </div>
+
+        {/* Botones */}
+        <div className="flex flex-col gap-3">
+          <button onClick={enviarWhatsApp}
+            className="font-display w-full active:scale-95 font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
+            style={{ background: '#25d366', color: '#ffffff' }}>
+            💬 Enviar por WhatsApp
+          </button>
+          <button onClick={descargarPDF} disabled={descargando}
+            className="font-display w-full active:scale-95 font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm disabled:opacity-50"
+            style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}>
+            {descargando ? '⏳ Generando PDF...' : '📥 Descargar PDF'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 export default function AtencionPage() {
   const [tallerID, setTallerID] = useState('')
   const [tallerNombre, setTallerNombre] = useState('')
   const [tallerLogo, setTallerLogo] = useState('')
   const [loading, setLoading] = useState(false)
+  const [loadingCotizar, setLoadingCotizar] = useState(false)
   const [ok, setOk] = useState(false)
   const [error, setError] = useState('')
   const [datosCartilla, setDatosCartilla] = useState<any>(null)
   const cartillaRef = useRef<HTMLDivElement>(null)
   const [inventario, setInventario] = useState<ItemInventario[]>([])
+  const [proformaModal, setProformaModal] = useState<ProformaData | null>(null)
 
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
   const [placa, setPlaca] = useState('')
@@ -150,7 +377,6 @@ export default function AtencionPage() {
   const [productosAd, setProductosAd] = useState<ProductoAdicional[]>([])
   const [otrosServicios, setOtrosServicios] = useState<OtroServicio[]>([])
 
-  // ── MÉTODO DE PAGO ──────────────────────────────────────────────────────
   const [metodoPago, setMetodoPago] = useState('efectivo')
 
   const total =
@@ -224,6 +450,63 @@ export default function AtencionPage() {
     link.download = `Cartilla_${datos.placa}.jpg`
     link.href = canvas.toDataURL('image/jpeg', 0.95)
     link.click()
+  }
+
+  // Construye los ítems de la cotización desde el formulario actual
+  const buildItemsCotizacion = () => {
+    const items: { nombre: string; precio: number }[] = []
+    if (aceiteMarca && parseFloat(precioAceite) > 0)
+      items.push({ nombre: `Aceite Motor ${aceiteMarca} ${aceiteVisc}${aceiteCantidad ? ` ${aceiteCantidad}Lt` : ''}${filtroAceite ? ` + Filtro ${filtroAceite}` : ''}`.trim(), precio: parseFloat(precioAceite) })
+    if (cajaMarca && parseFloat(precioCaja) > 0)
+      items.push({ nombre: `Aceite Caja ${cajaMarca} (${cajaTipo})`, precio: parseFloat(precioCaja) })
+    if (refrigMarca && parseFloat(precioRefrig) > 0)
+      items.push({ nombre: `Refrigerante ${refrigMarca}${refrigColor ? ` ${refrigColor}` : ''}`, precio: parseFloat(precioRefrig) })
+    if (bujaMarca && parseFloat(precioBujias) > 0)
+      items.push({ nombre: `Bujías ${bujaMarca}${bujaModelo ? ` ${bujaModelo}` : ''}`, precio: parseFloat(precioBujias) })
+    productosAd.forEach(p => {
+      if (p.nombre && parseFloat(p.precio) > 0)
+        items.push({ nombre: p.nombre, precio: parseFloat(p.precio) })
+    })
+    otrosServicios.forEach(o => {
+      if (o.detalle && parseFloat(o.precio) > 0)
+        items.push({ nombre: o.detalle, precio: parseFloat(o.precio) })
+    })
+    return items
+  }
+
+  const cotizar = async () => {
+    if (!tallerID) return
+    if (total === 0) { setError('Agrega al menos un ítem con precio para cotizar'); return }
+    setLoadingCotizar(true); setError('')
+
+    const items = buildItemsCotizacion()
+    const proformaItems = items.map(i => ({ nombre: i.nombre, precio: i.precio, subtotal: i.precio }))
+
+    const { error: e } = await supabase.from('proformas').insert({
+      taller_id: tallerID,
+      nombre: nombre || 'Sin nombre',
+      telefono: telefono || null,
+      placa: placa ? placa.toUpperCase() : null,
+      items: proformaItems,
+      monto: total,
+      fecha,
+      tipo: 'servicio',
+    })
+
+    if (e) { setError('Error al guardar cotización: ' + e.message); setLoadingCotizar(false); return }
+
+    setProformaModal({
+      nombre: nombre || 'Sin nombre',
+      telefono,
+      placa: placa ? placa.toUpperCase() : '',
+      fecha,
+      items,
+      total,
+      tallerNombre,
+      tallerLogo,
+      tipo: 'servicio',
+    })
+    setLoadingCotizar(false)
   }
 
   const guardar = async () => {
@@ -306,7 +589,10 @@ export default function AtencionPage() {
   return (
     <div className="max-w-6xl mx-auto pb-10">
 
-      {/* Cartilla oculta — se mantiene en blanco intencionalmente, es el documento descargable para el cliente */}
+      {/* Modal cotización */}
+      {proformaModal && <ModalCotizacion data={proformaModal} onClose={() => setProformaModal(null)} />}
+
+      {/* Cartilla oculta */}
       {datosCartilla && (
         <div style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -1 }}>
           <div ref={cartillaRef} style={{ width: '400px', background: '#ffffff', fontFamily: 'Arial, sans-serif', borderRadius: '16px', overflow: 'hidden' }}>
@@ -714,7 +1000,7 @@ export default function AtencionPage() {
                 </div>
               )}
 
-              {/* ── MÉTODO DE PAGO ─────────────────────────────────────── */}
+              {/* MÉTODO DE PAGO */}
               <div>
                 <p className="font-display text-[9px] font-bold uppercase tracking-widest text-center mb-2" style={{ color: 'var(--text-muted)' }}>Método de Pago</p>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -732,7 +1018,6 @@ export default function AtencionPage() {
                   ))}
                 </div>
               </div>
-              {/* ──────────────────────────────────────────────────────── */}
 
               <div style={{ borderTop: '1px solid var(--border)' }} />
               <div className="grid grid-cols-2 gap-3">
@@ -753,11 +1038,24 @@ export default function AtencionPage() {
                   </div>
                 </div>
               </div>
-              <button onClick={guardar} disabled={loading}
-                className="font-display w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
-                style={{ background: 'var(--accent)', color: 'var(--bg)' }}>
-                {metodoActual?.icon} {loading ? 'Guardando...' : `Guardar · ${metodoActual?.label}`}
-              </button>
+
+              {/* ── BOTONES PRINCIPALES ───────────────────────────────── */}
+              <div className="flex flex-col gap-2">
+                {/* Cotizar */}
+                <button onClick={cotizar} disabled={loadingCotizar || total === 0}
+                  className="font-display w-full py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-40"
+                  style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}>
+                  📋 {loadingCotizar ? 'Guardando...' : 'Cotizar'}
+                </button>
+                {/* Guardar servicio */}
+                <button onClick={guardar} disabled={loading}
+                  className="font-display w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                  style={{ background: 'var(--accent)', color: 'var(--bg)' }}>
+                  {metodoActual?.icon} {loading ? 'Guardando...' : `Guardar · ${metodoActual?.label}`}
+                </button>
+              </div>
+              {/* ─────────────────────────────────────────────────────── */}
+
             </div>
           </div>
         </div>
