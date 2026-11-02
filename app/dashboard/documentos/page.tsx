@@ -347,6 +347,10 @@ function NotaForm({
           motivo,
           items: [{ descripcion: motivo, cantidad: 1, precio_unitario: parseFloat(monto) || comprobante.monto }],
           modo,
+          cliente_nombre: comprobante.cliente_nombre,
+          cliente_doc:    comprobante.cliente_doc,
+          cliente_dir:    comprobante.cliente_dir,
+          tipo_doc_cliente: comprobante.tipo === 'factura' ? '6' : '1',
         }),
       })
       const data = await res.json()
