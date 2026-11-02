@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
         apellidos_y_nombres_o_razon_social: (cliente_nombre || 'CLIENTE').toUpperCase(),
         ...(cliente_dir ? { direccion: cliente_dir } : {}),
       },
-      documento_referencia: {
+      documento_afectado: {
         numero_documento:      numRef || '1',
         serie:                 serieRef || 'B001',
         codigo_tipo_documento: tipo_doc_ref || '03',
