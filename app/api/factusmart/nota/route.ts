@@ -27,12 +27,18 @@ export async function POST(req: NextRequest) {
     const apiKey = modo === 'produccion' ? API_KEY : API_KEY_TEST
 
     // Calcular totales
-    const itemsCalc = items.map((i: any) => ({
-      descripcion:     i.descripcion,
-      cantidad:        Number(i.cantidad) || 1,
-      precio_unitario: Number(i.precio_unitario || i.precio) || 0,
-      afectacion:      '10',
-    }))
+    // Factusmart /calcular espera valor_unitario (sin IGV), no precio_unitario
+    // Si el precio viene con IGV incluido (precio_unitario), dividir entre 1.18
+    const itemsCalc = items.map((i: any) => {
+      const precioConIgv = Number(i.precio_unitario || i.precio) || 0
+      const valorSinIgv  = +(precioConIgv / 1.18).toFixed(6)
+      return {
+        descripcion:    i.descripcion,
+        cantidad:       Number(i.cantidad) || 1,
+        valor_unitario: valorSinIgv,
+        afectacion:     '10',
+      }
+    })
 
     const calcRes = await fetch(`${BASE}/calcular`, {
       method:  'POST',
@@ -98,6 +104,7 @@ export async function POST(req: NextRequest) {
       discrepancia: {
         codigo:      codigo_motivo || '01',
         descripcion: motivo || 'Anulación de la operación',
+        description: motivo || 'Anulación de la operación',  // alias inglés para template PDF
       },
       items:   itemsFinales,
       totales: calcData.totales,
