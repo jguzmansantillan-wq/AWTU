@@ -688,8 +688,7 @@ export default function DocumentosPage() {
   )
 
   // ── Estilos base ────────────────────────────────────────────────────────
-  // CAMBIO 1: placeholder más visible con placeholder:text-slate-400
-  const inp = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+  const inp = "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
   const lbl = "text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block"
 
   const EncabezadoComercial = () => (
@@ -866,14 +865,6 @@ export default function DocumentosPage() {
             {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl font-bold text-sm">❌ {error}</div>}
 
             <form onSubmit={handleEmitir} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                <span className="text-2xl">{form.tipo === 'factura' ? '📄' : '🧾'}</span>
-                <div>
-                  <p className="font-black text-slate-800 text-sm uppercase">{form.tipo === 'factura' ? 'Factura' : 'Boleta de Venta'}</p>
-                  <p className="text-[10px] text-slate-400 font-bold">DNI (8 dígitos) = Boleta · RUC (11 dígitos) = Factura</p>
-                </div>
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={lbl}>Cliente / Razón Social</label>
@@ -984,36 +975,57 @@ export default function DocumentosPage() {
 
           {/* Preview */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 h-fit">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Vista previa</p>
-            <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 space-y-3">
-              <div className="text-center border-b border-slate-100 pb-3">
-                <p className="font-black text-slate-700 uppercase text-sm mt-1">{form.tipo === 'boleta' ? 'BOLETA DE VENTA' : 'FACTURA'}</p>
-                <p className="text-[10px] text-slate-400 font-bold">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Vista previa</p>
+            <div className="border-2 border-dashed border-slate-200 rounded-xl overflow-hidden">
+              {/* Encabezado tipo */}
+              <div className="bg-slate-900 px-4 py-3 text-center">
+                <p className="font-black text-white uppercase text-xs tracking-widest">
+                  {form.tipo === 'boleta' ? 'BOLETA DE VENTA' : 'FACTURA ELECTRÓNICA'}
+                </p>
+                <p className="text-slate-400 text-[10px] font-bold mt-0.5">
                   {form.tipo === 'boleta' ? 'B001' : 'F001'}-{String(comprobantes.filter(c => c.tipo === form.tipo).length + 1).padStart(6, '0')}
                 </p>
               </div>
-              {form.cliente_nombre && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-slate-500 font-bold">Cliente</span>
-                  <span className="font-black text-slate-800 text-right max-w-32 truncate">{form.cliente_nombre}</span>
-                </div>
-              )}
-              {montoOp > 0 && (
-                <div className="border-t border-slate-100 pt-3 space-y-1 text-xs">
-                  <div className="flex justify-between text-slate-500">
-                    <span className="font-bold">Subtotal</span>
-                    <span className="font-black">S/ {subtotalPreview.toFixed(2)}</span>
+
+              <div className="p-4 space-y-3">
+                {/* Cliente */}
+                {form.cliente_nombre && (
+                  <div className="flex justify-between text-xs gap-2">
+                    <span className="text-slate-400 font-bold shrink-0">Cliente</span>
+                    <span className="font-black text-slate-800 text-right truncate">{form.cliente_nombre}</span>
                   </div>
-                  <div className="flex justify-between text-slate-500">
-                    <span className="font-bold">IGV ({form.igv}%)</span>
-                    <span className="font-black">S/ {igvPreview.toFixed(2)}</span>
+                )}
+
+                {/* Items */}
+                {itemsEditables.length > 0 && (
+                  <div className="border border-slate-100 rounded-lg overflow-hidden">
+                    {itemsEditables.map((item, i) => (
+                      <div key={i} className={`flex justify-between items-center px-2.5 py-1.5 gap-2 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                        <span className="text-[10px] font-semibold text-slate-600 uppercase flex-1 truncate">{item.descripcion}</span>
+                        <span className="text-[10px] font-black text-slate-800 shrink-0">S/ {item.precio.toFixed(2)}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex justify-between border-t border-slate-200 pt-2">
-                    <span className="font-black text-slate-800">TOTAL</span>
-                    <span className="font-black text-blue-600 text-base">S/ {montoOp.toFixed(2)}</span>
+                )}
+
+                {/* Totales */}
+                {montoOp > 0 && (
+                  <div className="border-t border-slate-100 pt-2 space-y-1 text-xs">
+                    <div className="flex justify-between text-slate-400">
+                      <span className="font-bold">Subtotal</span>
+                      <span className="font-black">S/ {subtotalPreview.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-400">
+                      <span className="font-bold">IGV ({form.igv}%)</span>
+                      <span className="font-black">S/ {igvPreview.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between border-t border-slate-200 pt-2">
+                      <span className="font-black text-slate-800">TOTAL</span>
+                      <span className="font-black text-blue-600 text-base">S/ {montoOp.toFixed(2)}</span>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>
