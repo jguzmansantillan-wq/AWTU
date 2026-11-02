@@ -11,7 +11,7 @@ const modulos = [
   { id: 'resumen',    label: 'Resumen',        icono: '📊', href: '/dashboard'             },
   { id: 'atencion',   label: 'Atención',       icono: '🔧', href: '/dashboard/atencion'     },
   { id: 'tienda',     label: 'Tienda / POS',   icono: '🛒', href: '/dashboard/tienda'       },
-  { id: 'historial',  label: 'Historial',      icono: '📋', href: '/dashboard/historial'    },
+  { id: 'historial',  label: 'Ventas',         icono: '📋', href: '/dashboard/historial'    },
   { id: 'consulta',   label: 'Consulta Placa', icono: '🔍', href: '/dashboard/consulta'     },
   { id: 'reportes',   label: 'Reportes',       icono: '📈', href: '/dashboard/reportes'     },
   { id: 'contactos',  label: 'Contactos',      icono: '👥', href: '/dashboard/contactos'    },
