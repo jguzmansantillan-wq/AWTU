@@ -47,6 +47,13 @@ export async function POST(req: NextRequest) {
 
     const calcData = await calcRes.json()
 
+    // Asegurar que los items calculados conserven la descripcion original
+    // (el endpoint /calcular a veces no la devuelve y el template PDF falla)
+    const itemsFinales = (calcData.items || []).map((ci: any, idx: number) => ({
+      ...ci,
+      descripcion: itemsCalc[idx]?.descripcion || ci.descripcion || motivo || 'Servicio',
+    }))
+
     const ahora = new Date()
     const fecha = ahora.toLocaleDateString('sv-SE', { timeZone: 'America/Lima' })
     const hora  = ahora.toLocaleTimeString('es-PE', { hour12: false, timeZone: 'America/Lima' })
@@ -85,7 +92,7 @@ export async function POST(req: NextRequest) {
         codigo:      codigo_motivo || '01',
         descripcion: motivo || 'Anulación de la operación',
       },
-      items:   calcData.items,
+      items:   itemsFinales,
       totales: calcData.totales,
     }
 
