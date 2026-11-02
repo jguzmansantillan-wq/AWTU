@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import ModalCotizador from '@/components/ModalCotizador'
 
 type Producto = { id: string; nombre: string; categoria: string; precio: number; stock: number; ubicacion: string }
 type ItemCarrito = Producto & { cantidad: number; precioEditado: number }
 type TicketData = { nombre: string; telefono: string; fecha: string; items: any[]; total: number; tallerNombre: string; metodoPago: string }
-type ProformaData = { nombre: string; telefono: string; fecha: string; items: { nombre: string; precio: number; cantidad: number }[]; total: number; tallerNombre: string }
 
 const METODOS_PAGO = [
   { key: 'efectivo',      icon: '💵', label: 'Efectivo' },
@@ -15,209 +15,6 @@ const METODOS_PAGO = [
   { key: 'tarjeta',       icon: '💳', label: 'Tarjeta' },
 ]
 
-// ── MODAL COTIZACIÓN ────────────────────────────────────────────────────────
-function ModalCotizacion({ data, onClose }: { data: ProformaData; onClose: () => void }) {
-  const [descargando, setDescargando] = useState(false)
-
-  const enviarWhatsApp = () => {
-    if (!data.telefono) { alert('Este cliente no tiene teléfono registrado'); return }
-    const tel = data.telefono.replace(/\D/g, '')
-    const lineas = data.items
-      .map(i => `  • ${i.cantidad > 1 ? `${i.cantidad}x ` : ''}${i.nombre} — S/ ${(i.precio * i.cantidad).toFixed(2)}`)
-      .join('\n')
-    const fechaFmt = data.fecha.split('-').reverse().join('/')
-    const msg = encodeURIComponent(
-      `📋 *COTIZACIÓN - ${data.tallerNombre}*\n` +
-      `📅 Fecha: ${fechaFmt}\n` +
-      `👤 Cliente: ${data.nombre || 'Sin nombre'}\n` +
-      `\n*PRODUCTOS COTIZADOS:*\n${lineas}\n\n` +
-      `*TOTAL: S/ ${data.total.toFixed(2)}*\n\n` +
-      `⚠️ Cotización válida por 7 días.\n` +
-      `¡Contáctenos para confirmar! 🛒`
-    )
-    window.open(`https://wa.me/51${tel}?text=${msg}`, '_blank')
-  }
-
-  const descargarPDF = async () => {
-    setDescargando(true)
-    try {
-      const { default: jsPDF } = await import('jspdf')
-      const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-      const W = 210
-      const fechaFmt = data.fecha.split('-').reverse().join('/')
-
-      // Header oscuro
-      doc.setFillColor(15, 23, 42)
-      doc.rect(0, 0, W, 38, 'F')
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(16)
-      doc.setFont('helvetica', 'bold')
-      doc.text(data.tallerNombre.toUpperCase(), 20, 16)
-      doc.setTextColor(52, 211, 153) // teal
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'bold')
-      doc.text('COTIZACIÓN DE PRODUCTOS', 20, 23)
-      doc.setTextColor(200, 200, 200)
-      doc.setFontSize(8)
-      doc.text(`Fecha: ${fechaFmt}`, 20, 30)
-
-      // Badge
-      doc.setFillColor(52, 211, 153)
-      doc.roundedRect(W - 55, 8, 42, 12, 3, 3, 'F')
-      doc.setTextColor(15, 23, 42)
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'bold')
-      doc.text('COTIZACIÓN', W - 50, 16.5)
-
-      // Datos cliente
-      let y = 52
-      doc.setFillColor(241, 245, 249)
-      doc.roundedRect(14, y - 8, W - 28, 22, 4, 4, 'F')
-      doc.setTextColor(100, 116, 139)
-      doc.setFontSize(7)
-      doc.setFont('helvetica', 'bold')
-      doc.text('CLIENTE', 20, y)
-      doc.setTextColor(15, 23, 42)
-      doc.setFontSize(12)
-      doc.setFont('helvetica', 'bold')
-      doc.text(data.nombre || 'CLIENTE GENERAL', 20, y + 8)
-
-      // Tabla
-      y += 24
-      doc.setDrawColor(226, 232, 240)
-      doc.setLineWidth(0.5)
-      doc.line(14, y, W - 14, y)
-      y += 8
-
-      // Header tabla
-      doc.setFillColor(15, 23, 42)
-      doc.roundedRect(14, y - 5, W - 28, 10, 2, 2, 'F')
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(7)
-      doc.setFont('helvetica', 'bold')
-      doc.text('PRODUCTO', 20, y + 1)
-      doc.text('CANT.', W - 65, y + 1, { align: 'right' })
-      doc.text('P/U', W - 42, y + 1, { align: 'right' })
-      doc.text('SUBTOTAL', W - 20, y + 1, { align: 'right' })
-      y += 12
-
-      // Filas
-      data.items.forEach((item, idx) => {
-        if (idx % 2 === 0) {
-          doc.setFillColor(248, 250, 252)
-          doc.rect(14, y - 4, W - 28, 9, 'F')
-        }
-        doc.setTextColor(15, 23, 42)
-        doc.setFontSize(9)
-        doc.setFont('helvetica', 'normal')
-        const nombre = item.nombre.length > 45 ? item.nombre.slice(0, 42) + '...' : item.nombre
-        doc.text(nombre.toUpperCase(), 20, y + 1.5)
-        doc.setFont('helvetica', 'bold')
-        doc.text(String(item.cantidad), W - 65, y + 1.5, { align: 'right' })
-        doc.text(`S/ ${item.precio.toFixed(2)}`, W - 42, y + 1.5, { align: 'right' })
-        doc.text(`S/ ${(item.precio * item.cantidad).toFixed(2)}`, W - 20, y + 1.5, { align: 'right' })
-        y += 10
-      })
-
-      // Total
-      y += 4
-      doc.setFillColor(15, 23, 42)
-      doc.roundedRect(W - 75, y - 5, 61, 16, 3, 3, 'F')
-      doc.setTextColor(100, 116, 139)
-      doc.setFontSize(7)
-      doc.setFont('helvetica', 'bold')
-      doc.text('TOTAL', W - 68, y + 1)
-      doc.setTextColor(255, 255, 255)
-      doc.setFontSize(14)
-      doc.text(`S/ ${data.total.toFixed(2)}`, W - 20, y + 8, { align: 'right' })
-
-      // Validez
-      y += 26
-      doc.setFillColor(255, 251, 235)
-      doc.roundedRect(14, y - 5, W - 28, 14, 3, 3, 'F')
-      doc.setTextColor(146, 64, 14)
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'bold')
-      doc.text('⚠  Cotización válida por 7 días a partir de la fecha de emisión.', 20, y + 3)
-
-      // Footer
-      doc.setFillColor(241, 245, 249)
-      doc.rect(0, 277, W, 20, 'F')
-      doc.setTextColor(148, 163, 184)
-      doc.setFontSize(7)
-      doc.setFont('helvetica', 'normal')
-      doc.text(`${data.tallerNombre} · Cotización generada el ${fechaFmt}`, W / 2, 287, { align: 'center' })
-
-      doc.save(`Cotizacion_Productos_${data.nombre || 'Cliente'}_${data.fecha}.pdf`)
-    } catch (err) {
-      console.error('Error generando PDF:', err)
-      alert('Error al generar el PDF')
-    }
-    setDescargando(false)
-  }
-
-  return (
-    <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.65)' }}>
-      <div className="rounded-3xl p-8 max-w-sm w-full relative" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-        <button onClick={onClose}
-          className="absolute top-4 right-4 font-bold text-xl transition-colors" style={{ color: 'var(--text-muted)' }}
-          onMouseEnter={e => e.currentTarget.style.color = 'var(--text)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>✕</button>
-
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.35)' }}>
-            <span className="text-3xl">📋</span>
-          </div>
-          <h3 className="font-display font-bold text-lg uppercase tracking-tight" style={{ color: 'var(--text)' }}>Cotización Guardada</h3>
-          <p className="text-[10px] font-bold uppercase tracking-widest mt-1" style={{ color: 'var(--text-muted)' }}>Guardado en Proformas · {data.fecha.split('-').reverse().join('/')}</p>
-        </div>
-
-        {/* Datos */}
-        <div className="space-y-3 mb-6">
-          {data.nombre && (
-            <div className="p-3 rounded-xl" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-              <p className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Cliente</p>
-              <p className="font-display font-bold uppercase" style={{ color: 'var(--text)' }}>{data.nombre}</p>
-            </div>
-          )}
-          <div className="p-3 rounded-xl" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-            <p className="text-[9px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Productos ({data.items.length})</p>
-            <div className="space-y-1">
-              {data.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between">
-                  <span className="text-xs font-semibold uppercase" style={{ color: 'var(--text)' }}>
-                    {item.cantidad > 1 ? `${item.cantidad}× ` : ''}{item.nombre}
-                  </span>
-                  <span className="font-mono text-xs font-bold shrink-0 ml-2" style={{ color: 'var(--text)' }}>
-                    S/ {(item.precio * item.cantidad).toFixed(2)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.3)' }}>
-            <span className="font-display font-bold text-sm uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Total</span>
-            <span className="font-mono font-bold text-2xl" style={{ color: 'var(--accent-teal)' }}>S/ {data.total.toFixed(2)}</span>
-          </div>
-        </div>
-
-        {/* Botones */}
-        <div className="flex flex-col gap-3">
-          <button onClick={enviarWhatsApp}
-            className="font-display w-full active:scale-95 font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
-            style={{ background: '#25d366', color: '#ffffff' }}>
-            💬 Enviar por WhatsApp
-          </button>
-          <button onClick={descargarPDF} disabled={descargando}
-            className="font-display w-full active:scale-95 font-bold py-4 rounded-2xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm disabled:opacity-50"
-            style={{ background: 'rgba(52,211,153,0.12)', color: 'var(--accent-teal)', border: '1px solid rgba(52,211,153,0.35)' }}>
-            {descargando ? '⏳ Generando PDF...' : '📥 Descargar PDF'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
 // ────────────────────────────────────────────────────────────────────────────
 
 export default function TiendaPage() {
@@ -232,10 +29,9 @@ export default function TiendaPage() {
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
   const [metodoPago, setMetodoPago] = useState('efectivo')
   const [loading, setLoading] = useState(false)
-  const [loadingCotizar, setLoadingCotizar] = useState(false)
   const [error, setError] = useState('')
   const [ticket, setTicket] = useState<TicketData | null>(null)
-  const [proformaModal, setProformaModal] = useState<ProformaData | null>(null)
+  const [showCotizador, setShowCotizador] = useState(false)
 
   useEffect(() => {
     const init = async () => {
@@ -291,43 +87,6 @@ export default function TiendaPage() {
 
   const total = carrito.reduce((s, i) => s + i.precioEditado * i.cantidad, 0)
   const totalItems = carrito.reduce((s, i) => s + i.cantidad, 0)
-
-  // Guardar cotización en proformas
-  const cotizar = async () => {
-    if (carrito.length === 0) return
-    if (!tallerID) return
-    setLoadingCotizar(true); setError('')
-
-    const items = carrito.map(i => ({
-      nombre: i.nombre,
-      precio: i.precioEditado,
-      cantidad: i.cantidad,
-      subtotal: i.precioEditado * i.cantidad,
-    }))
-
-    const { error: e } = await supabase.from('proformas').insert({
-      taller_id: tallerID,
-      nombre: clienteNombre || 'Sin nombre',
-      telefono: clienteTelefono || null,
-      placa: null,
-      items,
-      monto: total,
-      fecha,
-      tipo: 'producto',
-    })
-
-    if (e) { setError('Error al guardar cotización: ' + e.message); setLoadingCotizar(false); return }
-
-    setProformaModal({
-      nombre: clienteNombre || 'Sin nombre',
-      telefono: clienteTelefono,
-      fecha,
-      items,
-      total,
-      tallerNombre,
-    })
-    setLoadingCotizar(false)
-  }
 
   const handleVender = async () => {
     if (carrito.length === 0) return
@@ -403,8 +162,8 @@ export default function TiendaPage() {
   return (
     <div className="max-w-7xl mx-auto">
 
-      {/* Modal cotización */}
-      {proformaModal && <ModalCotizacion data={proformaModal} onClose={() => setProformaModal(null)} />}
+      {/* Modal cotización multi-opción */}
+      {showCotizador && <ModalCotizador tallerID={tallerID} tallerNombre={tallerNombre} onClose={() => setShowCotizador(false)} />}
 
       {/* Modal ticket de venta */}
       {ticket && (
@@ -684,10 +443,10 @@ export default function TiendaPage() {
             {/* ── BOTONES ─────────────────────────────────────────── */}
             <div className="flex flex-col gap-2">
               {/* Cotizar */}
-              <button onClick={cotizar} disabled={loadingCotizar || carrito.length === 0}
-                className="font-display w-full active:scale-95 disabled:opacity-40 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+              <button onClick={() => setShowCotizador(true)}
+                className="font-display w-full active:scale-95 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
                 style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}>
-                📋 {loadingCotizar ? 'Guardando...' : 'Cotizar'}
+                📋 Cotizar
               </button>
               {/* Procesar venta */}
               <button onClick={handleVender} disabled={loading || carrito.length === 0}
