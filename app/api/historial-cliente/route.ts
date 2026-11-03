@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
 
   const supabase = createClient(supabaseUrl, serviceKey)
 
+  // 1. Buscar el taller por token
   const { data: taller, error: tallerError } = await supabase
     .from('talleres')
     .select('id, nombre, logo_url, direccion, telefono')
@@ -29,6 +30,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Taller no encontrado' }, { status: 404 })
   }
 
+  // Si no viene placa, solo devolver info del taller (para que la página pueda mostrar el header)
   if (!placa) {
     return NextResponse.json({
       taller: {
@@ -41,6 +43,7 @@ export async function GET(req: NextRequest) {
     })
   }
 
+  // 2. Buscar servicios por placa en ese taller
   const placaUpper = placa.trim().toUpperCase().replace(/\s+/g, '')
 
   const { data: servicios, error: serviciosError } = await supabase
