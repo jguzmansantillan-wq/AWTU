@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 
 type TallerInfo = {
   nombre: string
@@ -30,7 +30,8 @@ type Servicio = {
   anio: string
 }
 
-export default function HistorialClientePublico({ params }: { params: { token: string } }) {
+export default function HistorialClientePublico({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = use(params)
   const [placa, setPlaca] = useState('')
   const [servicios, setServicios] = useState<Servicio[]>([])
   const [taller, setTaller] = useState<TallerInfo | null>(null)
@@ -40,13 +41,14 @@ export default function HistorialClientePublico({ params }: { params: { token: s
 
   // Cargar datos del taller al abrir la página
   useEffect(() => {
-    fetch(`/api/historial-cliente?token=${encodeURIComponent(params.token)}`)
+    if (!token) return
+    fetch(`/api/historial-cliente?token=${encodeURIComponent(token)}`)
       .then(res => res.json())
       .then(data => {
         if (data.taller) setTaller(data.taller)
       })
       .catch(() => {})
-  }, [params.token])
+  }, [token])
 
   const buscar = async () => {
     const placaLimpia = placa.trim().toUpperCase().replace(/\s+/g, '')
@@ -58,7 +60,7 @@ export default function HistorialClientePublico({ params }: { params: { token: s
 
     try {
       const res = await fetch(
-        `/api/historial-cliente?token=${encodeURIComponent(params.token)}&placa=${encodeURIComponent(placaLimpia)}`
+        `/api/historial-cliente?token=${encodeURIComponent(token)}&placa=${encodeURIComponent(placaLimpia)}`
       )
       const data = await res.json()
 
