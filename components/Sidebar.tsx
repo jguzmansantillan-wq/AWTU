@@ -8,16 +8,17 @@ interface Props {
 }
 
 const modulos = [
-  { id: 'resumen',    label: 'Resumen',        icono: '📊', href: '/dashboard'             },
-  { id: 'atencion',   label: 'Atención',       icono: '🔧', href: '/dashboard/atencion'     },
-  { id: 'tienda',     label: 'Tienda / POS',   icono: '🛒', href: '/dashboard/tienda'       },
-  { id: 'historial',  label: 'Ventas',         icono: '📋', href: '/dashboard/historial'    },
-  { id: 'consulta',   label: 'Consulta Placa', icono: '🔍', href: '/dashboard/consulta'     },
-  { id: 'reportes',   label: 'Reportes',       icono: '📈', href: '/dashboard/reportes'     },
-  { id: 'contactos',  label: 'Contactos',      icono: '👥', href: '/dashboard/contactos'    },
-  { id: 'inventario', label: 'Inventario',     icono: '📦', href: '/dashboard/inventario'   },
-  { id: 'documentos', label: 'Documentos',     icono: '🧾', href: '/dashboard/documentos'   },
-  { id: 'config',     label: 'Config',         icono: '⚙️', href: '/dashboard/config'       },
+  { id: 'resumen',          label: 'Resumen',          icono: '📊', href: '/dashboard'                    },
+  { id: 'atencion',         label: 'Atención',         icono: '🔧', href: '/dashboard/atencion'           },
+  { id: 'tienda',           label: 'Tienda / POS',     icono: '🛒', href: '/dashboard/tienda'             },
+  { id: 'historial',        label: 'Ventas',           icono: '📋', href: '/dashboard/historial'          },
+  { id: 'consulta',         label: 'Consulta Placa',   icono: '🔍', href: '/dashboard/consulta'           },
+  { id: 'reportes',         label: 'Reportes',         icono: '📈', href: '/dashboard/reportes'           },
+  { id: 'contactos',        label: 'Contactos',        icono: '👥', href: '/dashboard/contactos'          },
+  { id: 'inventario',       label: 'Inventario',       icono: '📦', href: '/dashboard/inventario'         },
+  { id: 'historial-cliente',label: 'Hist. Cliente',    icono: '🔗', href: '/dashboard/historial-cliente'  },
+  { id: 'documentos',       label: 'Documentos',       icono: '🧾', href: '/dashboard/documentos'         },
+  { id: 'config',           label: 'Config',           icono: '⚙️', href: '/dashboard/config'             },
 ]
 
 const planLabel: Record<string, string> = {

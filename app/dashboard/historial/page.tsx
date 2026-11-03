@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import LinkHistorialCliente from '@/components/LinkHistorialCliente'
 
 type Servicio = {
   id: string; placa: string; nombre: string; marca: string; modelo: string
@@ -1285,13 +1284,6 @@ export default function HistorialPage() {
         </button>
       </div>
 
-      {/* ── LINK HISTORIAL CLIENTE ── */}
-      {tallerInfo.id && (
-        <div className="mb-5">
-          <LinkHistorialCliente tallerId={tallerInfo.id} />
-        </div>
-      )}
-
       {/* ── TABS DE FILTRO ── */}
       <div className="flex flex-wrap gap-2 mb-4">
         {filtros.map(f => (
@@ -1356,6 +1348,7 @@ export default function HistorialPage() {
             const fecha = r.fecha || new Date(r.created_at).toLocaleDateString('es-PE')
             const ct = colorTipo[r.tipo]
             const multiOp = esProforma && esMultiOpcion(p.items)
+            const yaFacturado = esServicio && s.estado_facturacion === 'Facturado'
 
             return (
               <div key={r.id} className="card flex items-center gap-4 transition-all"
