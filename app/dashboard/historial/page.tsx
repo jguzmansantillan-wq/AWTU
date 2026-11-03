@@ -51,9 +51,32 @@ const esMultiOpcion = (items: any[]): boolean =>
 const resumenItems = (items: any[]): string => {
   if (!Array.isArray(items) || items.length === 0) return ''
   if (esMultiOpcion(items)) {
-    return items.map((o: OpcionProforma) => o.titulo || 'Opción').join(' · ')
+    // Para multi-opción: muestra los primeros items de la primera opción
+    const primeraOpcion: OpcionProforma = items[0]
+    const subItems = primeraOpcion?.items || []
+    const detalle = subItems
+      .filter((i: any) => i.descripcion?.trim())
+      .slice(0, 3)
+      .map((i: any) => i.descripcion.trim())
+      .join(' · ')
+    const sufijo = items.length > 1 ? ` +${items.length - 1} opción(es)` : ''
+    return detalle + sufijo || items.map((o: OpcionProforma) => o.titulo || 'Opción').join(' · ')
   }
-  return items.slice(0, 2).map((i: any) => `${i.cantidad ?? ''}x ${i.nombre ?? i.descripcion ?? ''}`.trim()).join(', ')
+  return items.slice(0, 2).map((i: any) => `${i.cantidad ? i.cantidad + 'x ' : ''}${i.nombre ?? i.descripcion ?? ''}`.trim()).join(', ')
+}
+
+// Monto total de una proforma (multi-opción o clásica)
+const montoProforma = (p: Proforma): number => {
+  if (!p.monto || p.monto === 0) {
+    if (esMultiOpcion(p.items)) {
+      // Suma de todos los totales de las opciones, o el mayor
+      const totales = p.items.map((o: OpcionProforma) =>
+        o.total || (o.items || []).reduce((s: number, i: any) => s + (i.precio || 0), 0)
+      )
+      return totales.reduce((a: number, b: number) => a + b, 0)
+    }
+  }
+  return p.monto || 0
 }
 
 const toTitleCase = (str: string) =>
@@ -774,20 +797,8 @@ export default function HistorialPage() {
     }
   }
 
-  // Al hacer click en 🧾: si ya tiene comprobante → mostrar ModalAcciones; si no → abrir ModalEmitir
-  const handleClickComprobante = async (r: Registro) => {
-    if (r.tipo === 'servicio') {
-      const s = r as Servicio
-      if (s.estado_facturacion === 'Facturado') {
-        // Buscar el comprobante existente
-        const { data: comp } = await supabase.from('comprobantes')
-          .select('*').eq('servicio_id', s.id).order('created_at', { ascending: false }).limit(1).single()
-        if (comp) {
-          setModalAcciones(comp as Comprobante)
-          return
-        }
-      }
-    }
+  // Al hacer click en 🧾: siempre abre el modal de emisión (igual que Ventas POS)
+  const handleClickComprobante = (r: Registro) => {
     setModalEmitir(r)
   }
 
@@ -1389,7 +1400,7 @@ export default function HistorialPage() {
                 {/* Monto + acciones */}
                 <div className="text-right shrink-0">
                   <p className="font-mono font-bold text-lg" style={{ color: ct.accent }}>
-                    S/ {(r.monto || 0).toFixed(2)}
+                    S/ {(esProforma ? montoProforma(p) : (r.monto || 0)).toFixed(2)}
                   </p>
                   <p className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>{fecha}</p>
                   {esServicio && s.km && (
@@ -1430,14 +1441,12 @@ export default function HistorialPage() {
                         style={{ background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)' }}>🎫</button>
                     )}
 
-                    {/* Botón 🧾 — si ya facturado muestra acciones, si no abre emisión */}
+                    {/* Botón 🧾 — siempre abre modal de emisión */}
                     <button
                       onClick={() => handleClickComprobante(r)}
-                      title={yaFacturado ? 'Ver comprobante' : 'Emitir comprobante'}
+                      title="Emitir comprobante"
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
-                      style={yaFacturado
-                        ? { background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)' }
-                        : { background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+                      style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
                       🧾
                     </button>
 

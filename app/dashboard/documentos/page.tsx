@@ -400,7 +400,7 @@ export default function DocumentosPage() {
   const [sucursales,      setSucursales]      = useState<Sucursal[]>([])
   const [operaciones,     setOperaciones]     = useState<Operacion[]>([])
   const [comprobantes,    setComprobantes]    = useState<Comprobante[]>([])
-  const [vista,           setVista]           = useState<'operaciones' | 'emitir' | 'historial'>('operaciones')
+  const [vista,           setVista]           = useState<'operaciones' | 'emitir' | 'historial'>('historial')
   const [opSeleccionada,  setOpSeleccionada]  = useState<Operacion | null>(null)
   const [loading,         setLoading]         = useState(false)
   const [ok,              setOk]              = useState(false)
@@ -820,18 +820,10 @@ export default function DocumentosPage() {
       <div className="flex items-end justify-between mb-5">
         <div>
           <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900">Documentos</h2>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Emisión de comprobantes electrónicos SUNAT</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Comprobantes electrónicos emitidos · SUNAT</p>
         </div>
-        <div className="flex gap-2">
-          {[
-            { key: 'operaciones', label: `📋 Operaciones (${operaciones.length})` },
-            { key: 'historial',   label: `🧾 Comprobantes (${comprobantes.length})` },
-          ].map(v => (
-            <button key={v.key} onClick={() => setVista(v.key as any)}
-              className={`px-4 py-2.5 text-xs rounded-xl font-black uppercase tracking-widest transition-all ${
-                vista === v.key ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}>{v.label}</button>
-          ))}
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{comprobantes.length} emitidos</span>
         </div>
       </div>
 
