@@ -2,346 +2,295 @@
 
 import { useState } from 'react'
 
-interface Taller {
+type TallerInfo = {
   nombre: string
-  logo_url?: string
-  direccion?: string
-  telefono?: string
+  logo_url: string
+  direccion: string
+  telefono: string
 }
 
-interface Servicio {
+type Servicio = {
   id: string
   fecha: string
-  placa: string
-  marca?: string
-  modelo?: string
-  anio?: number
-  km?: number
-  proximo_km?: number
-  aceite_marca?: string
-  aceite_visc?: string
-  aceite_cantidad?: number
-  filtro_aceite?: boolean
-  filtro_aire?: boolean
-  caja_marca?: string
-  refrig_marca?: string
-  bujia_marca?: string
-  otros_servicios?: string
-  created_at: string
+  km: number
+  proximo_km: number
+  aceite_marca: string
+  aceite_visc: string
+  aceite_cantidad: number
+  filtro_aceite: string
+  filtro_aire: string
+  caja_marca: string
+  caja_tipo: string
+  refrig_marca: string
+  refrig_color: string
+  bujia_marca: string
+  otros_servicios: string
+  marca: string
+  modelo: string
+  anio: string
 }
 
-interface HistorialData {
-  taller: Taller
-  placa: string
-  servicios: Servicio[]
-}
-
-export default function HistorialClientePage({ params }: { params: { token: string } }) {
-  const { token } = params
-
+export default function HistorialClientePublico({ params }: { params: { token: string } }) {
   const [placa, setPlaca] = useState('')
+  const [servicios, setServicios] = useState<Servicio[]>([])
+  const [taller, setTaller] = useState<TallerInfo | null>(null)
+  const [buscado, setBuscado] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [data, setData] = useState<HistorialData | null>(null)
 
-  const buscar = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const placaNorm = placa.trim().toUpperCase().replace(/\s/g, '')
-    if (!placaNorm) return
-
+  const buscar = async () => {
+    const placaLimpia = placa.trim().toUpperCase().replace(/\s+/g, '')
+    if (!placaLimpia) { setError('Ingresa tu número de placa'); return }
     setLoading(true)
     setError('')
-    setData(null)
+    setBuscado(false)
+    setServicios([])
+    setTaller(null)
 
     try {
-      const res = await fetch(`/api/historial-cliente?token=${token}&placa=${placaNorm}`)
-      const json = await res.json()
+      const res = await fetch(
+        `/api/historial-cliente?token=${encodeURIComponent(params.token)}&placa=${encodeURIComponent(placaLimpia)}`
+      )
+      const data = await res.json()
+
       if (!res.ok) {
-        setError(json.error || 'No se encontraron registros')
-      } else {
-        setData(json)
+        setError(data.error || 'No se encontraron registros para esta placa')
+        setLoading(false)
+        return
       }
+
+      setTaller(data.taller || null)
+      setServicios(data.servicios || [])
+      setBuscado(true)
     } catch {
-      setError('Error de conexión. Intenta nuevamente.')
+      setError('Error de conexión. Verifica tu internet e intenta nuevamente.')
     } finally {
       setLoading(false)
     }
   }
 
-  const formatFecha = (fecha: string) => {
-    if (!fecha) return '—'
-    try {
-      return new Date(fecha + 'T12:00:00').toLocaleDateString('es-PE', {
-        day: '2-digit', month: 'long', year: 'numeric',
-      })
-    } catch {
-      return fecha
-    }
+  const agendarCita = () => {
+    if (!taller?.telefono) return
+    const tel = taller.telefono.replace(/\D/g, '')
+    const texto = encodeURIComponent(
+      `Hola${taller.nombre ? ` *${taller.nombre}*` : ''}, quiero agendar una cita para el mantenimiento de mi vehículo 🚗`
+    )
+    window.open(`https://wa.me/51${tel}?text=${texto}`, '_blank')
   }
 
-  const formatKm = (km?: number) =>
-    km ? `${km.toLocaleString('es-PE')} km` : '—'
-
   return (
-    <div style={{ minHeight: '100vh', background: '#0f1117', color: '#e8eaf0', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {/* Header */}
-      <div style={{ background: '#161b27', borderBottom: '1px solid #1e2535', padding: '16px 20px' }}>
-        <div style={{ maxWidth: 640, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 12 }}>
-          {data?.taller.logo_url && (
-            <img src={data.taller.logo_url} alt="logo" style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
-          )}
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 16, color: '#e8eaf0' }}>
-              {data?.taller.nombre ?? 'Historial de Mantenimientos'}
+    <div style={{ minHeight: '100vh', background: '#0f172a', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+
+      {/* Header del taller */}
+      <div style={{ background: '#1e293b', borderBottom: '1px solid #334155', padding: '20px 20px 16px' }}>
+        <div style={{ maxWidth: 480, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 14 }}>
+          {taller?.logo_url ? (
+            <img
+              src={taller.logo_url}
+              alt={taller.nombre}
+              style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'contain', background: '#fff', padding: 4, flexShrink: 0 }}
+            />
+          ) : (
+            <div style={{ width: 56, height: 56, borderRadius: 12, background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>
+              🔧
             </div>
-            {data?.taller.direccion && (
-              <div style={{ fontSize: 12, color: '#7b8099', marginTop: 2 }}>{data.taller.direccion}</div>
+          )}
+          <div style={{ minWidth: 0 }}>
+            <h1 style={{ color: '#f1f5f9', fontWeight: 900, fontSize: 18, margin: 0, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>
+              {taller?.nombre || 'Historial de Mantenimiento'}
+            </h1>
+            {taller?.direccion && (
+              <p style={{ color: '#94a3b8', fontSize: 12, fontWeight: 600, margin: '3px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                📍 {taller.direccion}
+              </p>
+            )}
+            {taller?.telefono && (
+              <p style={{ color: '#94a3b8', fontSize: 12, fontWeight: 600, margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                📞 {taller.telefono}
+              </p>
+            )}
+            {!taller && (
+              <p style={{ color: '#64748b', fontSize: 12, fontWeight: 600, margin: '3px 0 0' }}>
+                Consulta el historial de tu vehículo
+              </p>
             )}
           </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: 640, margin: '0 auto', padding: '32px 20px' }}>
+      <div style={{ maxWidth: 480, margin: '0 auto', padding: '24px 16px' }}>
 
-        {/* Formulario de búsqueda */}
-        {!data && (
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🔍</div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8, color: '#e8eaf0' }}>
-              Consulta tu historial
-            </h1>
-            <p style={{ color: '#7b8099', fontSize: 14, marginBottom: 28 }}>
-              Ingresa tu placa para ver el historial de mantenimientos de tu vehículo
-            </p>
-            <form onSubmit={buscar} style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-              <input
-                value={placa}
-                onChange={e => setPlaca(e.target.value.toUpperCase())}
-                placeholder="ABC-123"
-                maxLength={8}
-                style={{
-                  background: '#1e2535',
-                  border: '1px solid #2a3147',
-                  borderRadius: 10,
-                  padding: '12px 16px',
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: '#e8eaf0',
-                  letterSpacing: 3,
-                  width: 160,
-                  textAlign: 'center',
-                  outline: 'none',
-                }}
-              />
-              <button
-                type="submit"
-                disabled={loading || !placa.trim()}
-                style={{
-                  background: loading || !placa.trim() ? '#2a3147' : '#3b82f6',
-                  color: loading || !placa.trim() ? '#7b8099' : '#fff',
-                  border: 'none',
-                  borderRadius: 10,
-                  padding: '12px 24px',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: loading || !placa.trim() ? 'not-allowed' : 'pointer',
-                  transition: 'background 0.2s',
-                }}
-              >
-                {loading ? 'Buscando…' : 'Consultar'}
-              </button>
-            </form>
-
-            {error && (
-              <div style={{
-                marginTop: 20,
-                background: '#1e1a2e',
-                border: '1px solid #3b2060',
-                borderRadius: 10,
-                padding: '14px 20px',
-                color: '#c4a5f0',
-                fontSize: 14,
-              }}>
-                {error}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Resultados */}
-        {data && (
-          <>
-            {/* Info vehículo */}
-            <div style={{
-              background: '#161b27',
-              border: '1px solid #1e2535',
-              borderRadius: 12,
-              padding: '16px 20px',
-              marginBottom: 24,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <div>
-                <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: 2, color: '#e8eaf0' }}>
-                  {data.placa}
-                </div>
-                {data.servicios[0] && (
-                  <div style={{ color: '#7b8099', fontSize: 13, marginTop: 4 }}>
-                    {[data.servicios[0].marca, data.servicios[0].modelo, data.servicios[0].anio]
-                      .filter(Boolean).join(' · ')}
-                  </div>
-                )}
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 24, fontWeight: 700, color: '#3b82f6' }}>
-                  {data.servicios.length}
-                </div>
-                <div style={{ fontSize: 12, color: '#7b8099' }}>
-                  {data.servicios.length === 1 ? 'mantenimiento' : 'mantenimientos'}
-                </div>
-              </div>
-            </div>
-
-            {/* Botón buscar otra placa */}
-            <button
-              onClick={() => { setData(null); setPlaca(''); setError('') }}
+        {/* Buscador */}
+        <div style={{ background: '#1e293b', borderRadius: 20, padding: '24px 20px', border: '1px solid #334155', marginBottom: 20 }}>
+          <p style={{ color: '#cbd5e1', fontWeight: 800, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.15em', margin: '0 0 16px' }}>
+            Ingresa tu placa
+          </p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input
+              value={placa}
+              onChange={e => { setPlaca(e.target.value.toUpperCase()); setError('') }}
+              onKeyDown={e => e.key === 'Enter' && buscar()}
+              placeholder="Ej: ABC-123"
+              maxLength={8}
               style={{
-                background: 'transparent',
-                border: '1px solid #2a3147',
-                borderRadius: 8,
-                padding: '8px 16px',
-                fontSize: 13,
-                color: '#7b8099',
-                cursor: 'pointer',
-                marginBottom: 24,
+                flex: 1,
+                background: '#0f172a',
+                border: '2px solid #334155',
+                borderRadius: 12,
+                padding: '14px 16px',
+                color: '#f1f5f9',
+                fontWeight: 900,
+                fontSize: 18,
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                outline: 'none',
+                textAlign: 'center',
+              }}
+            />
+            <button
+              onClick={buscar}
+              disabled={loading}
+              style={{
+                background: loading ? '#334155' : '#ff6a1f',
+                color: loading ? '#94a3b8' : '#fff',
+                border: 'none',
+                borderRadius: 12,
+                padding: '14px 20px',
+                fontWeight: 900,
+                fontSize: 14,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s',
               }}
             >
-              ← Consultar otra placa
+              {loading ? '⏳' : '🔍 Buscar'}
             </button>
-
-            {/* Lista de servicios */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {data.servicios.map((s, idx) => (
-                <ServiceCard key={s.id} s={s} idx={idx} formatFecha={formatFecha} formatKm={formatKm} />
-              ))}
-            </div>
-
-            {/* Footer */}
-            <div style={{ textAlign: 'center', marginTop: 40, color: '#4a5168', fontSize: 12 }}>
-              Historial proporcionado por {data.taller.nombre}
-              {data.taller.telefono && (
-                <> · <a href={`tel:${data.taller.telefono}`} style={{ color: '#4a5168' }}>{data.taller.telefono}</a></>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function ServiceCard({ s, idx, formatFecha, formatKm }: {
-  s: Servicio
-  idx: number
-  formatFecha: (f: string) => string
-  formatKm: (k?: number) => string
-}) {
-  const [open, setOpen] = useState(idx === 0)
-
-  const tags: string[] = []
-  if (s.aceite_marca) tags.push(`Aceite ${s.aceite_marca}${s.aceite_visc ? ' ' + s.aceite_visc : ''}`)
-  if (s.filtro_aceite) tags.push('Filtro aceite')
-  if (s.filtro_aire) tags.push('Filtro aire')
-  if (s.caja_marca) tags.push(`Caja ${s.caja_marca}`)
-  if (s.refrig_marca) tags.push(`Refrigerante ${s.refrig_marca}`)
-  if (s.bujia_marca) tags.push(`Bujías ${s.bujia_marca}`)
-
-  return (
-    <div style={{
-      background: '#161b27',
-      border: '1px solid #1e2535',
-      borderRadius: 12,
-      overflow: 'hidden',
-    }}>
-      {/* Header card */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: '100%',
-          background: 'none',
-          border: 'none',
-          padding: '14px 18px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          cursor: 'pointer',
-          color: '#e8eaf0',
-          textAlign: 'left',
-        }}
-      >
-        <div>
-          <div style={{ fontWeight: 600, fontSize: 14 }}>{formatFecha(s.fecha)}</div>
-          <div style={{ fontSize: 12, color: '#7b8099', marginTop: 3 }}>
-            {formatKm(s.km)}
-            {s.proximo_km ? ` · próximo: ${s.proximo_km.toLocaleString('es-PE')} km` : ''}
           </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {tags.length > 0 && (
-            <span style={{
-              background: '#1a2540',
-              color: '#6b88c4',
-              borderRadius: 6,
-              padding: '3px 8px',
-              fontSize: 11,
-              fontWeight: 600,
-            }}>
-              {tags.length} servicios
-            </span>
-          )}
-          <span style={{ color: '#4a5168', fontSize: 16 }}>{open ? '▲' : '▼'}</span>
-        </div>
-      </button>
 
-      {/* Detalle expandible */}
-      {open && (
-        <div style={{ padding: '0 18px 16px', borderTop: '1px solid #1e2535' }}>
-          {tags.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, marginBottom: s.otros_servicios ? 12 : 0 }}>
-              {tags.map(tag => (
-                <span key={tag} style={{
-                  background: '#1a2540',
-                  color: '#8ba4d8',
-                  border: '1px solid #243050',
-                  borderRadius: 6,
-                  padding: '4px 10px',
-                  fontSize: 12,
-                }}>
-                  {tag}
-                </span>
+          {error && (
+            <div style={{ marginTop: 14, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 14px' }}>
+              <p style={{ color: '#fca5a5', fontSize: 13, fontWeight: 700, margin: 0 }}>⚠️ {error}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Sin resultados */}
+        {buscado && servicios.length === 0 && !error && (
+          <div style={{ background: '#1e293b', borderRadius: 20, padding: 28, border: '1px solid #334155', textAlign: 'center', marginBottom: 20 }}>
+            <p style={{ fontSize: 40, margin: '0 0 12px' }}>🔍</p>
+            <p style={{ color: '#f1f5f9', fontWeight: 800, fontSize: 15, margin: '0 0 8px', textTransform: 'uppercase' }}>
+              Sin registros
+            </p>
+            <p style={{ color: '#64748b', fontSize: 13, fontWeight: 600, margin: 0 }}>
+              No encontramos servicios para la placa <strong style={{ color: '#94a3b8' }}>{placa}</strong>
+            </p>
+          </div>
+        )}
+
+        {/* Lista de servicios */}
+        {servicios.length > 0 && (
+          <div>
+            <p style={{ color: '#64748b', fontWeight: 800, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.2em', margin: '0 0 12px 4px' }}>
+              {servicios.length} servicio{servicios.length !== 1 ? 's' : ''} registrado{servicios.length !== 1 ? 's' : ''}
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {servicios.map((s, idx) => (
+                <div key={s.id} style={{ background: '#1e293b', borderRadius: 16, border: '1px solid #334155', overflow: 'hidden' }}>
+
+                  {/* Cabecera del servicio */}
+                  <div style={{ background: '#0f172a', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 28, height: 28, background: '#ff6a1f', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                        {servicios.length - idx}
+                      </div>
+                      <div>
+                        <p style={{ color: '#f1f5f9', fontWeight: 900, fontSize: 14, margin: 0 }}>
+                          {s.fecha ? s.fecha.split('-').reverse().join('/') : '—'}
+                        </p>
+                        <p style={{ color: '#64748b', fontSize: 11, fontWeight: 600, margin: 0 }}>
+                          {s.marca} {s.modelo} {s.anio ? `(${s.anio})` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    {s.km > 0 && (
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ color: '#94a3b8', fontSize: 11, fontWeight: 700, margin: 0 }}>KM</p>
+                        <p style={{ color: '#f1f5f9', fontWeight: 900, fontSize: 14, margin: 0 }}>{s.km.toLocaleString()}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Detalle */}
+                  <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {[
+                      s.aceite_marca && { icon: '🛢️', label: 'Aceite', value: `${s.aceite_marca} ${s.aceite_visc || ''}${s.aceite_cantidad ? ` · ${s.aceite_cantidad}L` : ''}`.trim() },
+                      (s.filtro_aceite || s.filtro_aire) && { icon: '🔵', label: 'Filtros', value: [s.filtro_aceite ? `Aceite: ${s.filtro_aceite}` : '', s.filtro_aire ? `Aire: ${s.filtro_aire}` : ''].filter(Boolean).join(' · ') },
+                      s.caja_marca && { icon: '⚙️', label: 'Aceite Caja', value: `${s.caja_marca}${s.caja_tipo ? ` ${s.caja_tipo}` : ''}` },
+                      s.refrig_marca && { icon: '🌡️', label: 'Refrigerante', value: `${s.refrig_marca}${s.refrig_color ? ` ${s.refrig_color}` : ''}` },
+                      s.bujia_marca && { icon: '⚡', label: 'Bujías', value: s.bujia_marca },
+                      s.otros_servicios && { icon: '🔧', label: 'Otros', value: s.otros_servicios },
+                    ].filter(Boolean).map((item: any, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '8px 12px', background: '#0f172a', borderRadius: 10 }}>
+                        <span style={{ fontSize: 14, flexShrink: 0, marginTop: 1 }}>{item.icon}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ color: '#64748b', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 2px' }}>{item.label}</p>
+                          <p style={{ color: '#cbd5e1', fontSize: 13, fontWeight: 700, margin: 0 }}>{item.value}</p>
+                        </div>
+                      </div>
+                    ))}
+
+                    {s.proximo_km > 0 && (
+                      <div style={{ marginTop: 4, background: 'rgba(255,106,31,0.08)', border: '1px solid rgba(255,106,31,0.2)', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 14 }}>📌</span>
+                        <div>
+                          <p style={{ color: '#94a3b8', fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 1px' }}>Próximo servicio</p>
+                          <p style={{ color: '#ff6a1f', fontSize: 13, fontWeight: 900, margin: 0 }}>a los {s.proximo_km.toLocaleString()} km</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               ))}
             </div>
-          )}
+          </div>
+        )}
 
-          {s.otros_servicios && (
-            <div style={{ marginTop: 10 }}>
-              <div style={{ fontSize: 11, color: '#4a5168', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>
-                Otros servicios
-              </div>
-              <div style={{ fontSize: 13, color: '#a0a8c0', lineHeight: 1.6 }}>
-                {s.otros_servicios}
-              </div>
-            </div>
-          )}
+        {/* Botón Agenda tu cita — solo si el taller tiene teléfono */}
+        {taller?.telefono && (
+          <div style={{ marginTop: 24 }}>
+            <button
+              onClick={agendarCita}
+              style={{
+                width: '100%',
+                background: '#25d366',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 16,
+                padding: '18px 24px',
+                fontWeight: 900,
+                fontSize: 16,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                letterSpacing: '0.03em',
+                boxShadow: '0 4px 20px rgba(37,211,102,0.3)',
+              }}
+            >
+              💬 Agenda tu cita por WhatsApp
+            </button>
+          </div>
+        )}
 
-          {tags.length === 0 && !s.otros_servicios && (
-            <div style={{ marginTop: 12, fontSize: 13, color: '#4a5168' }}>
-              Sin detalles adicionales
-            </div>
-          )}
+        {/* Footer */}
+        <div style={{ marginTop: 28, textAlign: 'center' }}>
+          <p style={{ color: '#334155', fontSize: 11, fontWeight: 600, margin: 0 }}>
+            Powered by AWTU · Sistema de gestión para talleres
+          </p>
         </div>
-      )}
+      </div>
     </div>
   )
 }
