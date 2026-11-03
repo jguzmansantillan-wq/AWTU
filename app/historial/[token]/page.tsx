@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 type TallerInfo = {
   nombre: string
@@ -38,6 +38,16 @@ export default function HistorialClientePublico({ params }: { params: { token: s
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Cargar datos del taller al abrir la página
+  useEffect(() => {
+    fetch(`/api/historial-cliente?token=${encodeURIComponent(params.token)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.taller) setTaller(data.taller)
+      })
+      .catch(() => {})
+  }, [params.token])
+
   const buscar = async () => {
     const placaLimpia = placa.trim().toUpperCase().replace(/\s+/g, '')
     if (!placaLimpia) { setError('Ingresa tu número de placa'); return }
@@ -45,7 +55,6 @@ export default function HistorialClientePublico({ params }: { params: { token: s
     setError('')
     setBuscado(false)
     setServicios([])
-    setTaller(null)
 
     try {
       const res = await fetch(
