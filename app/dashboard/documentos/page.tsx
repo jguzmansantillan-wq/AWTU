@@ -1,63 +1,61 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
-const toTitleCase = (str: string) =>
-  str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+// ── Tipos ─────────────────────────────────────────────────────────────────
+type MetodoPago = { id: string; nombre: string }
+type Sucursal   = { id: string; nombre: string }
 
 type Operacion = {
   id: string; tipo: 'servicio' | 'venta'; fecha: string; created_at: string
-  nombre: string; telefono?: string; placa?: string; marca?: string
-  monto: number; detalle: string; comprobante_emitido?: boolean
-  items_detalle?: { descripcion: string; precio: number }[]
+  nombre: string; telefono: string; placa?: string; marca?: string
+  monto: number; detalle: string; comprobante_emitido: boolean
+  items_detalle: { descripcion: string; precio: number }[]
 }
 
 type Comprobante = {
-  id: string; tipo: string; cliente_nombre: string; cliente_doc: string
+  id: string; taller_id: string; servicio_id: string | null
+  tipo: string; serie: string; numero: number
+  fecha_emision: string; cliente_nombre: string; cliente_doc: string
   cliente_dir: string; monto: number; estado_sunat: string; created_at: string
-  serie: string; numero: number; fecha_emision: string; payload?: any
+  payload: {
+    items: { descripcion: string; precio: number }[]
+    igv_pct: number; subtotal: number; igv: number
+    telefono: string; external_id: string; entorno: string
+    pdf_base64: string; sunat_descripcion: string
+  }
 }
 
-type MetodoPago = { tipo: string; numero: string; titular: string }
-type Sucursal  = { nombre: string; direccion: string; telefono: string }
+const toTitleCase = (str: string) =>
+  str.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())
 
-// ── Modal de acciones del comprobante ──────────────────────────────────────
+// ── ModalAcciones ─────────────────────────────────────────────────────────
 function ModalAcciones({
   c, tallerNombre, tallerRuc, tallerTelefono, onClose, onAnulado,
 }: {
-  c: Comprobante
-  tallerNombre: string; tallerRuc: string; tallerTelefono: string
-  onClose: () => void
-  onAnulado: () => void
+  c: Comprobante; tallerNombre: string; tallerRuc: string; tallerTelefono: string
+  onClose: () => void; onAnulado: () => void
 }) {
-  const nro          = `${c.serie}-${String(c.numero).padStart(6, '0')}`
-  const external_id  = c.payload?.external_id
-  const modo         = c.payload?.entorno === 'produccion' ? 'produccion' : 'demo'
-  const hasPDF       = !!c.payload?.pdf_base64
-
   const [loadingAccion, setLoadingAccion] = useState<string | null>(null)
-  const [notaModal, setNotaModal]         = useState<'credito' | 'debito' | null>(null)
-  const [motivoAnular, setMotivoAnular]   = useState('')
-  const [confirmarAnular, setConfirmarAnular] = useState(false)
-  const [error, setError]                 = useState('')
+  const [error,         setError]         = useState('')
+  const [showAnular,    setShowAnular]    = useState(false)
+  const [motivoAnular,  setMotivoAnular]  = useState('')
+  const [notaModal,     setNotaModal]     = useState<'credito' | 'debito' | null>(null)
 
-  const visualizarPDF = () => {
-    if (!hasPDF) return
-    const byteString = atob(c.payload.pdf_base64.split(',')[1])
-    const ab = new ArrayBuffer(byteString.length)
-    const ia = new Uint8Array(ab)
-    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i)
-    const blob = new Blob([ab], { type: 'application/pdf' })
-    window.open(URL.createObjectURL(blob), '_blank')
-  }
+  const nro        = `${c.serie}-${String(c.numero).padStart(6, '0')}`
+  const external_id = c.payload?.external_id
+  const modo       = c.payload?.entorno === 'produccion' ? 'produccion' : 'demo'
+  const hasPDF     = !!c.payload?.pdf_base64
 
   const descargarPDF = () => {
     if (!hasPDF) return
     const link = document.createElement('a')
     link.href     = c.payload.pdf_base64
     link.download = `${nro}.pdf`
+    document.body.appendChild(link)
     link.click()
+    document.body.removeChild(link)
   }
 
   const imprimir = () => {
@@ -80,7 +78,7 @@ function ModalAcciones({
       `📅 ${c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}\n` +
       `👤 ${toTitleCase(c.cliente_nombre || '')}\n` +
       `💰 *Total: S/ ${(c.monto || 0).toFixed(2)}*\n\n` +
-      `📎 Puede ver su comprobante aquí:\n` +
+      `🔎 Puede ver su comprobante aquí:\n` +
       `https://awtu-app.vercel.app/comprobante/${c.id}\n\n` +
       `¡Gracias por su preferencia! 🙏`
 
@@ -205,64 +203,54 @@ function ModalAcciones({
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              <p className="text-red-700 font-bold text-xs">❌ {error}</p>
+              <p className="text-red-700 font-bold text-xs">{error}</p>
             </div>
           )}
         </div>
 
-        {!confirmarAnular && !notaModal && (
+        {!showAnular && !notaModal && (
           <div className="px-5 py-4 space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={visualizarPDF} disabled={!hasPDF} className={btnBlue}>
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                Visualizar PDF
-              </button>
               <button onClick={descargarPDF} disabled={!hasPDF} className={btnBlue}>
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                Descargar PDF
+                📄 Ver PDF
+              </button>
+              <button onClick={descargarPDF} disabled={!hasPDF} className={btnSlate}>
+                📥 Descargar PDF
               </button>
               <button onClick={enviarWhatsApp} className={btnGreen}>
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.532 5.86L0 24l6.302-1.507A11.95 11.95 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
-                Enviar por WhatsApp
+                💬 WhatsApp
               </button>
               <button onClick={imprimir} disabled={!hasPDF} className={btnSlate}>
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
-                Imprimir
+                🖨️ Imprimir
               </button>
-              <button onClick={descargarXML} disabled={!external_id || loadingAccion === 'xml'} className={btnSlate}>
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 7V3.5L18.5 9H13zM8 13l-1.25 2L8 17H6.5l-.75-1.5L5 17H3.5l1.25-2L3.5 13H5l.75 1.5.75-1.5H8zm4.5 4h-1.25l-.5-3.75L10 17H8.75l1.5-4h1.5l.75 2.5.75-2.5h1.5l1.5 4H14.5l-.75-3.75L13 17h-.5zm6.25 0H17l-1.5-4h1.25l.75 2.5.75-2.5H19.5l-1.5 4z"/></svg>
-                {loadingAccion === 'xml' ? 'Descargando...' : 'Descargar XML'}
+              <button onClick={descargarXML} disabled={loadingAccion === 'xml'} className={btnOrange}>
+                {loadingAccion === 'xml' ? '⏳' : '📋'} XML
               </button>
-              <button onClick={descargarCDR} disabled={!external_id || loadingAccion === 'cdr'} className={btnSlate}>
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M20 6h-2.18c.07-.44.18-.88.18-1.36C18 2.06 15.96 0 13.36 0c-1.31 0-2.48.52-3.34 1.36L9 2.38 7.98 1.36C7.12.52 5.95 0 4.64 0 2.04 0 0 2.06 0 4.64c0 .48.11.92.18 1.36H0v14h20V6zm-9.5 11L7 13.5l1.41-1.41L10.5 14.17l4.09-4.08L16 11.5 10.5 17z"/></svg>
-                {loadingAccion === 'cdr' ? 'Descargando...' : 'Descargar CDR'}
-              </button>
-              <button onClick={() => setNotaModal('credito')} disabled={c.estado_sunat === 'anulado'} className={btnOrange}>
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14l-5-5 1.41-1.41L12 14.17l7.59-7.59L21 8l-9 9z"/></svg>
-                Nota de Crédito
-              </button>
-              <button onClick={() => setNotaModal('debito')} disabled={c.estado_sunat === 'anulado'} className={btnPurple}>
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
-                Nota de Débito
-              </button>
-              <button onClick={() => alert('Próximamente: Guía de Remisión')} className={btnTeal}>
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
-                Guía de Remisión
+              <button onClick={descargarCDR} disabled={loadingAccion === 'cdr'} className={btnTeal}>
+                {loadingAccion === 'cdr' ? '⏳' : '📦'} CDR
               </button>
             </div>
-
+            {(c.tipo === 'factura' || c.tipo === 'boleta') && c.estado_sunat !== 'anulado' && (
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button onClick={() => setNotaModal('credito')} className={btnPurple}>
+                  📋 Nota Crédito
+                </button>
+                <button onClick={() => setNotaModal('debito')} className={btnOrange}>
+                  📋 Nota Débito
+                </button>
+              </div>
+            )}
             {c.estado_sunat !== 'anulado' && (
-              <button onClick={() => { setConfirmarAnular(true); setError('') }} className={`${btnRed} w-full`}>
-                <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                Dar de Baja (Anular)
+              <button onClick={() => setShowAnular(true)} className={`${btnBase} w-full bg-red-50 text-red-600 hover:bg-red-100 mt-1`}>
+                🗑️ Dar de Baja
               </button>
             )}
           </div>
         )}
 
-        {confirmarAnular && (
+        {showAnular && (
           <div className="px-5 py-4 space-y-3">
-            <p className="font-black text-red-700 text-sm">⚠️ ¿Anular comprobante {nro}?</p>
+            <p className="font-black text-slate-800 text-sm">¿Anular comprobante {nro}?</p>
             <p className="text-xs text-slate-500 font-semibold">Esta acción no se puede deshacer. El comprobante quedará marcado como anulado ante SUNAT.</p>
             <div>
               <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Motivo de anulación *</label>
@@ -273,9 +261,9 @@ function ModalAcciones({
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-red-400 transition-all"
               />
             </div>
-            {error && <p className="text-red-600 text-xs font-bold">❌ {error}</p>}
+            {error && <p className="text-red-600 text-xs font-bold">{error}</p>}
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => { setConfirmarAnular(false); setError('') }} className={btnSlate}>Cancelar</button>
+              <button onClick={() => setShowAnular(false)} className={btnSlate}>Cancelar</button>
               <button onClick={anular} disabled={loadingAccion === 'anular'} className={btnRed}>
                 {loadingAccion === 'anular' ? '⏳ Anulando...' : '🗑️ Confirmar Anulación'}
               </button>
@@ -297,7 +285,7 @@ function ModalAcciones({
   )
 }
 
-// ── Formulario para Nota de Crédito / Débito ───────────────────────────────
+// ── Formulario para Nota de Crédito / Débito ──────────────────────────────
 function NotaForm({
   tipo, comprobante, modo, onClose, onSuccess,
 }: {
@@ -314,18 +302,18 @@ function NotaForm({
   const [error,   setError]   = useState('')
 
   const motivosCredito = [
-    { value: '01', label: '01 — Anulación de la operación' },
-    { value: '02', label: '02 — Anulación por error en el RUC' },
-    { value: '03', label: '03 — Corrección por error en la descripción' },
-    { value: '04', label: '04 — Descuento global' },
-    { value: '06', label: '06 — Devolución total' },
-    { value: '07', label: '07 — Devolución por item' },
-    { value: '13', label: '13 — Ajuste en operación de exportación' },
+    { value: '01', label: '01 – Anulación de la operación' },
+    { value: '02', label: '02 – Anulación por error en el RUC' },
+    { value: '03', label: '03 – Corrección por error en la descripción' },
+    { value: '04', label: '04 – Descuento global' },
+    { value: '06', label: '06 – Devolución total' },
+    { value: '07', label: '07 – Devolución por item' },
+    { value: '13', label: '13 – Ajuste en operación de exportación' },
   ]
   const motivosDebito = [
-    { value: '01', label: '01 — Intereses por mora' },
-    { value: '02', label: '02 — Aumento en el valor' },
-    { value: '03', label: '03 — Penalidades / otros conceptos' },
+    { value: '01', label: '01 – Intereses por mora' },
+    { value: '02', label: '02 – Aumento en el valor' },
+    { value: '03', label: '03 – Penalidades / otros conceptos' },
   ]
 
   const motivos = tipo === 'credito' ? motivosCredito : motivosDebito
@@ -367,78 +355,74 @@ function NotaForm({
         <p className="font-black text-slate-800 text-sm">
           {tipo === 'credito' ? '📋 Nota de Crédito' : '📋 Nota de Débito'}
         </p>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg font-black">←</button>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg font-black">✕</button>
       </div>
-      <p className="text-[10px] text-slate-400 font-bold">Referencia: {comprobante.serie}-{String(comprobante.numero).padStart(6, '0')}</p>
-
       <div>
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Código de motivo</label>
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Código Motivo</label>
         <select value={codigo} onChange={e => setCodigo(e.target.value)}
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all">
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all">
           {motivos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
       </div>
-
       <div>
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Descripción del motivo</label>
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Descripción</label>
         <input value={motivo} onChange={e => setMotivo(e.target.value)}
-          placeholder="Describe el motivo detalladamente..."
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-400 transition-all" />
+          placeholder="Describe el motivo..."
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all" />
       </div>
-
       <div>
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Monto (S/)</label>
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Monto</label>
         <input type="number" value={monto} onChange={e => setMonto(e.target.value)} step="0.01"
           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all" />
       </div>
-
-      {error && <p className="text-red-600 text-xs font-bold">❌ {error}</p>}
-
-      <div className="grid grid-cols-2 gap-2">
-        <button onClick={onClose}
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all">
-          Cancelar
-        </button>
-        <button onClick={emitir} disabled={loading}
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider bg-blue-600 hover:bg-blue-700 text-white transition-all disabled:opacity-50">
-          {loading ? '⏳ Emitiendo...' : `Emitir Nota`}
-        </button>
-      </div>
+      {error && <p className="text-red-600 text-xs font-bold">{error}</p>}
+      <button onClick={emitir} disabled={loading}
+        className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-black py-3 rounded-xl transition-all uppercase tracking-widest text-xs">
+        {loading ? '⏳ Emitiendo...' : `Emitir Nota`}
+      </button>
     </div>
   )
 }
 
+// ── Tipos de filtro para comprobantes ─────────────────────────────────────
+type FiltroComp = 'todos' | 'factura' | 'boleta' | 'nota_credito' | 'nota_debito' | 'guia'
+
 // ── Página principal ───────────────────────────────────────────────────────
 export default function DocumentosPage() {
   const comprobanteRef = useRef<HTMLDivElement>(null)
-  const [tallerID,       setTallerID]       = useState('')
-  const [tallerNombre,   setTallerNombre]   = useState('AWTU')
-  const [tallerLogo,     setTallerLogo]     = useState('')
-  const [tallerRuc,      setTallerRuc]      = useState('')
-  const [tallerDireccion,setTallerDireccion]= useState('')
-  const [tallerTelefono, setTallerTelefono] = useState('')
-  const [metodosPago,    setMetodosPago]    = useState<MetodoPago[]>([])
-  const [sucursales,     setSucursales]     = useState<Sucursal[]>([])
-  const [operaciones,    setOperaciones]    = useState<Operacion[]>([])
-  const [comprobantes,   setComprobantes]   = useState<Comprobante[]>([])
-  const [vista,          setVista]          = useState<'operaciones' | 'emitir' | 'historial'>('operaciones')
-  const [opSeleccionada, setOpSeleccionada] = useState<Operacion | null>(null)
-  const [loading,        setLoading]        = useState(false)
-  const [ok,             setOk]             = useState(false)
-  const [error,          setError]          = useState('')
-  const [busqueda,       setBusqueda]       = useState('')
+  const [tallerID,        setTallerID]        = useState('')
+  const [tallerNombre,    setTallerNombre]    = useState('AWTU')
+  const [tallerLogo,      setTallerLogo]      = useState('')
+  const [tallerRuc,       setTallerRuc]       = useState('')
+  const [tallerDireccion, setTallerDireccion] = useState('')
+  const [tallerTelefono,  setTallerTelefono]  = useState('')
+  const [metodosPago,     setMetodosPago]     = useState<MetodoPago[]>([])
+  const [sucursales,      setSucursales]      = useState<Sucursal[]>([])
+  const [operaciones,     setOperaciones]     = useState<Operacion[]>([])
+  const [comprobantes,    setComprobantes]    = useState<Comprobante[]>([])
+  const [vista,           setVista]           = useState<'operaciones' | 'emitir' | 'historial'>('operaciones')
+  const [opSeleccionada,  setOpSeleccionada]  = useState<Operacion | null>(null)
+  const [loading,         setLoading]         = useState(false)
+  const [ok,              setOk]              = useState(false)
+  const [error,           setError]           = useState('')
+  const [busqueda,        setBusqueda]        = useState('')
   const [comprobanteParaDescargar, setComprobanteParaDescargar] = useState<Comprobante | null>(null)
   const [resultadoFactusmart,      setResultadoFactusmart]      = useState<any>(null)
   const [consultandoDoc,           setConsultandoDoc]           = useState(false)
   const [modalComprobante,         setModalComprobante]         = useState<Comprobante | null>(null)
 
-  // ── NUEVO: items editables ──────────────────────────────────────────────
+  // items editables
   const [itemsEditables, setItemsEditables] = useState<{ descripcion: string; precio: number }[]>([])
 
   const [form, setForm] = useState({
     tipo: 'boleta', cliente_nombre: '', cliente_doc: '',
     cliente_dir: '', igv: '18', modo: 'demo',
   })
+
+  // ── NUEVOS: filtro y orden en historial ──
+  const [filtroComp,  setFiltroComp]  = useState<FiltroComp>('todos')
+  const [ordenComp,   setOrdenComp]   = useState<'desc' | 'asc'>('desc')
+  const [busqComp,    setBusqComp]    = useState('')
 
   useEffect(() => {
     const init = async () => {
@@ -474,9 +458,9 @@ export default function DocumentosPage() {
       ...(svcs || []).map(s => {
         const items: { descripcion: string; precio: number }[] = []
         if (s.aceite_marca && s.precio_aceite > 0) items.push({ descripcion: `Aceite Motor: ${s.aceite_marca} ${s.aceite_visc || ''}${s.aceite_cantidad ? ` ${s.aceite_cantidad}LT` : ''}`.trim(), precio: s.precio_aceite })
-        if (s.caja_marca   && s.precio_caja   > 0) items.push({ descripcion: `Aceite Caja: ${s.caja_marca}`,   precio: s.precio_caja })
-        if (s.refrig_marca && s.precio_refrig > 0) items.push({ descripcion: `Refrigerante: ${s.refrig_marca}`, precio: s.precio_refrig })
-        if (s.bujia_marca  && s.precio_bujias > 0) items.push({ descripcion: `Bujías: ${s.bujia_marca}`,        precio: s.precio_bujias })
+        if (s.caja_marca   && s.precio_caja   > 0) items.push({ descripcion: `Aceite Caja: ${s.caja_marca}`,    precio: s.precio_caja })
+        if (s.refrig_marca && s.precio_refrig > 0) items.push({ descripcion: `Refrigerante: ${s.refrig_marca}`,  precio: s.precio_refrig })
+        if (s.bujia_marca  && s.precio_bujias > 0) items.push({ descripcion: `Bujías: ${s.bujia_marca}`,         precio: s.precio_bujias })
         if (Array.isArray(s.productos_adicionales)) {
           s.productos_adicionales.forEach((p: any) => {
             if (p.nombre && parseFloat(p.precio) > 0) items.push({ descripcion: p.nombre, precio: parseFloat(p.precio) })
@@ -526,7 +510,6 @@ export default function DocumentosPage() {
   const abrirEmision = (op: Operacion) => {
     setOpSeleccionada(op)
     setResultadoFactusmart(null)
-    // Copiar items al estado editable
     setItemsEditables(op.items_detalle ? op.items_detalle.map(i => ({ ...i })) : [])
     setForm({ tipo: 'boleta', cliente_nombre: op.nombre !== 'Cliente Directo' ? op.nombre : '', cliente_doc: '', cliente_dir: '', igv: '18', modo: 'demo' })
     setVista('emitir')
@@ -557,7 +540,7 @@ export default function DocumentosPage() {
         const data = await res.json()
         setForm(prev => ({
           ...prev,
-          cliente_nombre: data.nombre ? toTitleCase(data.nombre) : prev.cliente_nombre,
+          cliente_nombre: data.nombre    ? toTitleCase(data.nombre)    : prev.cliente_nombre,
           cliente_dir:    data.direccion ? toTitleCase(data.direccion) : prev.cliente_dir,
         }))
       }
@@ -565,7 +548,6 @@ export default function DocumentosPage() {
     setConsultandoDoc(false)
   }
 
-  // ── NUEVO: editar item ──────────────────────────────────────────────────
   const editarItemDesc = (i: number, val: string) => {
     setItemsEditables(prev => prev.map((item, idx) => idx === i ? { ...item, descripcion: val } : item))
   }
@@ -582,7 +564,6 @@ export default function DocumentosPage() {
       const { data: limite } = await supabase.rpc('verificar_limite', { p_taller_id: tallerID, p_tipo: 'comprobantes' })
       if (!limite) { setError('Límite mensual de comprobantes alcanzado'); setLoading(false); return }
 
-      // Usar itemsEditables en lugar de opSeleccionada.items_detalle
       const itemsParaFS = itemsEditables.map(i => ({
         descripcion:     i.descripcion,
         cantidad:        1,
@@ -593,12 +574,12 @@ export default function DocumentosPage() {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          tipo:            form.tipo,
-          cliente_nombre:  nombreFinal,
-          cliente_doc:     form.cliente_doc,
-          cliente_dir:     form.cliente_dir,
-          items:           itemsParaFS,
-          modo:            form.modo,
+          tipo:           form.tipo,
+          cliente_nombre: nombreFinal,
+          cliente_doc:    form.cliente_doc,
+          cliente_dir:    form.cliente_dir,
+          items:          itemsParaFS,
+          modo:           form.modo,
         }),
       })
 
@@ -621,26 +602,26 @@ export default function DocumentosPage() {
       const numeroFS = parseInt(partes[1] || '1')
 
       const { error: dbError } = await supabase.from('comprobantes').insert({
-        taller_id:       tallerID,
-        servicio_id:     opSeleccionada?.tipo === 'servicio' ? opSeleccionada.id : null,
-        tipo:            form.tipo,
-        serie:           serieFS,
-        numero:          numeroFS,
-        fecha_emision:   new Date().toISOString().slice(0, 10),
-        cliente_nombre:  nombreFinal,
-        cliente_doc:     form.cliente_doc,
-        cliente_dir:     form.cliente_dir,
-        monto:           montoNum,
-        estado_sunat:    fsData.aceptado_por_sunat ? 'emitido' : 'pendiente',
+        taller_id:      tallerID,
+        servicio_id:    opSeleccionada?.tipo === 'servicio' ? opSeleccionada.id : null,
+        tipo:           form.tipo,
+        serie:          serieFS,
+        numero:         numeroFS,
+        fecha_emision:  new Date().toISOString().slice(0, 10),
+        cliente_nombre: nombreFinal,
+        cliente_doc:    form.cliente_doc,
+        cliente_dir:    form.cliente_dir,
+        monto:          montoNum,
+        estado_sunat:   fsData.aceptado_por_sunat ? 'emitido' : 'pendiente',
         payload: {
-          items:            itemsEditables,
-          igv_pct:          igvPct,
-          subtotal:         sub,
-          igv:              igvMon,
-          telefono:         opSeleccionada?.telefono || '',
-          external_id:      fsData.external_id,
-          entorno:          fsData.entorno,
-          pdf_base64:       fsData.pdf_base64,
+          items:             itemsEditables,
+          igv_pct:           igvPct,
+          subtotal:          sub,
+          igv:               igvMon,
+          telefono:          opSeleccionada?.telefono || '',
+          external_id:       fsData.external_id,
+          entorno:           fsData.entorno,
+          pdf_base64:        fsData.pdf_base64,
           sunat_descripcion: fsData.sunat_descripcion,
         },
       })
@@ -691,7 +672,67 @@ export default function DocumentosPage() {
     op.detalle?.toLowerCase().includes(busqueda.toLowerCase())
   )
 
-  // ── Estilos base ────────────────────────────────────────────────────────
+  // ── Filtrado y ordenamiento de comprobantes ──
+  const comprobantesFiltrados = comprobantes
+    .filter(c => {
+      // Filtro por tipo
+      if (filtroComp !== 'todos') {
+        const tipo = c.tipo?.toLowerCase() || ''
+        if (filtroComp === 'factura'      && tipo !== 'factura')      return false
+        if (filtroComp === 'boleta'       && tipo !== 'boleta')       return false
+        if (filtroComp === 'nota_credito' && !tipo.includes('nota') && tipo !== 'nota_credito' && tipo !== '07') return false
+        if (filtroComp === 'nota_debito'  && !tipo.includes('nota') && tipo !== 'nota_debito'  && tipo !== '08') return false
+        if (filtroComp === 'guia'         && !tipo.includes('guia'))  return false
+        // Refinamiento adicional para notas
+        if (filtroComp === 'nota_credito') {
+          const esNC = tipo === 'nota_credito' || tipo === '07' || tipo.includes('crédito') || tipo.includes('credito') || tipo.includes('nc')
+          if (!esNC) return false
+        }
+        if (filtroComp === 'nota_debito') {
+          const esND = tipo === 'nota_debito' || tipo === '08' || tipo.includes('débito') || tipo.includes('debito') || tipo.includes('nd')
+          if (!esND) return false
+        }
+        if (filtroComp === 'guia') {
+          const esGR = tipo === 'guia' || tipo.includes('guia') || tipo.includes('remision')
+          if (!esGR) return false
+        }
+      }
+      // Búsqueda por cliente
+      if (busqComp.trim()) {
+        const b = busqComp.toLowerCase()
+        const coincide =
+          c.cliente_nombre?.toLowerCase().includes(b) ||
+          c.cliente_doc?.includes(b) ||
+          `${c.serie}-${String(c.numero).padStart(6, '0')}`.toLowerCase().includes(b)
+        if (!coincide) return false
+      }
+      return true
+    })
+    .sort((a, b) => {
+      const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      return ordenComp === 'desc' ? diff : -diff
+    })
+
+  // Conteos por tipo para los tabs
+  const cuentas = {
+    todos:        comprobantes.length,
+    factura:      comprobantes.filter(c => c.tipo?.toLowerCase() === 'factura').length,
+    boleta:       comprobantes.filter(c => c.tipo?.toLowerCase() === 'boleta').length,
+    nota_credito: comprobantes.filter(c => {
+      const t = c.tipo?.toLowerCase() || ''
+      return t === 'nota_credito' || t === '07' || t.includes('crédito') || t.includes('credito') || t.includes('nc')
+    }).length,
+    nota_debito: comprobantes.filter(c => {
+      const t = c.tipo?.toLowerCase() || ''
+      return t === 'nota_debito' || t === '08' || t.includes('débito') || t.includes('debito') || t.includes('nd')
+    }).length,
+    guia: comprobantes.filter(c => {
+      const t = c.tipo?.toLowerCase() || ''
+      return t === 'guia' || t.includes('guia') || t.includes('remision')
+    }).length,
+  }
+
+  // ── Estilos base ──
   const inp = "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
   const lbl = "text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block"
 
@@ -866,28 +907,14 @@ export default function DocumentosPage() {
               <button onClick={() => setVista('operaciones')} className="text-slate-400 hover:text-slate-600 font-black text-lg">✕</button>
             </div>
 
-            {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl font-bold text-sm">❌ {error}</div>}
+            {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl font-bold text-sm">{error}</div>}
 
-            <form onSubmit={handleEmitir} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+            <form onSubmit={handleEmitir} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={lbl}>Cliente / Razón Social</label>
-                  <div className="relative">
-                    <input name="cliente_nombre" value={form.cliente_nombre} onChange={handleChange}
-                      onBlur={handleNombreBlur} required placeholder="Nombre del cliente" className={inp} />
-                    {consultandoDoc && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div>
                   <label className={lbl}>
-                    DNI / RUC
-                    {consultandoDoc && <span className="ml-2 text-[9px] text-blue-500 font-bold animate-pulse">⏳ Consultando...</span>}
+                    DNI / RUC {consultandoDoc && <span className="normal-case text-blue-500 font-bold">⏳ Consultando...</span>}
                   </label>
-                  {/* CAMBIO 2: Enter dispara la consulta, además del onBlur */}
                   <input
                     name="cliente_doc"
                     value={form.cliente_doc}
@@ -905,6 +932,17 @@ export default function DocumentosPage() {
                   />
                   {form.cliente_doc.length === 8  && !consultandoDoc && <p className="text-[10px] text-blue-500 font-bold mt-1">→ Boleta de Venta</p>}
                   {form.cliente_doc.length === 11 && !consultandoDoc && <p className="text-[10px] text-emerald-500 font-bold mt-1">→ Factura</p>}
+                </div>
+                <div>
+                  <label className={lbl}>Nombre / Razón social</label>
+                  <input
+                    name="cliente_nombre"
+                    value={form.cliente_nombre}
+                    onChange={handleChange}
+                    onBlur={handleNombreBlur}
+                    placeholder="Nombre del cliente"
+                    className={inp}
+                  />
                 </div>
               </div>
 
@@ -928,7 +966,7 @@ export default function DocumentosPage() {
                 </div>
               </div>
 
-              {/* CAMBIO 3: Items editables */}
+              {/* Items editables */}
               <div>
                 <label className={lbl}>Items del comprobante <span className="normal-case text-blue-500 font-bold">(puedes editar)</span></label>
                 <div className="border border-slate-200 rounded-xl overflow-hidden">
@@ -981,7 +1019,6 @@ export default function DocumentosPage() {
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 h-fit">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Vista previa</p>
             <div className="border-2 border-dashed border-slate-200 rounded-xl overflow-hidden">
-              {/* Encabezado tipo */}
               <div className="bg-slate-900 px-4 py-3 text-center">
                 <p className="font-black text-white uppercase text-xs tracking-widest">
                   {form.tipo === 'boleta' ? 'BOLETA DE VENTA' : 'FACTURA ELECTRÓNICA'}
@@ -992,7 +1029,6 @@ export default function DocumentosPage() {
               </div>
 
               <div className="p-4 space-y-3">
-                {/* Cliente */}
                 {form.cliente_nombre && (
                   <div className="flex justify-between text-xs gap-2">
                     <span className="text-slate-400 font-bold shrink-0">Cliente</span>
@@ -1000,7 +1036,6 @@ export default function DocumentosPage() {
                   </div>
                 )}
 
-                {/* Items */}
                 {itemsEditables.length > 0 && (
                   <div className="border border-slate-100 rounded-lg overflow-hidden">
                     {itemsEditables.map((item, i) => (
@@ -1012,7 +1047,6 @@ export default function DocumentosPage() {
                   </div>
                 )}
 
-                {/* Totales */}
                 {montoOp > 0 && (
                   <div className="border-t border-slate-100 pt-2 space-y-1 text-xs">
                     <div className="flex justify-between text-slate-400">
@@ -1038,16 +1072,77 @@ export default function DocumentosPage() {
       {/* HISTORIAL */}
       {vista === 'historial' && (
         <div className="space-y-3">
-          {comprobantes.length === 0 ? (
+
+          {/* ── TABS de filtro por tipo ── */}
+          <div className="flex flex-wrap gap-2">
+            {([
+              { key: 'todos',        label: 'Todos',           icon: '🧾' },
+              { key: 'factura',      label: 'Facturas',        icon: '📄' },
+              { key: 'boleta',       label: 'Boletas',         icon: '🧾' },
+              { key: 'nota_credito', label: 'Notas Crédito',   icon: '📋' },
+              { key: 'nota_debito',  label: 'Notas Débito',    icon: '📋' },
+              { key: 'guia',         label: 'Guías Remisión',  icon: '🚚' },
+            ] as { key: FiltroComp; label: string; icon: string }[]).map(tab => (
+              <button
+                key={tab.key}
+                onClick={() => setFiltroComp(tab.key)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs rounded-xl font-black uppercase tracking-widest transition-all ${
+                  filtroComp === tab.key
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}>
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+                <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md ${
+                  filtroComp === tab.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {cuentas[tab.key]}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* ── Búsqueda + ordenamiento ── */}
+          <div className="flex gap-2">
+            <div className="flex items-center gap-2 flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5">
+              <span className="text-slate-400">🔍</span>
+              <input
+                value={busqComp}
+                onChange={e => setBusqComp(e.target.value)}
+                placeholder="Buscar por cliente, DNI/RUC o número..."
+                className="bg-transparent outline-none text-sm font-semibold text-slate-700 flex-1 placeholder:text-slate-400"
+              />
+              {busqComp && (
+                <button onClick={() => setBusqComp('')} className="text-slate-400 hover:text-slate-600 font-black">✕</button>
+              )}
+            </div>
+            <button
+              onClick={() => setOrdenComp(o => o === 'desc' ? 'asc' : 'desc')}
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap">
+              {ordenComp === 'desc' ? '↓ Más reciente' : '↑ Más antiguo'}
+            </button>
+          </div>
+
+          {comprobantesFiltrados.length === 0 ? (
             <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center">
               <p className="text-4xl mb-3">🧾</p>
-              <p className="font-black text-sm text-slate-300 uppercase tracking-widest">Sin comprobantes emitidos</p>
-              <button onClick={() => setVista('operaciones')}
-                className="mt-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl">
-                Ver operaciones pendientes
-              </button>
+              <p className="font-black text-sm text-slate-300 uppercase tracking-widest">
+                {comprobantes.length === 0 ? 'Sin comprobantes emitidos' : 'No hay resultados para este filtro'}
+              </p>
+              {comprobantes.length === 0 && (
+                <button onClick={() => setVista('operaciones')}
+                  className="mt-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl">
+                  Ver operaciones pendientes
+                </button>
+              )}
+              {comprobantes.length > 0 && (
+                <button onClick={() => { setFiltroComp('todos'); setBusqComp('') }}
+                  className="mt-4 bg-slate-100 text-slate-600 font-black text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl">
+                  Limpiar filtros
+                </button>
+              )}
             </div>
-          ) : comprobantes.map(c => (
+          ) : comprobantesFiltrados.map(c => (
             <div key={c.id}
               onClick={() => setModalComprobante(c)}
               className={`bg-white rounded-2xl border shadow-sm p-4 flex items-center gap-4 cursor-pointer transition-all hover:shadow-md hover:border-blue-200 active:scale-[0.99] ${

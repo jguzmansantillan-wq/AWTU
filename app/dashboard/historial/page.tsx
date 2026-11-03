@@ -26,9 +26,22 @@ type Proforma = {
   monto: number; fecha: string; created_at: string; tipo: 'proforma'
 }
 
-type TallerInfo = { nombre: string; logo_url: string; telefono: string; direccion: string }
+type TallerInfo = { id: string; nombre: string; logo_url: string; telefono: string; direccion: string; ruc: string }
 type Registro = Servicio | Venta | Proforma
 type FiltroTipo = 'todos' | 'servicios' | 'ventas' | 'proformas'
+
+type Comprobante = {
+  id: string; taller_id: string; servicio_id: string | null; tipo: string
+  serie: string; numero: number; fecha_emision: string
+  cliente_nombre: string; cliente_doc: string; cliente_dir: string
+  monto: number; estado_sunat: string; created_at: string
+  payload: {
+    items: { descripcion: string; precio: number }[]
+    igv_pct: number; subtotal: number; igv: number
+    telefono: string; external_id: string; entorno: string
+    pdf_base64: string; sunat_descripcion: string
+  }
+}
 
 // Detecta si una proforma es multi-opción (nuevo formato)
 const esMultiOpcion = (items: any[]): boolean =>
@@ -43,13 +56,658 @@ const resumenItems = (items: any[]): string => {
   return items.slice(0, 2).map((i: any) => `${i.cantidad ?? ''}x ${i.nombre ?? i.descripcion ?? ''}`.trim()).join(', ')
 }
 
+const toTitleCase = (str: string) =>
+  str.replace(/\w\S*/g, txt => txt.charAt(0).toUpperCase() + txt.slice(1).toLowerCase())
+
+// ── Modal de acciones para comprobante emitido ─────────────────────────────
+function ModalAcciones({
+  c, tallerNombre, tallerRuc, tallerTelefono, onClose, onAnulado,
+}: {
+  c: Comprobante; tallerNombre: string; tallerRuc: string; tallerTelefono: string
+  onClose: () => void; onAnulado: () => void
+}) {
+  const [loadingAccion, setLoadingAccion] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const [showAnular, setShowAnular] = useState(false)
+  const [motivoAnular, setMotivoAnular] = useState('')
+  const [notaModal, setNotaModal] = useState<'credito' | 'debito' | null>(null)
+
+  const nro = `${c.serie}-${String(c.numero).padStart(6, '0')}`
+  const external_id = c.payload?.external_id
+  const modo = c.payload?.entorno === 'produccion' ? 'produccion' : 'demo'
+  const hasPDF = !!c.payload?.pdf_base64
+
+  const descargarPDF = () => {
+    if (!hasPDF) return
+    const link = document.createElement('a')
+    link.href = c.payload.pdf_base64
+    link.download = `${nro}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const imprimir = () => {
+    if (!hasPDF) return
+    const byteString = atob(c.payload.pdf_base64.split(',')[1])
+    const ab = new ArrayBuffer(byteString.length)
+    const ia = new Uint8Array(ab)
+    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i)
+    const blob = new Blob([ab], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const win = window.open(url, '_blank')
+    win?.addEventListener('load', () => win.print())
+  }
+
+  const enviarWhatsApp = async () => {
+    const tel = (c.payload?.telefono || '').replace(/\D/g, '')
+    const texto =
+      `🧾 *COMPROBANTE: ${nro}*\n` +
+      `🏪 ${tallerNombre}${tallerRuc ? ` · RUC: ${tallerRuc}` : ''}\n` +
+      `📅 ${c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}\n` +
+      `👤 ${toTitleCase(c.cliente_nombre || '')}\n` +
+      `💰 *Total: S/ ${(c.monto || 0).toFixed(2)}*\n\n` +
+      `¡Gracias por su preferencia! 🙏`
+
+    if (hasPDF) {
+      const link = document.createElement('a')
+      link.href = c.payload.pdf_base64
+      link.download = `${nro}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      await new Promise(r => setTimeout(r, 800))
+    }
+
+    const num = tel || prompt('Ingresa el número WhatsApp del cliente:')?.replace(/\D/g, '')
+    if (!num) return
+    window.open(`https://wa.me/51${num}?text=${encodeURIComponent(texto)}`, '_blank')
+  }
+
+  const descargarXML = async () => {
+    if (!external_id) { setError('No hay external_id para este comprobante'); return }
+    setLoadingAccion('xml')
+    try {
+      const res = await fetch(`/api/factusmart/xml?external_id=${external_id}&modo=${modo}`)
+      if (!res.ok) throw new Error('No se pudo obtener el XML')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url; link.download = `${nro}.xml`; link.click()
+    } catch (e: any) { setError(e.message) }
+    setLoadingAccion(null)
+  }
+
+  const descargarCDR = async () => {
+    if (!external_id) { setError('No hay external_id para este comprobante'); return }
+    setLoadingAccion('cdr')
+    try {
+      const res = await fetch(`/api/factusmart/cdr?external_id=${external_id}&modo=${modo}`)
+      if (!res.ok) throw new Error('No se pudo obtener el CDR')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url; link.download = `CDR-${nro}.zip`; link.click()
+    } catch (e: any) { setError(e.message) }
+    setLoadingAccion(null)
+  }
+
+  const anular = async () => {
+    if (!external_id) { setError('No hay external_id'); return }
+    if (!motivoAnular.trim()) { setError('Ingresa un motivo de anulación'); return }
+    setLoadingAccion('anular'); setError('')
+    try {
+      const res = await fetch('/api/factusmart/anular', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ external_id, motivo: motivoAnular, modo }),
+      })
+      const data = await res.json()
+      if (!data.ok) throw new Error(JSON.stringify(data.detalle || data.error))
+      await supabase.from('comprobantes').update({ estado_sunat: 'anulado' }).eq('id', c.id)
+      onAnulado(); onClose()
+    } catch (e: any) { setError(e.message) }
+    setLoadingAccion(null)
+  }
+
+  const btnBase = "flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40"
+  const btnBlue   = `${btnBase} bg-blue-600 hover:bg-blue-700 text-white`
+  const btnGreen  = `${btnBase} bg-green-600 hover:bg-green-700 text-white`
+  const btnSlate  = `${btnBase} bg-slate-100 hover:bg-slate-200 text-slate-700`
+  const btnRed    = `${btnBase} bg-red-600 hover:bg-red-700 text-white`
+  const btnOrange = `${btnBase} bg-orange-500 hover:bg-orange-600 text-white`
+  const btnPurple = `${btnBase} bg-purple-600 hover:bg-purple-700 text-white`
+  const btnTeal   = `${btnBase} bg-teal-600 hover:bg-teal-700 text-white`
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+
+        <div className="bg-blue-600 px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className="font-black text-white text-base">Comprobante electrónico</p>
+            <p className="text-blue-200 text-xs font-bold mt-0.5">{nro}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-black text-sm transition-all">✕</button>
+        </div>
+
+        <div className="px-5 py-4 space-y-3 border-b border-slate-100">
+          <div className="flex items-center justify-between">
+            <span className={`text-xs px-3 py-1 rounded-full font-black uppercase ${
+              c.tipo === 'factura' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+            }`}>{c.tipo === 'factura' ? 'Factura Electrónica' : 'Boleta de Venta'}</span>
+            <span className={`text-xs px-3 py-1 rounded-full font-black uppercase ${
+              c.estado_sunat === 'emitido'  ? 'bg-green-100 text-green-700' :
+              c.estado_sunat === 'anulado'  ? 'bg-red-100 text-red-700' :
+              'bg-yellow-100 text-yellow-700'
+            }`}>{c.estado_sunat?.toUpperCase()}</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Cliente</p>
+              <p className="font-black text-slate-800 mt-0.5">{toTitleCase(c.cliente_nombre || '')}</p>
+              {c.cliente_doc && <p className="text-slate-500 font-semibold">{c.tipo === 'factura' ? 'RUC' : 'DNI'}: {c.cliente_doc}</p>}
+            </div>
+            <div className="text-right">
+              <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Total</p>
+              <p className="font-black text-blue-600 text-xl mt-0.5">S/ {(c.monto || 0).toFixed(2)}</p>
+              <p className="text-slate-400 font-semibold text-[10px]">{c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}</p>
+            </div>
+          </div>
+
+          {modo === 'demo' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-center">
+              <p className="text-amber-700 font-black text-[10px] uppercase tracking-wider">🧪 Modo Demo — Sin validez fiscal</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <p className="text-red-700 font-bold text-xs">{error}</p>
+            </div>
+          )}
+        </div>
+
+        {!showAnular && !notaModal && (
+          <div className="px-5 py-4 space-y-2">
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={descargarPDF} disabled={!hasPDF} className={btnBlue}>
+                📄 Ver PDF
+              </button>
+              <button onClick={descargarPDF} disabled={!hasPDF} className={btnSlate}>
+                📥 Descargar PDF
+              </button>
+              <button onClick={enviarWhatsApp} className={btnGreen}>
+                💬 WhatsApp
+              </button>
+              <button onClick={imprimir} disabled={!hasPDF} className={btnSlate}>
+                🖨️ Imprimir
+              </button>
+              <button onClick={descargarXML} disabled={loadingAccion === 'xml'} className={btnOrange}>
+                {loadingAccion === 'xml' ? '⏳' : '📋'} XML
+              </button>
+              <button onClick={descargarCDR} disabled={loadingAccion === 'cdr'} className={btnTeal}>
+                {loadingAccion === 'cdr' ? '⏳' : '📦'} CDR
+              </button>
+            </div>
+            {(c.tipo === 'factura' || c.tipo === 'boleta') && c.estado_sunat !== 'anulado' && (
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button onClick={() => setNotaModal('credito')} className={btnPurple}>
+                  📋 Nota Crédito
+                </button>
+                <button onClick={() => setNotaModal('debito')} className={btnOrange}>
+                  📋 Nota Débito
+                </button>
+              </div>
+            )}
+            {c.estado_sunat !== 'anulado' && (
+              <button onClick={() => setShowAnular(true)} className={`${btnBase} w-full bg-red-50 text-red-600 hover:bg-red-100 mt-1`}>
+                🗑️ Dar de Baja
+              </button>
+            )}
+          </div>
+        )}
+
+        {showAnular && (
+          <div className="px-5 py-4 space-y-3">
+            <p className="font-black text-slate-800 text-sm">¿Anular comprobante {nro}?</p>
+            <p className="text-xs text-slate-500 font-semibold">Esta acción no se puede deshacer. El comprobante quedará marcado como anulado ante SUNAT.</p>
+            <div>
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Motivo de anulación *</label>
+              <input
+                value={motivoAnular}
+                onChange={e => setMotivoAnular(e.target.value)}
+                placeholder="Ej: Error en el monto, cliente incorrecto..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-red-400 transition-all"
+              />
+            </div>
+            {error && <p className="text-red-600 text-xs font-bold">{error}</p>}
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setShowAnular(false)} className={btnSlate}>Cancelar</button>
+              <button onClick={anular} disabled={loadingAccion === 'anular'} className={btnRed}>
+                {loadingAccion === 'anular' ? '⏳ Anulando...' : '🗑️ Confirmar Anulación'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {notaModal && (
+          <NotaForm
+            tipo={notaModal}
+            comprobante={c}
+            modo={modo}
+            onClose={() => setNotaModal(null)}
+            onSuccess={onClose}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Formulario para Nota de Crédito / Débito ──────────────────────────────
+function NotaForm({
+  tipo, comprobante, modo, onClose, onSuccess,
+}: {
+  tipo: 'credito' | 'debito'; comprobante: Comprobante; modo: string
+  onClose: () => void; onSuccess: () => void
+}) {
+  const [motivo, setMotivo] = useState('')
+  const [codigo, setCodigo] = useState('01')
+  const [monto, setMonto] = useState(String(comprobante.monto))
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const motivosCredito = [
+    { value: '01', label: '01 – Anulación de la operación' },
+    { value: '02', label: '02 – Anulación por error en el RUC' },
+    { value: '03', label: '03 – Corrección por error en la descripción' },
+    { value: '04', label: '04 – Descuento global' },
+    { value: '06', label: '06 – Devolución total' },
+    { value: '07', label: '07 – Devolución por item' },
+    { value: '13', label: '13 – Ajuste en operación de exportación' },
+  ]
+  const motivosDebito = [
+    { value: '01', label: '01 – Intereses por mora' },
+    { value: '02', label: '02 – Aumento en el valor' },
+    { value: '03', label: '03 – Penalidades / otros conceptos' },
+  ]
+
+  const motivos = tipo === 'credito' ? motivosCredito : motivosDebito
+
+  const emitir = async () => {
+    if (!motivo.trim()) { setError('Ingresa una descripción del motivo'); return }
+    setLoading(true); setError('')
+    try {
+      const nroRef = `${comprobante.serie}-${String(comprobante.numero).padStart(6, '0')}`
+      const res = await fetch('/api/factusmart/nota', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo_nota: tipo === 'credito' ? '07' : '08',
+          external_id_ref: comprobante.payload?.external_id,
+          serie_numero_ref: nroRef,
+          tipo_doc_ref: comprobante.tipo === 'factura' ? '01' : '03',
+          codigo_motivo: codigo,
+          motivo,
+          items: [{ descripcion: motivo, cantidad: 1, precio_unitario: parseFloat(monto) || comprobante.monto }],
+          modo,
+          cliente_nombre: comprobante.cliente_nombre,
+          cliente_doc: comprobante.cliente_doc,
+          cliente_dir: comprobante.cliente_dir,
+          tipo_doc_cliente: comprobante.tipo === 'factura' ? '6' : '1',
+        }),
+      })
+      const data = await res.json()
+      if (!data.ok) throw new Error(JSON.stringify(data.detalle || data.error))
+      alert(`✅ Nota de ${tipo} emitida: ${data.serie_numero}`)
+      onSuccess()
+    } catch (e: any) { setError(e.message) }
+    setLoading(false)
+  }
+
+  return (
+    <div className="px-5 py-4 space-y-3">
+      <div className="flex items-center justify-between mb-1">
+        <p className="font-black text-slate-800 text-sm">
+          {tipo === 'credito' ? '📋 Nota de Crédito' : '📋 Nota de Débito'}
+        </p>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg font-black">✕</button>
+      </div>
+      <div>
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Código Motivo</label>
+        <select value={codigo} onChange={e => setCodigo(e.target.value)}
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all">
+          {motivos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Descripción</label>
+        <input value={motivo} onChange={e => setMotivo(e.target.value)}
+          placeholder="Describe el motivo..."
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all" />
+      </div>
+      <div>
+        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Monto</label>
+        <input type="number" value={monto} onChange={e => setMonto(e.target.value)} step="0.01"
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all" />
+      </div>
+      {error && <p className="text-red-600 text-xs font-bold">{error}</p>}
+      <button onClick={emitir} disabled={loading}
+        className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-black py-3 rounded-xl transition-all uppercase tracking-widest text-xs">
+        {loading ? '⏳ Emitiendo...' : `Emitir Nota`}
+      </button>
+    </div>
+  )
+}
+
+// ── Modal de emisión de comprobante desde historial ────────────────────────
+function ModalEmitir({
+  registro, tallerInfo, onClose, onEmitido,
+}: {
+  registro: Registro; tallerInfo: TallerInfo
+  onClose: () => void; onEmitido: (c: Comprobante) => void
+}) {
+  const [form, setForm] = useState({
+    tipo: 'boleta', cliente_nombre: '', cliente_doc: '', cliente_dir: '', igv: '18', modo: 'demo',
+  })
+  const [itemsEditables, setItemsEditables] = useState<{ descripcion: string; precio: number }[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [consultando, setConsultando] = useState(false)
+
+  const inp = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 transition-all"
+  const lbl = "text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block"
+
+  // Precarga items desde el registro
+  useEffect(() => {
+    const r = registro
+    // Nombre inicial
+    const nombreInit = r.nombre || ''
+    setForm(f => ({ ...f, cliente_nombre: nombreInit !== 'Cliente Directo' ? toTitleCase(nombreInit) : '' }))
+
+    if (r.tipo === 'servicio') {
+      const s = r as Servicio
+      const items: { descripcion: string; precio: number }[] = []
+      // Intentar construir items con precios — si no hay, usar monto total
+      if ((s as any).aceite_marca && (s as any).precio_aceite > 0)
+        items.push({ descripcion: `Aceite Motor: ${(s as any).aceite_marca} ${(s as any).aceite_visc || ''}`.trim(), precio: (s as any).precio_aceite })
+      if ((s as any).caja_marca && (s as any).precio_caja > 0)
+        items.push({ descripcion: `Aceite Caja: ${(s as any).caja_marca}`, precio: (s as any).precio_caja })
+      if ((s as any).refrig_marca && (s as any).precio_refrig > 0)
+        items.push({ descripcion: `Refrigerante: ${(s as any).refrig_marca}`, precio: (s as any).precio_refrig })
+      if ((s as any).bujia_marca && (s as any).precio_bujias > 0)
+        items.push({ descripcion: `Bujías: ${(s as any).bujia_marca}`, precio: (s as any).precio_bujias })
+      if (Array.isArray((s as any).productos_adicionales)) {
+        for (const p of (s as any).productos_adicionales) {
+          if (p.nombre && parseFloat(p.precio) > 0) items.push({ descripcion: p.nombre, precio: parseFloat(p.precio) })
+        }
+      }
+      if ((s as any).otros_servicios && (s as any).precio_otros > 0) {
+        const srvs = (s as any).otros_servicios.split(',')
+        srvs.forEach((srv: string, idx: number) => {
+          if (srv.trim()) items.push({ descripcion: srv.trim(), precio: idx === 0 ? (s as any).precio_otros : 0 })
+        })
+      }
+      if (items.length === 0) items.push({ descripcion: 'Servicio de taller', precio: s.monto || 0 })
+      setItemsEditables(items)
+    } else if (r.tipo === 'venta') {
+      const v = r as Venta
+      const items = (Array.isArray(v.items) ? v.items : []).map((i: any) => ({
+        descripcion: `${i.nombre}${i.cantidad > 1 ? ` x${i.cantidad}` : ''}`,
+        precio: i.subtotal || i.precio * i.cantidad,
+      }))
+      setItemsEditables(items.length ? items : [{ descripcion: 'Venta de productos', precio: v.monto || 0 }])
+    } else {
+      // proforma — no aplica emisión por items complejos, usar monto
+      setItemsEditables([{ descripcion: `Cotización — ${r.nombre || ''}`, precio: r.monto || 0 }])
+    }
+  }, [registro])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    if (name === 'cliente_doc') {
+      setForm(prev => ({ ...prev, cliente_doc: value, tipo: value.length === 11 ? 'factura' : 'boleta' }))
+    } else {
+      setForm(prev => ({ ...prev, [name]: value }))
+    }
+  }
+
+  const consultarCliente = async (doc: string) => {
+    const d = doc.trim().replace(/\D/g, '')
+    if (d.length !== 8 && d.length !== 11) return
+    setConsultando(true)
+    try {
+      const res = await fetch(`/api/consulta-cliente?doc=${d}`)
+      if (res.ok) {
+        const data = await res.json()
+        setForm(prev => ({
+          ...prev,
+          cliente_nombre: data.nombre ? toTitleCase(data.nombre) : prev.cliente_nombre,
+          cliente_dir: data.direccion ? toTitleCase(data.direccion) : prev.cliente_dir,
+        }))
+      }
+    } catch {}
+    setConsultando(false)
+  }
+
+  const handleEmitir = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true); setError('')
+    const nombreFinal = toTitleCase(form.cliente_nombre.trim())
+    try {
+      // Verificar límite
+      const { data: limite } = await supabase.rpc('verificar_limite', { p_taller_id: tallerInfo.id, p_tipo: 'comprobantes' })
+      if (!limite) { setError('Límite mensual de comprobantes alcanzado'); setLoading(false); return }
+
+      const itemsParaFS = itemsEditables.map(i => ({
+        descripcion: i.descripcion,
+        cantidad: 1,
+        precio_unitario: i.precio,
+      }))
+
+      const fsRes = await fetch('/api/factusmart/emitir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tipo: form.tipo,
+          cliente_nombre: nombreFinal,
+          cliente_doc: form.cliente_doc,
+          cliente_dir: form.cliente_dir,
+          items: itemsParaFS,
+          modo: form.modo,
+        }),
+      })
+
+      const fsData = await fsRes.json()
+      if (!fsData.ok) {
+        setError(`Error Factusmart: ${JSON.stringify(fsData.detalle || fsData.error)}`)
+        setLoading(false); return
+      }
+
+      const igvPct = parseFloat(form.igv)
+      const igvRate = igvPct / 100
+      const montoNum = registro.monto || 0
+      const sub = parseFloat((montoNum / (1 + igvRate)).toFixed(2))
+      const igvMon = parseFloat((montoNum - sub).toFixed(2))
+
+      const partes = (fsData.serie_numero || '').split('-')
+      const serieFS = partes[0] || (form.tipo === 'factura' ? 'F001' : 'B001')
+      const numeroFS = parseInt(partes[1] || '1')
+
+      const { data: comp, error: dbError } = await supabase.from('comprobantes').insert({
+        taller_id: tallerInfo.id,
+        servicio_id: registro.tipo === 'servicio' ? registro.id : null,
+        tipo: form.tipo,
+        serie: serieFS,
+        numero: numeroFS,
+        fecha_emision: new Date().toISOString().slice(0, 10),
+        cliente_nombre: nombreFinal,
+        cliente_doc: form.cliente_doc,
+        cliente_dir: form.cliente_dir,
+        monto: montoNum,
+        estado_sunat: fsData.aceptado_por_sunat ? 'emitido' : 'pendiente',
+        payload: {
+          items: itemsEditables,
+          igv_pct: igvPct,
+          subtotal: sub,
+          igv: igvMon,
+          telefono: (registro as any).telefono || '',
+          external_id: fsData.external_id,
+          entorno: fsData.entorno,
+          pdf_base64: fsData.pdf_base64,
+          sunat_descripcion: fsData.sunat_descripcion,
+        },
+      }).select().single()
+
+      if (dbError) { setError(dbError.message); setLoading(false); return }
+
+      await supabase.rpc('incrementar_uso', { p_taller_id: tallerInfo.id, p_tipo: 'comprobantes' })
+      if (registro.tipo === 'servicio') {
+        await supabase.from('servicios').update({ estado_facturacion: 'Facturado' }).eq('id', registro.id)
+      }
+
+      onEmitido(comp as Comprobante)
+    } catch (err: any) {
+      setError(err.message || 'Error inesperado')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const montoTotal = itemsEditables.reduce((s, i) => s + (i.precio || 0), 0)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div className="bg-blue-600 px-5 py-4 flex items-center justify-between shrink-0">
+          <div>
+            <p className="font-black text-white text-base">🧾 Emitir Comprobante</p>
+            <p className="text-blue-200 text-xs font-bold mt-0.5">
+              {registro.tipo === 'servicio' ? `Servicio · ${(registro as Servicio).placa}` :
+               registro.tipo === 'venta' ? 'Venta POS' : 'Proforma'}
+               {registro.nombre ? ` · ${toTitleCase(registro.nombre)}` : ''}
+            </p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-black text-sm transition-all">✕</button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-5 py-4">
+          <form onSubmit={handleEmitir} className="space-y-4">
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                <p className="text-red-700 font-bold text-xs">{error}</p>
+              </div>
+            )}
+
+            {/* DNI / RUC */}
+            <div>
+              <label className={lbl}>
+                DNI / RUC {consultando && <span className="normal-case text-blue-500 font-bold">⏳ Consultando...</span>}
+              </label>
+              <input
+                name="cliente_doc"
+                value={form.cliente_doc}
+                onChange={handleChange}
+                onBlur={e => consultarCliente(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); consultarCliente(form.cliente_doc) } }}
+                placeholder="DNI (8 dígitos) o RUC (11 dígitos)"
+                maxLength={11}
+                className={inp}
+              />
+              {form.cliente_doc.length === 8 && !consultando && <p className="text-[10px] text-blue-500 font-bold mt-1">→ Boleta de Venta</p>}
+              {form.cliente_doc.length === 11 && !consultando && <p className="text-[10px] text-emerald-500 font-bold mt-1">→ Factura Electrónica</p>}
+            </div>
+
+            {/* Nombre */}
+            <div>
+              <label className={lbl}>Nombre / Razón social</label>
+              <input name="cliente_nombre" value={form.cliente_nombre} onChange={handleChange}
+                placeholder="Nombre del cliente" className={inp} />
+            </div>
+
+            {/* Dirección */}
+            <div>
+              <label className={lbl}>Dirección</label>
+              <input name="cliente_dir" value={form.cliente_dir} onChange={handleChange}
+                placeholder="Dirección del cliente" className={inp} />
+            </div>
+
+            {/* IGV y modo */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={lbl}>IGV (%)</label>
+                <input name="igv" type="number" value={form.igv} onChange={handleChange} className={inp} />
+              </div>
+              <div>
+                <label className={lbl}>Modo de emisión</label>
+                <select name="modo" value={form.modo} onChange={handleChange} className={inp}>
+                  <option value="demo">🧪 Demo (prueba)</option>
+                  <option value="produccion">🚀 Producción</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Items editables */}
+            <div>
+              <label className={lbl}>Items del comprobante <span className="normal-case text-blue-500 font-bold">(puedes editar)</span></label>
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="flex justify-between px-3 py-2 bg-slate-900">
+                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Descripción</span>
+                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Precio</span>
+                </div>
+                {itemsEditables.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 last:border-0 bg-white hover:bg-slate-50 transition-colors">
+                    <input
+                      value={item.descripcion}
+                      onChange={e => setItemsEditables(prev => prev.map((it, idx) => idx === i ? { ...it, descripcion: e.target.value } : it))}
+                      className="flex-1 text-xs font-semibold text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-400 focus:outline-none py-1 uppercase transition-colors min-w-0"
+                      placeholder="Descripción"
+                    />
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-xs text-slate-400 font-bold">S/</span>
+                      <input
+                        type="number" step="0.01"
+                        value={item.precio}
+                        onChange={e => setItemsEditables(prev => prev.map((it, idx) => idx === i ? { ...it, precio: parseFloat(e.target.value) || 0 } : it))}
+                        className="w-20 text-xs font-black text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-400 focus:outline-none py-1 text-right transition-colors"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 font-bold mt-1.5">✏️ Haz click en cualquier campo para editarlo</p>
+            </div>
+
+            {/* Total */}
+            <div className="bg-slate-50 rounded-xl px-4 py-3 flex items-center justify-between">
+              <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Total estimado</span>
+              <span className="font-black text-blue-600 text-lg">S/ {montoTotal.toFixed(2)}</span>
+            </div>
+
+            <button type="submit" disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg shadow-blue-200 active:scale-95">
+              {loading ? '⏳ Conectando con SUNAT...' : `🧾 Emitir ${form.tipo === 'factura' ? 'Factura' : 'Boleta'} ${form.modo === 'demo' ? '(Demo)' : ''}`}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Página principal ───────────────────────────────────────────────────────
 export default function HistorialPage() {
   const router = useRouter()
   const cartillaRef = useRef<HTMLDivElement>(null)
   const ticketRef = useRef<HTMLDivElement>(null)
 
   const [registros, setRegistros] = useState<Registro[]>([])
-  const [tallerInfo, setTallerInfo] = useState<TallerInfo>({ nombre: 'AWTU', logo_url: '', telefono: '', direccion: '' })
+  const [tallerInfo, setTallerInfo] = useState<TallerInfo>({ id: '', nombre: 'AWTU', logo_url: '', telefono: '', direccion: '', ruc: '' })
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [desde, setDesde] = useState('')
@@ -59,17 +717,28 @@ export default function HistorialPage() {
   const [cartillaData, setCartillaData] = useState<any>(null)
   const [ticketVenta, setTicketVenta] = useState<Venta | null>(null)
   const [descargandoTicket, setDescargandoTicket] = useState(false)
-  const [generandoPDF, setGenerandoPDF] = useState<string | null>(null) // id de proforma en proceso
+  const [generandoPDF, setGenerandoPDF] = useState<string | null>(null)
+
+  // ── Estados para emisión inline ──
+  const [modalEmitir, setModalEmitir] = useState<Registro | null>(null)
+  const [modalAcciones, setModalAcciones] = useState<Comprobante | null>(null)
 
   useEffect(() => {
     const cargar = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const { data: t } = await supabase.from('talleres')
-        .select('id, nombre, logo_url, telefono, direccion')
+        .select('id, nombre, logo_url, telefono, direccion, ruc')
         .eq('user_id', user.id).single()
       if (!t) return
-      setTallerInfo({ nombre: t.nombre || 'AWTU', logo_url: t.logo_url || '', telefono: t.telefono || '', direccion: t.direccion || '' })
+      setTallerInfo({
+        id: t.id,
+        nombre: t.nombre || 'AWTU',
+        logo_url: t.logo_url || '',
+        telefono: t.telefono || '',
+        direccion: t.direccion || '',
+        ruc: t.ruc || '',
+      })
 
       const { data: svcs } = await supabase.from('servicios')
         .select('*').eq('taller_id', t.id).order('created_at', { ascending: false })
@@ -94,6 +763,33 @@ export default function HistorialPage() {
     }
     cargar()
   }, [])
+
+  // Recargar estado de facturación de un servicio
+  const recargarServicio = async (id: string) => {
+    const { data } = await supabase.from('servicios').select('estado_facturacion').eq('id', id).single()
+    if (data) {
+      setRegistros(prev => prev.map(r =>
+        r.id === id && r.tipo === 'servicio' ? { ...r, estado_facturacion: data.estado_facturacion } as Servicio : r
+      ))
+    }
+  }
+
+  // Al hacer click en 🧾: si ya tiene comprobante → mostrar ModalAcciones; si no → abrir ModalEmitir
+  const handleClickComprobante = async (r: Registro) => {
+    if (r.tipo === 'servicio') {
+      const s = r as Servicio
+      if (s.estado_facturacion === 'Facturado') {
+        // Buscar el comprobante existente
+        const { data: comp } = await supabase.from('comprobantes')
+          .select('*').eq('servicio_id', s.id).order('created_at', { ascending: false }).limit(1).single()
+        if (comp) {
+          setModalAcciones(comp as Comprobante)
+          return
+        }
+      }
+    }
+    setModalEmitir(r)
+  }
 
   const filtrados = registros
     .filter(r => {
@@ -148,7 +844,6 @@ export default function HistorialPage() {
     window.open(`https://wa.me/51${tel}?text=${msg}`, '_blank')
   }
 
-  // ── WhatsApp para proforma multi-opción ────────────────────────────────────
   const enviarWhatsAppProforma = (p: Proforma) => {
     if (!p.telefono) { alert('Esta proforma no tiene teléfono registrado'); return }
     const tel = p.telefono.replace(/\D/g, '')
@@ -179,7 +874,6 @@ export default function HistorialPage() {
     window.open(`https://wa.me/51${tel}?text=${msg}`, '_blank')
   }
 
-  // ── PDF para proforma multi-opción ─────────────────────────────────────────
   const descargarPDFProforma = async (p: Proforma) => {
     setGenerandoPDF(p.id)
     try {
@@ -189,144 +883,75 @@ export default function HistorialPage() {
       const fecha = p.fecha ? p.fecha.split('-').reverse().join('/') : new Date(p.created_at).toLocaleDateString('es-PE')
       const items = Array.isArray(p.items) ? p.items : []
 
-      // ── ENCABEZADO blanco ──
       const headerH = 42
-      doc.setFillColor(255, 255, 255)
-      doc.rect(0, 0, W, headerH, 'F')
-      doc.setDrawColor(220, 220, 220)
-      doc.setLineWidth(0.4)
-      doc.line(0, headerH, W, headerH)
+      doc.setFillColor(255, 255, 255); doc.rect(0, 0, W, headerH, 'F')
+      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.4); doc.line(0, headerH, W, headerH)
 
-      // Logo del taller
       let logoLoaded = false
       if (tallerInfo.logo_url) {
         try {
-          const img = new Image()
-          img.crossOrigin = 'anonymous'
-          await new Promise<void>((resolve) => {
-            img.onload = () => resolve()
-            img.onerror = () => resolve()
-            img.src = tallerInfo.logo_url
-          })
-          if (img.width > 0) {
-            const logoH = 24
-            const logoW = (img.width / img.height) * logoH
-            doc.addImage(img, 'PNG', 14, 9, Math.min(logoW, 40), logoH)
-            logoLoaded = true
-          }
-        } catch { /* sin logo */ }
+          const img = new Image(); img.crossOrigin = 'anonymous'
+          await new Promise<void>((resolve) => { img.onload = () => resolve(); img.onerror = () => resolve(); img.src = tallerInfo.logo_url })
+          if (img.width > 0) { const logoH = 24; const logoW = (img.width / img.height) * logoH; doc.addImage(img, 'PNG', 14, 9, Math.min(logoW, 40), logoH); logoLoaded = true }
+        } catch {}
       }
 
       const xText = logoLoaded ? 60 : 14
-      doc.setTextColor(10, 10, 10)
-      doc.setFontSize(20)
-      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(10, 10, 10); doc.setFontSize(20); doc.setFont('helvetica', 'bold')
       doc.text(tallerInfo.nombre.toUpperCase(), xText, 18)
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(80, 80, 80)
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80)
       if (tallerInfo.direccion) doc.text(tallerInfo.direccion, xText, 26)
       if (tallerInfo.telefono) doc.text(`Tel: ${tallerInfo.telefono}`, xText, 32)
 
-      // Badge COTIZACIÓN
-      doc.setDrawColor(10, 10, 10)
-      doc.setLineWidth(1.2)
-      doc.rect(W - 54, 8, 40, 16)
-      doc.setTextColor(10, 10, 10)
-      doc.setFontSize(11)
-      doc.setFont('helvetica', 'bold')
-      doc.text('COTIZACIÓN', W - 49, 19)
-      doc.setFontSize(7.5)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(80, 80, 80)
+      doc.setDrawColor(10, 10, 10); doc.setLineWidth(1.2); doc.rect(W - 54, 8, 40, 16)
+      doc.setTextColor(10, 10, 10); doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.text('COTIZACIÓN', W - 49, 19)
+      doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(80, 80, 80)
       doc.text(`Fecha: ${fecha}`, W - 54, 30)
 
-      // ── Datos cliente ──
       let y = headerH + 10
       const vehiculo = p.placa || ''
-      doc.setFillColor(245, 245, 245)
-      doc.roundedRect(14, y - 6, W - 28, vehiculo ? 28 : 20, 2, 2, 'F')
-      doc.setDrawColor(200, 200, 200)
-      doc.setLineWidth(0.3)
-      doc.roundedRect(14, y - 6, W - 28, vehiculo ? 28 : 20, 2, 2, 'S')
-      doc.setTextColor(120, 120, 120)
-      doc.setFontSize(7)
-      doc.setFont('helvetica', 'bold')
-      doc.text('CLIENTE', 20, y)
-      doc.setTextColor(10, 10, 10)
-      doc.setFontSize(13)
-      doc.setFont('helvetica', 'bold')
-      doc.text((p.nombre || '').toUpperCase(), 20, y + 8)
+      doc.setFillColor(245, 245, 245); doc.roundedRect(14, y - 6, W - 28, vehiculo ? 28 : 20, 2, 2, 'F')
+      doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3); doc.roundedRect(14, y - 6, W - 28, vehiculo ? 28 : 20, 2, 2, 'S')
+      doc.setTextColor(120, 120, 120); doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.text('CLIENTE', 20, y)
+      doc.setTextColor(10, 10, 10); doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.text((p.nombre || '').toUpperCase(), 20, y + 8)
       if (vehiculo) {
-        doc.setFillColor(219, 234, 254)
-        doc.roundedRect(W - 56, y - 3, 42, 22, 2, 2, 'F')
-        doc.setTextColor(29, 78, 216)
-        doc.setFontSize(16)
-        doc.setFont('helvetica', 'bold')
+        doc.setFillColor(219, 234, 254); doc.roundedRect(W - 56, y - 3, 42, 22, 2, 2, 'F')
+        doc.setTextColor(29, 78, 216); doc.setFontSize(16); doc.setFont('helvetica', 'bold')
         doc.text(vehiculo.toUpperCase(), W - 46, y + 9)
       }
       y += vehiculo ? 34 : 26
 
-      // ── Opciones ──
       if (esMultiOpcion(items)) {
         items.forEach((opcion: OpcionProforma, idx: number) => {
           const titulo = opcion.titulo || `Opción ${idx + 1}`
           const itemsFiltrados = (opcion.items || []).filter(i => i.descripcion?.trim())
           if (itemsFiltrados.length === 0) return
           const tot = opcion.total || itemsFiltrados.reduce((s, i) => s + (i.precio || 0), 0)
-
           if (y > 250) { doc.addPage(); y = 20 }
-
-          // Encabezado negro
-          doc.setFillColor(10, 10, 10)
-          doc.roundedRect(14, y, W - 28, 9, 1, 1, 'F')
-          doc.setTextColor(255, 255, 255)
-          doc.setFontSize(8.5)
-          doc.setFont('helvetica', 'bold')
-          doc.text(titulo.toUpperCase(), 20, y + 6.2)
-          y += 12
-
+          doc.setFillColor(10, 10, 10); doc.roundedRect(14, y, W - 28, 9, 1, 1, 'F')
+          doc.setTextColor(255, 255, 255); doc.setFontSize(8.5); doc.setFont('helvetica', 'bold')
+          doc.text(titulo.toUpperCase(), 20, y + 6.2); y += 12
           itemsFiltrados.forEach((item, ii) => {
             if (y > 260) { doc.addPage(); y = 20 }
             if (ii % 2 === 0) { doc.setFillColor(250, 250, 250); doc.rect(14, y - 1, W - 28, 8, 'F') }
-            doc.setTextColor(20, 20, 20)
-            doc.setFontSize(8.5)
-            doc.setFont('helvetica', 'normal')
+            doc.setTextColor(20, 20, 20); doc.setFontSize(8.5); doc.setFont('helvetica', 'normal')
             const desc = (item.descripcion || '').length > 65 ? (item.descripcion || '').slice(0, 62) + '...' : (item.descripcion || '')
             doc.text('•  ' + desc.toUpperCase(), 20, y + 5)
-            if ((item.precio || 0) > 0) {
-              doc.setFont('helvetica', 'bold')
-              doc.text(`S/ ${(item.precio || 0).toFixed(2)}`, W - 20, y + 5, { align: 'right' })
-            }
+            if ((item.precio || 0) > 0) { doc.setFont('helvetica', 'bold'); doc.text(`S/ ${(item.precio || 0).toFixed(2)}`, W - 20, y + 5, { align: 'right' }) }
             y += 9
           })
-
-          // Total opción
-          doc.setFillColor(240, 240, 240)
-          doc.roundedRect(W - 75, y + 1, 61, 10, 1, 1, 'F')
-          doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3)
-          doc.roundedRect(W - 75, y + 1, 61, 10, 1, 1, 'S')
-          doc.setTextColor(60, 60, 60); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold')
-          doc.text('TOTAL OPCIÓN', W - 68, y + 8)
-          doc.setFontSize(10); doc.setTextColor(10, 10, 10)
-          doc.text(`S/ ${tot.toFixed(2)}`, W - 20, y + 8, { align: 'right' })
-          y += 16
-
+          doc.setFillColor(240, 240, 240); doc.roundedRect(W - 75, y + 1, 61, 10, 1, 1, 'F')
+          doc.setDrawColor(180, 180, 180); doc.setLineWidth(0.3); doc.roundedRect(W - 75, y + 1, 61, 10, 1, 1, 'S')
+          doc.setTextColor(60, 60, 60); doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.text('TOTAL OPCIÓN', W - 68, y + 8)
+          doc.setFontSize(10); doc.setTextColor(10, 10, 10); doc.text(`S/ ${tot.toFixed(2)}`, W - 20, y + 8, { align: 'right' }); y += 16
           if (idx < items.length - 1) {
-            doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3)
-            doc.setLineDashPattern([2, 2], 0)
-            doc.line(14, y, W - 14, y)
-            doc.setLineDashPattern([], 0)
-            y += 6
+            doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3); doc.setLineDashPattern([2, 2], 0)
+            doc.line(14, y, W - 14, y); doc.setLineDashPattern([], 0); y += 6
           }
         })
       } else {
-        // Formato antiguo (items planos)
-        doc.setFillColor(10, 10, 10)
-        doc.roundedRect(14, y, W - 28, 9, 1, 1, 'F')
-        doc.setTextColor(255, 255, 255); doc.setFontSize(8.5); doc.setFont('helvetica', 'bold')
-        doc.text('DETALLE', 20, y + 6.2)
-        y += 12
+        doc.setFillColor(10, 10, 10); doc.roundedRect(14, y, W - 28, 9, 1, 1, 'F')
+        doc.setTextColor(255, 255, 255); doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.text('DETALLE', 20, y + 6.2); y += 12
         items.forEach((item: any, ii: number) => {
           if (y > 260) { doc.addPage(); y = 20 }
           if (ii % 2 === 0) { doc.setFillColor(250, 250, 250); doc.rect(14, y - 1, W - 28, 8, 'F') }
@@ -339,31 +964,22 @@ export default function HistorialPage() {
         })
         const total = p.monto || 0
         if (total > 0) {
-          doc.setFillColor(240, 240, 240)
-          doc.roundedRect(W - 75, y + 1, 61, 10, 1, 1, 'F')
+          doc.setFillColor(240, 240, 240); doc.roundedRect(W - 75, y + 1, 61, 10, 1, 1, 'F')
           doc.setTextColor(10, 10, 10); doc.setFontSize(10); doc.setFont('helvetica', 'bold')
-          doc.text(`S/ ${total.toFixed(2)}`, W - 20, y + 8, { align: 'right' })
-          y += 16
+          doc.text(`S/ ${total.toFixed(2)}`, W - 20, y + 8, { align: 'right' }); y += 16
         }
       }
 
-      y += 8
-
-      // Footer
       const footerY = 277
-      doc.setFillColor(245, 245, 245)
-      doc.rect(0, footerY, W, 20, 'F')
-      doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3)
-      doc.line(0, footerY, W, footerY)
+      doc.setFillColor(245, 245, 245); doc.rect(0, footerY, W, 20, 'F')
+      doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3); doc.line(0, footerY, W, footerY)
       doc.setTextColor(120, 120, 120); doc.setFontSize(7); doc.setFont('helvetica', 'normal')
       doc.text(tallerInfo.nombre.toUpperCase(), W / 2, footerY + 7, { align: 'center' })
-      const sub = [tallerInfo.telefono, tallerInfo.direccion].filter(Boolean).join('  ·  ')
-      if (sub) doc.text(sub, W / 2, footerY + 13, { align: 'center' })
-
+      const sub2 = [tallerInfo.telefono, tallerInfo.direccion].filter(Boolean).join('  ·  ')
+      if (sub2) doc.text(sub2, W / 2, footerY + 13, { align: 'center' })
       doc.save(`Cotizacion_${p.placa || p.nombre || 'proforma'}_${p.fecha || ''}.pdf`)
     } catch (err) {
-      console.error('PDF error:', err)
-      alert('Error al generar el PDF')
+      console.error('PDF error:', err); alert('Error al generar el PDF')
     }
     setGenerandoPDF(null)
   }
@@ -379,8 +995,7 @@ export default function HistorialPage() {
     })
     const link = document.createElement('a')
     link.download = `Ticket_${ticketVenta?.nombre || 'Venta'}.jpg`
-    link.href = canvas.toDataURL('image/jpeg', 0.95)
-    link.click()
+    link.href = canvas.toDataURL('image/jpeg', 0.95); link.click()
     setDescargandoTicket(false)
   }
 
@@ -400,8 +1015,7 @@ export default function HistorialPage() {
     setCartillaData({
       placa: s.placa, nombre: s.nombre, marca: s.marca,
       modelo: s.modelo, anio: s.anio, fecha: s.fecha,
-      aceiteMarca: s.aceite_marca, aceiteVisc: s.aceite_visc,
-      aceiteCantidad: s.aceite_cantidad,
+      aceiteMarca: s.aceite_marca, aceiteVisc: s.aceite_visc, aceiteCantidad: s.aceite_cantidad,
       filtroAceite: s.filtro_aceite, filtroAire: s.filtro_aire,
       cajaMarca: s.caja_marca, cajaTipo: s.caja_tipo,
       refrigMarca: s.refrig_marca, refrigColor: s.refrig_color,
@@ -417,8 +1031,7 @@ export default function HistorialPage() {
     })
     const link = document.createElement('a')
     link.download = `Cartilla_${s.placa}.jpg`
-    link.href = canvas.toDataURL('image/jpeg', 0.95)
-    link.click()
+    link.href = canvas.toDataURL('image/jpeg', 0.95); link.click()
     setCartillaData(null)
   }
 
@@ -450,6 +1063,33 @@ export default function HistorialPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
+
+      {/* ── Modal emisión inline ── */}
+      {modalEmitir && (
+        <ModalEmitir
+          registro={modalEmitir}
+          tallerInfo={tallerInfo}
+          onClose={() => setModalEmitir(null)}
+          onEmitido={(comp) => {
+            setModalEmitir(null)
+            setModalAcciones(comp)
+            // Actualizar estado del servicio en la lista
+            if (modalEmitir.tipo === 'servicio') recargarServicio(modalEmitir.id)
+          }}
+        />
+      )}
+
+      {/* ── Modal acciones comprobante ── */}
+      {modalAcciones && (
+        <ModalAcciones
+          c={modalAcciones}
+          tallerNombre={tallerInfo.nombre}
+          tallerRuc={tallerInfo.ruc}
+          tallerTelefono={tallerInfo.telefono}
+          onClose={() => setModalAcciones(null)}
+          onAnulado={() => {}}
+        />
+      )}
 
       {/* Cartilla oculta */}
       {cartillaData && (
@@ -697,6 +1337,7 @@ export default function HistorialPage() {
             const fecha = r.fecha || new Date(r.created_at).toLocaleDateString('es-PE')
             const ct = colorTipo[r.tipo]
             const multiOp = esProforma && esMultiOpcion(p.items)
+            const yaFacturado = esServicio && s.estado_facturacion === 'Facturado'
 
             return (
               <div key={r.id} className="card flex items-center gap-4 transition-all"
@@ -767,7 +1408,6 @@ export default function HistorialPage() {
                       </>
                     ) : esProforma ? (
                       <>
-                        {/* Ver Proforma PDF */}
                         <button
                           onClick={() => descargarPDFProforma(p)}
                           disabled={generandoPDF === p.id}
@@ -776,7 +1416,6 @@ export default function HistorialPage() {
                           style={{ background: 'rgba(255,194,60,0.12)', color: 'var(--accent-yellow)', border: '1px solid rgba(255,194,60,0.3)' }}>
                           {generandoPDF === p.id ? '⏳' : '📄'} PDF
                         </button>
-                        {/* WhatsApp proforma */}
                         <button
                           onClick={() => enviarWhatsAppProforma(p)}
                           title="WhatsApp"
@@ -786,15 +1425,22 @@ export default function HistorialPage() {
                         </button>
                       </>
                     ) : (
-                      /* Venta POS */
                       <button onClick={() => setTicketVenta(r as Venta)} title="Ver ticket"
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
                         style={{ background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)' }}>🎫</button>
                     )}
 
-                    <button onClick={() => router.push('/dashboard/documentos')} title="Emitir comprobante"
+                    {/* Botón 🧾 — si ya facturado muestra acciones, si no abre emisión */}
+                    <button
+                      onClick={() => handleClickComprobante(r)}
+                      title={yaFacturado ? 'Ver comprobante' : 'Emitir comprobante'}
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
-                      style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>🧾</button>
+                      style={yaFacturado
+                        ? { background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)' }
+                        : { background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+                      🧾
+                    </button>
+
                     <button onClick={() => eliminar(r.id, r.tipo)} title="Eliminar"
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
                       style={{ background: 'rgba(255,106,31,0.12)', color: 'var(--accent)' }}>🗑️</button>
