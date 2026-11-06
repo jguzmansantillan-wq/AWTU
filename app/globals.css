@@ -3,15 +3,16 @@
 :root {
   --sidebar-w: 280px;
 
-  --bg: #14171C;
-  --surface: #1D2128;
-  --surface-2: #242830;
-  --border: #2A2F38;
+  /* Fondo azul-slate más claro — menos agresivo, más profesional */
+  --bg: #1C2033;
+  --surface: #252A40;
+  --surface-2: #2D3350;
+  --border: #3A4060;
   --accent: #FF6A1F;
   --accent-teal: #21C7B8;
   --accent-yellow: #FFC23C;
-  --text: #EDEFF2;
-  --text-muted: #8A93A3;
+  --text: #F0F2F7;
+  --text-muted: #9BA5BC;
 }
 
 * { box-sizing: border-box; }
@@ -20,6 +21,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body), system-ui, sans-serif;
+  font-size: 15px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -36,24 +38,24 @@ body {
   border: 1.5px solid var(--border);
   color: var(--text);
   border-radius: 12px;
-  padding: 10px 14px;
-  font-size: 13px;
+  padding: 11px 14px;
+  font-size: 14px;
   font-weight: 700;
   outline: none;
   transition: border-color 0.15s;
 }
 .inp:focus { border-color: var(--accent); }
-.inp::placeholder { color: #475569; }
+.inp::placeholder { color: #5A6480; }
 
 .lbl {
   display: block;
   font-family: var(--font-display), sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--text-muted);
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
 .card {
@@ -67,7 +69,7 @@ body {
   display: inline-block;
   padding: 2px 8px;
   border-radius: 8px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -81,7 +83,7 @@ body {
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 12px 20px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text);
   z-index: 9999;
