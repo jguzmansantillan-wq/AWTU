@@ -4,9 +4,10 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import ModalCotizador from '@/components/ModalCotizador'
 
-type ProductoAdicional = { nombre: string; precio: string }
+type ProductoAdicional = { nombre: string; precio: string; cantidad: string; inventarioId: string }
 type OtroServicio = { detalle: string; precio: string }
 type ItemInventario = { id: string; nombre: string; categoria: string; precio: number; costo: number; stock: number }
+type AceiteExtra = { marca: string; cantidad: string; inventarioId: string }
 
 const METODOS_PAGO = [
   { key: 'efectivo', icon: '💵', label: 'Efectivo' },
@@ -132,22 +133,32 @@ export default function AtencionPage() {
   const [frecuencia, setFrecuencia] = useState('5000')
   const [kmDiarios, setKmDiarios] = useState('30')
 
+  // Aceite principal
   const [aceiteMarca, setAceiteMarca] = useState('')
   const [aceiteVisc, setAceiteVisc] = useState('')
   const [aceiteCantidad, setAceiteCantidad] = useState('')
+  const [aceiteInvId, setAceiteInvId] = useState('')
+  // Aceites extra (para carros que usan más de un tipo o más de un envase)
+  const [aceitesExtra, setAceitesExtra] = useState<AceiteExtra[]>([])
+
   const [filtroAceite, setFiltroAceite] = useState('')
+  const [filtroAceiteInvId, setFiltroAceiteInvId] = useState('')
   const [filtroAire, setFiltroAire] = useState('')
+  const [filtroAireInvId, setFiltroAireInvId] = useState('')
   const [precioAceite, setPrecioAceite] = useState('')
 
   const [cajaMarca, setCajaMarca] = useState('')
+  const [cajaInvId, setCajaInvId] = useState('')
   const [cajaTipo, setCajaTipo] = useState('Mecánica')
   const [precioCaja, setPrecioCaja] = useState('')
 
   const [refrigMarca, setRefrigMarca] = useState('')
+  const [refrigInvId, setRefrigInvId] = useState('')
   const [refrigColor, setRefrigColor] = useState('')
   const [precioRefrig, setPrecioRefrig] = useState('')
 
   const [bujaMarca, setBujaMarca] = useState('')
+  const [bujaInvId, setBujaInvId] = useState('')
   const [bujaModelo, setBujaModelo] = useState('')
   const [precioBujias, setPrecioBujias] = useState('')
 
@@ -161,7 +172,7 @@ export default function AtencionPage() {
     (parseFloat(precioCaja) || 0) +
     (parseFloat(precioRefrig) || 0) +
     (parseFloat(precioBujias) || 0) +
-    productosAd.reduce((s, p) => s + (parseFloat(p.precio) || 0), 0) +
+    productosAd.reduce((s, p) => s + (parseFloat(p.precio) || 0) * (parseFloat(p.cantidad) || 1), 0) +
     otrosServicios.reduce((s, o) => s + (parseFloat(o.precio) || 0), 0)
 
   useEffect(() => {
@@ -206,11 +217,13 @@ export default function AtencionPage() {
     setMarca(''); setModelo(''); setAnio(''); setKm('')
     setFrecuencia('5000'); setKmDiarios('30')
     setFecha(new Date().toISOString().slice(0, 10))
-    setAceiteMarca(''); setAceiteVisc(''); setAceiteCantidad('')
-    setFiltroAceite(''); setFiltroAire(''); setPrecioAceite('')
-    setCajaMarca(''); setCajaTipo('Mecánica'); setPrecioCaja('')
-    setRefrigMarca(''); setRefrigColor(''); setPrecioRefrig('')
-    setBujaMarca(''); setBujaModelo(''); setPrecioBujias('')
+    setAceiteMarca(''); setAceiteVisc(''); setAceiteCantidad(''); setAceiteInvId('')
+    setAceitesExtra([])
+    setFiltroAceite(''); setFiltroAceiteInvId(''); setFiltroAire(''); setFiltroAireInvId('')
+    setPrecioAceite('')
+    setCajaMarca(''); setCajaInvId(''); setCajaTipo('Mecánica'); setPrecioCaja('')
+    setRefrigMarca(''); setRefrigInvId(''); setRefrigColor(''); setPrecioRefrig('')
+    setBujaMarca(''); setBujaInvId(''); setBujaModelo(''); setPrecioBujias('')
     setProductosAd([]); setOtrosServicios([])
     setMetodoPago('efectivo')
   }
@@ -227,6 +240,15 @@ export default function AtencionPage() {
     link.download = `Cartilla_${datos.placa}.jpg`
     link.href = canvas.toDataURL('image/jpeg', 0.95)
     link.click()
+  }
+
+  // ── Descuenta stock de un ítem del inventario ──────────────────────────────
+  const descontarStock = async (invId: string, cantidadUsada: number) => {
+    if (!invId || cantidadUsada <= 0) return
+    const item = inventario.find(i => i.id === invId)
+    if (!item) return
+    const nuevoStock = Math.max(0, item.stock - cantidadUsada)
+    await supabase.from('inventario').update({ stock: nuevoStock }).eq('id', invId)
   }
 
   const guardar = async () => {
@@ -275,6 +297,38 @@ export default function AtencionPage() {
 
     if (e) { setError(e.message); setLoading(false); return }
     await supabase.rpc('incrementar_uso', { p_taller_id: tallerID, p_tipo: 'servicios' })
+
+    // ── Descuento de stock ─────────────────────────────────────────────────
+    const descuentos: Promise<void>[] = []
+
+    // Aceite principal: descuenta según litros registrados (o 1 unidad si no hay cantidad)
+    if (aceiteInvId) descuentos.push(descontarStock(aceiteInvId, parseFloat(aceiteCantidad) || 1))
+
+    // Aceites extra
+    for (const ae of aceitesExtra) {
+      if (ae.inventarioId) descuentos.push(descontarStock(ae.inventarioId, parseFloat(ae.cantidad) || 1))
+    }
+
+    // Filtros (1 unidad cada uno)
+    if (filtroAceiteInvId) descuentos.push(descontarStock(filtroAceiteInvId, 1))
+    if (filtroAireInvId) descuentos.push(descontarStock(filtroAireInvId, 1))
+
+    // Aceite de caja (1 unidad)
+    if (cajaInvId) descuentos.push(descontarStock(cajaInvId, 1))
+
+    // Refrigerante (1 unidad)
+    if (refrigInvId) descuentos.push(descontarStock(refrigInvId, 1))
+
+    // Bujías (1 unidad — puede ser un juego)
+    if (bujaInvId) descuentos.push(descontarStock(bujaInvId, 1))
+
+    // Productos adicionales: descuenta según cantidad indicada
+    for (const p of productosAd) {
+      if (p.inventarioId) descuentos.push(descontarStock(p.inventarioId, parseFloat(p.cantidad) || 1))
+    }
+
+    await Promise.all(descuentos)
+    // ──────────────────────────────────────────────────────────────────────
 
     const datos = {
       placa: placa.toUpperCase(), nombre, marca: marca.toUpperCase(),
@@ -480,13 +534,28 @@ export default function AtencionPage() {
 
           {/* MOTOR Y FILTROS */}
           <div className="rounded-2xl" style={{ border: '1px solid var(--border)' }}>
-            <SecHead icon="🛢️" title="Motor y Filtros" sub="Aceite, viscosidad y filtros del motor" accent="var(--accent-teal)" />
+            <div className="flex items-center justify-between px-5 py-4 rounded-t-2xl" style={{ background: 'var(--surface-2)', borderBottom: '1px solid rgba(33,199,184,0.3)' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg" style={{ background: 'rgba(33,199,184,0.14)', border: '1px solid rgba(33,199,184,0.35)' }}>🛢️</div>
+                <div>
+                  <p className="font-display text-xs font-bold uppercase tracking-widest leading-none" style={{ color: 'var(--text)' }}>Motor y Filtros</p>
+                  <p className="text-[10px] font-bold mt-0.5" style={{ color: 'var(--text-muted)' }}>Aceite, viscosidad y filtros del motor</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setAceitesExtra([...aceitesExtra, { marca: '', cantidad: '', inventarioId: '' }])}
+                className="font-display text-[10px] font-bold px-4 py-2 rounded-xl uppercase tracking-widest transition-all"
+                style={{ background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)', border: '1px solid rgba(33,199,184,0.35)' }}>
+                + Aceite
+              </button>
+            </div>
             <div className="p-5" style={{ background: 'var(--surface)', borderRadius: '0 0 16px 16px' }}>
+              {/* Fila principal de aceite */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-2">
                   <label className={lbl}>Aceite Motor</label>
                   <AutocompleteInput value={aceiteMarca} onChange={setAceiteMarca}
-                    onSelect={item => { setAceiteMarca(item.nombre); setPrecioAceite(String(item.precio)) }}
+                    onSelect={item => { setAceiteMarca(item.nombre); setAceiteInvId(item.id); setPrecioAceite(String(item.precio)) }}
                     placeholder="Marca de aceite..." className={inp + ' uppercase'}
                     items={invAceites.length > 0 ? invAceites : invTodos} />
                 </div>
@@ -501,18 +570,57 @@ export default function AtencionPage() {
                 <div>
                   <label className={lbl}>Filtro Aceite</label>
                   <AutocompleteInput value={filtroAceite} onChange={setFiltroAceite}
-                    onSelect={item => { setFiltroAceite(item.nombre); setPrecioAceite(prev => String((parseFloat(prev) || 0) + item.precio)) }}
+                    onSelect={item => { setFiltroAceite(item.nombre); setFiltroAceiteInvId(item.id); setPrecioAceite(prev => String((parseFloat(prev) || 0) + item.precio)) }}
                     placeholder="Código filtro..." className={inp + ' uppercase'}
                     items={invFiltros.length > 0 ? invFiltros : invTodos} />
                 </div>
                 <div>
                   <label className={lbl}>Filtro Aire</label>
                   <AutocompleteInput value={filtroAire} onChange={setFiltroAire}
-                    onSelect={item => { setFiltroAire(item.nombre); setPrecioAceite(prev => String((parseFloat(prev) || 0) + item.precio)) }}
+                    onSelect={item => { setFiltroAire(item.nombre); setFiltroAireInvId(item.id); setPrecioAceite(prev => String((parseFloat(prev) || 0) + item.precio)) }}
                     placeholder="Código filtro..." className={inp + ' uppercase'}
                     items={invFiltros.length > 0 ? invFiltros : invTodos} />
                 </div>
               </div>
+
+              {/* Filas de aceite extra */}
+              {aceitesExtra.length > 0 && (
+                <div className="mt-4 space-y-3">
+                  <p className="font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--accent-teal)' }}>Aceite adicional</p>
+                  {aceitesExtra.map((ae, i) => (
+                    <div key={i} className="flex gap-3 items-end">
+                      <div className="flex-1">
+                        <label className={lbl}>Marca / Producto</label>
+                        <AutocompleteInput
+                          value={ae.marca}
+                          onChange={v => { const a = [...aceitesExtra]; a[i].marca = v; setAceitesExtra(a) }}
+                          onSelect={item => {
+                            const a = [...aceitesExtra]; a[i].marca = item.nombre; a[i].inventarioId = item.id
+                            setAceitesExtra(a)
+                            setPrecioAceite(prev => String((parseFloat(prev) || 0) + item.precio))
+                          }}
+                          placeholder="Marca de aceite..."
+                          className={inp + ' uppercase'}
+                          items={invAceites.length > 0 ? invAceites : invTodos} />
+                      </div>
+                      <div style={{ width: '90px' }}>
+                        <label className={lbl}>Cant. (Lt)</label>
+                        <input type="number" value={ae.cantidad}
+                          onChange={e => { const a = [...aceitesExtra]; a[i].cantidad = e.target.value; setAceitesExtra(a) }}
+                          placeholder="1" min="0.5" step="0.5"
+                          className={inp + ' font-mono text-center'} />
+                      </div>
+                      <button
+                        onClick={() => setAceitesExtra(aceitesExtra.filter((_, j) => j !== i))}
+                        className="font-bold text-lg mb-0.5 transition-colors"
+                        style={{ color: 'var(--text-muted)', flexShrink: 0 }}
+                        onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
+                        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <div className="mt-4 pt-4 flex items-center justify-between gap-4" style={{ borderTop: '1px solid var(--border)' }}>
                 <div>
                   <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--accent-teal)' }}>Precio — Motor y Filtros</p>
@@ -536,7 +644,7 @@ export default function AtencionPage() {
                 <div>
                   <label className={lbl}>Producto</label>
                   <AutocompleteInput value={cajaMarca} onChange={setCajaMarca}
-                    onSelect={item => { setCajaMarca(item.nombre); setPrecioCaja(String(item.precio)) }}
+                    onSelect={item => { setCajaMarca(item.nombre); setCajaInvId(item.id); setPrecioCaja(String(item.precio)) }}
                     placeholder="Marca..." className={inp + ' uppercase'}
                     items={invCaja.length > 0 ? invCaja : invTodos} />
                 </div>
@@ -556,7 +664,7 @@ export default function AtencionPage() {
                 <div>
                   <label className={lbl}>Producto</label>
                   <AutocompleteInput value={refrigMarca} onChange={setRefrigMarca}
-                    onSelect={item => { setRefrigMarca(item.nombre); setPrecioRefrig(String(item.precio)) }}
+                    onSelect={item => { setRefrigMarca(item.nombre); setRefrigInvId(item.id); setPrecioRefrig(String(item.precio)) }}
                     placeholder="Marca..." className={inp + ' uppercase'}
                     items={invRefrig.length > 0 ? invRefrig : invTodos} />
                 </div>
@@ -574,7 +682,7 @@ export default function AtencionPage() {
                 <div>
                   <label className={lbl}>Marca</label>
                   <AutocompleteInput value={bujaMarca} onChange={setBujaMarca}
-                    onSelect={item => { setBujaMarca(item.nombre); setPrecioBujias(String(item.precio)) }}
+                    onSelect={item => { setBujaMarca(item.nombre); setBujaInvId(item.id); setPrecioBujias(String(item.precio)) }}
                     placeholder="Marca..." className={inp + ' uppercase'}
                     items={invBujias.length > 0 ? invBujias : invTodos} />
                 </div>
@@ -600,7 +708,7 @@ export default function AtencionPage() {
                   <p className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>Agrega los productos que se usaron</p>
                 </div>
               </div>
-              <button onClick={() => setProductosAd([...productosAd, { nombre: '', precio: '' }])}
+              <button onClick={() => setProductosAd([...productosAd, { nombre: '', precio: '', cantidad: '1', inventarioId: '' }])}
                 className="font-display text-[10px] font-bold px-4 py-2 rounded-xl uppercase tracking-widest transition-all"
                 style={{ background: 'rgba(167,139,250,0.14)', color: '#a78bfa', border: '1px solid rgba(167,139,250,0.35)' }}>
                 + Agregar
@@ -617,12 +725,21 @@ export default function AtencionPage() {
                         <AutocompleteInput
                           value={p.nombre}
                           onChange={v => { const a = [...productosAd]; a[i].nombre = v; setProductosAd(a) }}
-                          onSelect={item => { const a = [...productosAd]; a[i].nombre = item.nombre; a[i].precio = String(item.precio); setProductosAd(a) }}
+                          onSelect={item => { const a = [...productosAd]; a[i].nombre = item.nombre; a[i].precio = String(item.precio); a[i].inventarioId = item.id; setProductosAd(a) }}
                           placeholder="Nombre del producto..."
                           className={inp + ' uppercase'}
                           items={invTodos} />
                       </div>
-                      <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 min-w-32" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.3)' }}>
+                      {/* Cantidad */}
+                      <div className="flex items-center gap-1.5 rounded-xl px-3 py-2.5" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.3)', minWidth: '72px' }}>
+                        <span className="font-display font-bold text-xs shrink-0" style={{ color: '#a78bfa' }}>Cant</span>
+                        <input type="number" value={p.cantidad}
+                          onChange={e => { const a = [...productosAd]; a[i].cantidad = e.target.value; setProductosAd(a) }}
+                          placeholder="1" min="1" step="1"
+                          className="font-mono bg-transparent outline-none font-bold text-sm w-full text-center" style={{ color: '#a78bfa' }} />
+                      </div>
+                      {/* Precio unitario */}
+                      <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 min-w-28" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.3)' }}>
                         <span className="font-display font-bold text-sm" style={{ color: '#a78bfa' }}>S/</span>
                         <input type="number" value={p.precio}
                           onChange={e => { const a = [...productosAd]; a[i].precio = e.target.value; setProductosAd(a) }}
@@ -712,7 +829,10 @@ export default function AtencionPage() {
                   {precioRefrig && <div className="flex justify-between"><span style={{ color: '#f87171' }}>🔴 Refrigerante</span><span className="font-mono" style={{ color: 'var(--text)' }}>S/ {precioRefrig}</span></div>}
                   {precioBujias && <div className="flex justify-between"><span style={{ color: 'var(--accent-yellow)' }}>🟡 Bujías</span><span className="font-mono" style={{ color: 'var(--text)' }}>S/ {precioBujias}</span></div>}
                   {productosAd.filter(p => p.precio).map((p, i) => (
-                    <div key={i} className="flex justify-between"><span style={{ color: '#a78bfa' }}>🟣 {p.nombre || 'Adicional'}</span><span className="font-mono" style={{ color: 'var(--text)' }}>S/ {p.precio}</span></div>
+                    <div key={i} className="flex justify-between">
+                      <span style={{ color: '#a78bfa' }}>🟣 {p.nombre || 'Adicional'}{parseFloat(p.cantidad) > 1 ? ` ×${p.cantidad}` : ''}</span>
+                      <span className="font-mono" style={{ color: 'var(--text)' }}>S/ {((parseFloat(p.precio) || 0) * (parseFloat(p.cantidad) || 1)).toFixed(2)}</span>
+                    </div>
                   ))}
                   {otrosServicios.filter(o => o.precio).map((o, i) => (
                     <div key={i} className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>⚪ {o.detalle || 'Servicio'}</span><span className="font-mono" style={{ color: 'var(--text)' }}>S/ {o.precio}</span></div>
