@@ -28,9 +28,11 @@ body {
 .font-display { font-family: var(--font-display), sans-serif; }
 .font-mono    { font-family: var(--font-mono), monospace; }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--surface-2); border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; border: 2px solid var(--surface-2); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+::-webkit-scrollbar-corner { background: var(--surface-2); }
 
 .inp {
   width: 100%;
