@@ -7,10 +7,16 @@ import { supabase } from '@/lib/supabase'
 type ItemOpcion = { descripcion: string; precio: string }
 type Opcion = { titulo: string; items: ItemOpcion[] }
 
+type MarcaAceite = {
+  nombre: string
+  logo_url: string
+}
+
 type TallerInfo = {
   logo_url: string
   telefono: string
   direccion: string
+  marcas_aceite: MarcaAceite[] | null
 }
 
 type ModalCotizadorProps = {
@@ -31,7 +37,7 @@ const opcionVacia = (): Opcion => ({
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function ModalCotizador({ tallerID, tallerNombre, onClose }: ModalCotizadorProps) {
   // Datos del taller (para PDF)
-  const [tallerInfo, setTallerInfo] = useState<TallerInfo>({ logo_url: '', telefono: '', direccion: '' })
+  const [tallerInfo, setTallerInfo] = useState<TallerInfo>({ logo_url: '', telefono: '', direccion: '', marcas_aceite: null })
 
   // Datos del cliente / vehículo
   const [nombre, setNombre] = useState('')
@@ -58,7 +64,7 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
     if (!tallerID) return
     supabase
       .from('talleres')
-      .select('logo_url, telefono, direccion')
+      .select('logo_url, telefono, direccion, marcas_aceite')
       .eq('id', tallerID)
       .single()
       .then(({ data }) => {
@@ -66,6 +72,7 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
           logo_url: data.logo_url || '',
           telefono: data.telefono || '',
           direccion: data.direccion || '',
+          marcas_aceite: data.marcas_aceite || null,
         })
       })
   }, [tallerID])
@@ -148,6 +155,17 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
     window.open(`https://wa.me/51${tel}?text=${msg}`, '_blank')
   }
 
+  // ── Cargar imagen como base64 ──────────────────────────────────────────────
+  const loadImageAsBase64 = (url: string): Promise<{ img: HTMLImageElement; ok: boolean }> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => resolve({ img, ok: img.width > 0 })
+      img.onerror = () => resolve({ img, ok: false })
+      img.src = url
+    })
+  }
+
   // ── PDF ────────────────────────────────────────────────────────────────────
   const descargarPDF = async () => {
     setLoading(true)
@@ -155,223 +173,376 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
       const { default: jsPDF } = await import('jspdf')
       const doc = new jsPDF({ unit: 'mm', format: 'a4' })
       const W = 210
+      const MARGIN = 14
+      const CONTENT_W = W - MARGIN * 2
+
       const fechaFmt = fecha.split('-').reverse().join('/')
       const vehiculo = [marca, modelo].filter(Boolean).join(' ')
 
-      // ── ENCABEZADO ── fondo blanco, logo + datos taller
-      let headerH = 42
-      doc.setFillColor(255, 255, 255)
+      // ── Colores del tema ──
+      const COLOR_ACCENT   = [255, 106,  31] as [number, number, number]  // naranja
+      const COLOR_DARK     = [ 15,  15,  25] as [number, number, number]  // negro azulado
+      const COLOR_HEADER_BG= [ 25,  32,  51] as [number, number, number]  // azul oscuro header
+      const COLOR_STRIPE   = [245, 247, 252] as [number, number, number]  // fila par
+      const COLOR_BORDER   = [220, 225, 240] as [number, number, number]
+      const COLOR_GRAY_MID = [ 90,  95, 115] as [number, number, number]
+      const COLOR_WHITE    = [255, 255, 255] as [number, number, number]
+
+      // ═══════════════════════════════════════════════════════
+      // HEADER — fondo azul oscuro con franja naranja
+      // ═══════════════════════════════════════════════════════
+      const headerH = 44
+
+      // Fondo del header
+      doc.setFillColor(...COLOR_HEADER_BG)
       doc.rect(0, 0, W, headerH, 'F')
 
-      // Línea separadora inferior del header
-      doc.setDrawColor(220, 220, 220)
-      doc.setLineWidth(0.4)
+      // Franja naranja izquierda (4mm)
+      doc.setFillColor(...COLOR_ACCENT)
+      doc.rect(0, 0, 4, headerH, 'F')
+
+      // Logo del taller
+      let logoEndX = MARGIN + 4 + 4 // 4mm desde el borde + 4mm de franja
+      if (tallerInfo.logo_url) {
+        const { img, ok } = await loadImageAsBase64(tallerInfo.logo_url)
+        if (ok) {
+          const logoH = 26
+          const logoW = Math.min((img.width / img.height) * logoH, 44)
+          doc.addImage(img, 'PNG', logoEndX, (headerH - logoH) / 2, logoW, logoH)
+          logoEndX += logoW + 8
+        }
+      }
+
+      // Nombre del taller — asegurar que no pase del badge
+      const badgeX = W - MARGIN - 46
+      const maxNameW = badgeX - logoEndX - 4
+      doc.setTextColor(...COLOR_WHITE)
+      doc.setFont('helvetica', 'bold')
+
+      // Ajustar tamaño de fuente si el nombre es largo
+      let fontSize = 18
+      doc.setFontSize(fontSize)
+      while (doc.getTextWidth(tallerNombre.toUpperCase()) > maxNameW && fontSize > 10) {
+        fontSize -= 1
+        doc.setFontSize(fontSize)
+      }
+      doc.text(tallerNombre.toUpperCase(), logoEndX, headerH / 2 - 2)
+
+      // Subtítulo: dirección/teléfono
+      if (tallerInfo.direccion || tallerInfo.telefono) {
+        const sub = [tallerInfo.direccion, tallerInfo.telefono ? `Tel: ${tallerInfo.telefono}` : ''].filter(Boolean).join('  ·  ')
+        doc.setFontSize(7.5)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(180, 190, 215)
+        const subLines = doc.splitTextToSize(sub, maxNameW)
+        doc.text(subLines[0], logoEndX, headerH / 2 + 6)
+      }
+
+      // Badge "COTIZACIÓN" — esquina superior derecha del header
+      const badgeW = 44
+      const badgeH = 20
+      const badgeY = (headerH - badgeH) / 2
+      doc.setFillColor(...COLOR_ACCENT)
+      doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 2, 2, 'F')
+      doc.setTextColor(...COLOR_WHITE)
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'bold')
+      doc.text('COTIZACIÓN', badgeX + badgeW / 2, badgeY + 8, { align: 'center' })
+      doc.setFontSize(7)
+      doc.setFont('helvetica', 'normal')
+      doc.text(fechaFmt, badgeX + badgeW / 2, badgeY + 15, { align: 'center' })
+
+      // ── Línea separadora del header ──
+      doc.setDrawColor(...COLOR_ACCENT)
+      doc.setLineWidth(0.8)
       doc.line(0, headerH, W, headerH)
 
-      // Logo del taller (si existe)
-      let logoLoaded = false
-      if (tallerInfo.logo_url) {
-        try {
-          const img = new Image()
-          img.crossOrigin = 'anonymous'
-          await new Promise<void>((resolve) => {
-            img.onload = () => resolve()
-            img.onerror = () => resolve()
-            img.src = tallerInfo.logo_url
-          })
-          if (img.width > 0) {
-            const logoH = 24
-            const logoW = (img.width / img.height) * logoH
-            doc.addImage(img, 'PNG', 14, 9, Math.min(logoW, 40), logoH)
-            logoLoaded = true
-          }
-        } catch { /* sin logo */ }
-      }
-
-      // Nombre del taller
-      const xText = logoLoaded ? 60 : 14
-      doc.setTextColor(10, 10, 10)
-      doc.setFontSize(20)
-      doc.setFont('helvetica', 'bold')
-      doc.text(tallerNombre.toUpperCase(), xText, 18)
-
-      // Dirección y teléfono
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(80, 80, 80)
-      if (tallerInfo.direccion) doc.text(tallerInfo.direccion, xText, 26)
-      if (tallerInfo.telefono) doc.text(`Tel: ${tallerInfo.telefono}`, xText, 32)
-
-      // Badge "COTIZACIÓN" — fondo blanco, borde negro, texto negro grande
-      doc.setDrawColor(10, 10, 10)
-      doc.setLineWidth(1.2)
-      doc.rect(W - 54, 8, 40, 16)
-      doc.setTextColor(10, 10, 10)
-      doc.setFontSize(11)
-      doc.setFont('helvetica', 'bold')
-      doc.text('COTIZACIÓN', W - 49, 19)
-
-      // Fecha debajo del badge
-      doc.setFontSize(7.5)
-      doc.setFont('helvetica', 'normal')
-      doc.setTextColor(80, 80, 80)
-      doc.text(`Fecha: ${fechaFmt}`, W - 54, 30)
-
-      // ── Datos cliente ──
+      // ═══════════════════════════════════════════════════════
+      // DATOS DEL CLIENTE — caja con borde izquierdo naranja
+      // ═══════════════════════════════════════════════════════
       let y = headerH + 10
-      doc.setFillColor(245, 245, 245)
-      doc.roundedRect(14, y - 6, W - 28, vehiculo ? 28 : 20, 2, 2, 'F')
-      doc.setDrawColor(200, 200, 200)
+
+      // Fondo del bloque cliente
+      doc.setFillColor(...COLOR_STRIPE)
+      doc.roundedRect(MARGIN, y, CONTENT_W, vehiculo ? 30 : 22, 2, 2, 'F')
+      doc.setDrawColor(...COLOR_BORDER)
       doc.setLineWidth(0.3)
-      doc.roundedRect(14, y - 6, W - 28, vehiculo ? 28 : 20, 2, 2, 'S')
+      doc.roundedRect(MARGIN, y, CONTENT_W, vehiculo ? 30 : 22, 2, 2, 'S')
 
-      doc.setTextColor(120, 120, 120)
-      doc.setFontSize(7)
+      // Borde izquierdo naranja en datos cliente
+      doc.setFillColor(...COLOR_ACCENT)
+      doc.rect(MARGIN, y, 3, vehiculo ? 30 : 22, 'F')
+
+      // Label CLIENTE
+      doc.setTextColor(...COLOR_GRAY_MID)
+      doc.setFontSize(6.5)
       doc.setFont('helvetica', 'bold')
-      doc.text('CLIENTE', 20, y)
+      doc.text('CLIENTE', MARGIN + 7, y + 7)
 
-      doc.setTextColor(10, 10, 10)
+      // Nombre del cliente
+      doc.setTextColor(...COLOR_DARK)
       doc.setFontSize(13)
       doc.setFont('helvetica', 'bold')
-      doc.text(nombre.toUpperCase(), 20, y + 8)
+      doc.text(nombre.toUpperCase(), MARGIN + 7, y + 15)
 
+      // Vehículo
       if (vehiculo) {
-        doc.setTextColor(80, 80, 80)
-        doc.setFontSize(9)
+        doc.setTextColor(...COLOR_GRAY_MID)
+        doc.setFontSize(8.5)
         doc.setFont('helvetica', 'normal')
-        doc.text(vehiculo.toUpperCase(), 20, y + 16)
+        doc.text(vehiculo.toUpperCase(), MARGIN + 7, y + 23)
       }
 
+      // Placa — badge azul
       if (placa.trim()) {
+        const placaW = 42
+        const placaH = vehiculo ? 24 : 16
         doc.setFillColor(219, 234, 254)
-        doc.roundedRect(W - 56, y - 3, 42, vehiculo ? 22 : 16, 2, 2, 'F')
+        doc.roundedRect(W - MARGIN - placaW, y + (vehiculo ? 3 : 3), placaW, placaH, 2, 2, 'F')
+        doc.setDrawColor(147, 197, 253)
+        doc.setLineWidth(0.5)
+        doc.roundedRect(W - MARGIN - placaW, y + (vehiculo ? 3 : 3), placaW, placaH, 2, 2, 'S')
         doc.setTextColor(29, 78, 216)
-        doc.setFontSize(vehiculo ? 16 : 13)
+        doc.setFontSize(vehiculo ? 14 : 12)
         doc.setFont('helvetica', 'bold')
-        doc.text(placa.toUpperCase(), W - 46, vehiculo ? y + 9 : y + 7)
+        doc.text(placa.toUpperCase(), W - MARGIN - placaW / 2, y + (vehiculo ? 18 : 13), { align: 'center' })
       }
 
-      y += vehiculo ? 34 : 26
+      y += vehiculo ? 38 : 30
 
-      // ── Opciones ──
+      // ═══════════════════════════════════════════════════════
+      // OPCIONES — cada una con borde completo y header coloreado
+      // ═══════════════════════════════════════════════════════
+      const OPTION_COLORS: [number, number, number][] = [
+        [33, 199, 184],  // teal
+        [245, 158,  11], // ámbar
+        [167, 139, 250], // violeta
+        [ 52, 211, 153], // verde
+        [251, 146,  60], // naranja
+      ]
+
       opciones.forEach((opcion, idx) => {
         const titulo = opcion.titulo || `Opción ${idx + 1}`
         const itemsFiltrados = opcion.items.filter(i => i.descripcion.trim())
         if (itemsFiltrados.length === 0) return
         const tot = totalOpcion(opcion.items)
+        const col = OPTION_COLORS[idx % OPTION_COLORS.length]
 
-        // Verificar si hay espacio en la página
-        if (y > 250) { doc.addPage(); y = 20 }
+        if (y > 240) { doc.addPage(); y = 20 }
 
-        // Encabezado opción — fondo NEGRO, letras BLANCAS
-        doc.setFillColor(10, 10, 10)
-        doc.roundedRect(14, y, W - 28, 9, 1, 1, 'F')
-        doc.setTextColor(255, 255, 255)
-        doc.setFontSize(8.5)
+        // Altura total estimada de esta opción
+        const opcionH = 10 + itemsFiltrados.length * 9 + 14
+
+        // Borde exterior de la opción
+        doc.setDrawColor(...col)
+        doc.setLineWidth(0.5)
+        doc.roundedRect(MARGIN, y, CONTENT_W, opcionH, 2, 2, 'S')
+
+        // Header opción — fondo sólido del color de la opción
+        doc.setFillColor(...col)
+        doc.roundedRect(MARGIN, y, CONTENT_W, 10, 2, 2, 'F')
+        // Rectángulo inferior plano para cerrar el borde redondeado solo arriba
+        doc.rect(MARGIN, y + 7, CONTENT_W, 3, 'F')
+
+        // Número de opción
+        doc.setTextColor(...COLOR_WHITE)
+        doc.setFontSize(7)
         doc.setFont('helvetica', 'bold')
-        doc.text(titulo.toUpperCase(), 20, y + 6.2)
+        doc.text(`OPCIÓN ${idx + 1}`, MARGIN + 5, y + 7)
+
+        // Título de la opción
+        if (opcion.titulo) {
+          doc.setFontSize(8)
+          doc.text(opcion.titulo.toUpperCase(), MARGIN + 28, y + 7)
+        }
+
+        // Total en el header
+        if (tot > 0) {
+          doc.setFontSize(8.5)
+          doc.text(`S/ ${tot.toFixed(2)}`, W - MARGIN - 3, y + 7, { align: 'right' })
+        }
+
         y += 12
 
-        // Ítems
+        // Ítems con filas alternas
         itemsFiltrados.forEach((item, ii) => {
-          if (y > 260) { doc.addPage(); y = 20 }
+          if (y > 265) { doc.addPage(); y = 20 }
           if (ii % 2 === 0) {
-            doc.setFillColor(250, 250, 250)
-            doc.rect(14, y - 1, W - 28, 8, 'F')
+            doc.setFillColor(...COLOR_STRIPE)
+            doc.rect(MARGIN + 1, y - 1, CONTENT_W - 2, 8.5, 'F')
           }
-          doc.setTextColor(20, 20, 20)
+          doc.setTextColor(...COLOR_DARK)
           doc.setFontSize(8.5)
           doc.setFont('helvetica', 'normal')
-          const desc = item.descripcion.length > 65
-            ? item.descripcion.slice(0, 62) + '...'
+          const desc = item.descripcion.length > 68
+            ? item.descripcion.slice(0, 65) + '...'
             : item.descripcion
-          doc.text('•  ' + desc.toUpperCase(), 20, y + 5)
+          doc.text('  ' + desc.toUpperCase(), MARGIN + 3, y + 5.5)
           if (parseFloat(item.precio) > 0) {
             doc.setFont('helvetica', 'bold')
-            doc.setTextColor(20, 20, 20)
-            doc.text(`S/ ${parseFloat(item.precio).toFixed(2)}`, W - 20, y + 5, { align: 'right' })
+            doc.setTextColor(...col)
+            doc.text(`S/ ${parseFloat(item.precio).toFixed(2)}`, W - MARGIN - 4, y + 5.5, { align: 'right' })
           }
           y += 9
         })
 
-        // Total de la opción
-        doc.setFillColor(240, 240, 240)
-        doc.roundedRect(W - 75, y + 1, 61, 10, 1, 1, 'F')
-        doc.setDrawColor(180, 180, 180)
-        doc.setLineWidth(0.3)
-        doc.roundedRect(W - 75, y + 1, 61, 10, 1, 1, 'S')
-        doc.setTextColor(60, 60, 60)
-        doc.setFontSize(7.5)
+        // Fila total de la opción
+        doc.setFillColor(col[0], col[1], col[2], 0.12)
+        doc.setFillColor(Math.min(col[0] + 200, 255), Math.min(col[1] + 200, 255), Math.min(col[2] + 200, 255))
+        doc.rect(MARGIN + 1, y - 1, CONTENT_W - 2, 10, 'F')
+
+        doc.setTextColor(...COLOR_GRAY_MID)
+        doc.setFontSize(7)
         doc.setFont('helvetica', 'bold')
-        doc.text('TOTAL OPCIÓN', W - 68, y + 8)
+        doc.text('TOTAL', MARGIN + 5, y + 6)
+
+        doc.setTextColor(...col)
         doc.setFontSize(10)
-        doc.setTextColor(10, 10, 10)
-        doc.text(`S/ ${tot.toFixed(2)}`, W - 20, y + 8, { align: 'right' })
-        y += 16
+        doc.setFont('helvetica', 'bold')
+        doc.text(`S/ ${tot.toFixed(2)}`, W - MARGIN - 4, y + 7, { align: 'right' })
+
+        y += 14
 
         // Separador entre opciones
         if (idx < opciones.length - 1) {
-          doc.setDrawColor(200, 200, 200)
+          y += 4
+          doc.setDrawColor(...COLOR_BORDER)
           doc.setLineWidth(0.3)
-          doc.setLineDashPattern([2, 2], 0)
-          doc.line(14, y, W - 14, y)
+          doc.setLineDashPattern([3, 3], 0)
+          doc.line(MARGIN, y, W - MARGIN, y)
           doc.setLineDashPattern([], 0)
+          y += 6
+        } else {
           y += 6
         }
       })
 
-      y += 8
+      // ═══════════════════════════════════════════════════════
+      // CONDICIONES Y NOTA — cajas con borde
+      // ═══════════════════════════════════════════════════════
+      if (condiciones.trim() || nota.trim()) {
+        if (y > 240) { doc.addPage(); y = 20 }
 
-      // ── Condiciones del servicio ──
-      if (y > 240) { doc.addPage(); y = 20 }
-      doc.setDrawColor(180, 180, 180)
-      doc.setLineWidth(0.3)
-      doc.roundedRect(14, y, W - 28, 28, 2, 2, 'S')
-      doc.setTextColor(80, 80, 80)
-      doc.setFontSize(7)
-      doc.setFont('helvetica', 'bold')
-      doc.text('CONDICIONES DEL SERVICIO', 20, y + 6)
-      doc.setTextColor(40, 40, 40)
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'normal')
+        // Línea decorativa
+        doc.setDrawColor(...COLOR_ACCENT)
+        doc.setLineWidth(0.5)
+        doc.line(MARGIN, y, MARGIN + 20, y)
+        doc.setDrawColor(...COLOR_BORDER)
+        doc.line(MARGIN + 20, y, W - MARGIN, y)
+        y += 6
+      }
+
       if (condiciones.trim()) {
-        const lines = doc.splitTextToSize(condiciones.trim(), W - 44)
-        doc.text(lines.slice(0, 2), 20, y + 13)
-      }
-      y += 34
+        if (y > 248) { doc.addPage(); y = 20 }
+        doc.setFillColor(...COLOR_STRIPE)
+        doc.roundedRect(MARGIN, y, CONTENT_W, 26, 2, 2, 'F')
+        doc.setDrawColor(...COLOR_BORDER)
+        doc.setLineWidth(0.3)
+        doc.roundedRect(MARGIN, y, CONTENT_W, 26, 2, 2, 'S')
+        // Acento izquierdo
+        doc.setFillColor(...COLOR_ACCENT)
+        doc.rect(MARGIN, y, 3, 26, 'F')
 
-      // ── Nota ──
-      if (y > 245) { doc.addPage(); y = 20 }
-      doc.setDrawColor(180, 180, 180)
-      doc.setLineWidth(0.3)
-      doc.roundedRect(14, y, W - 28, 22, 2, 2, 'S')
-      doc.setTextColor(80, 80, 80)
-      doc.setFontSize(7)
-      doc.setFont('helvetica', 'bold')
-      doc.text('NOTA', 20, y + 6)
-      doc.setTextColor(40, 40, 40)
-      doc.setFontSize(8)
-      doc.setFont('helvetica', 'normal')
+        doc.setTextColor(...COLOR_GRAY_MID)
+        doc.setFontSize(6.5)
+        doc.setFont('helvetica', 'bold')
+        doc.text('CONDICIONES DEL SERVICIO', MARGIN + 7, y + 6)
+        doc.setTextColor(...COLOR_DARK)
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'normal')
+        const condLines = doc.splitTextToSize(condiciones.trim(), CONTENT_W - 16)
+        doc.text(condLines.slice(0, 2), MARGIN + 7, y + 13)
+        y += 32
+      }
+
       if (nota.trim()) {
-        const lines = doc.splitTextToSize(nota.trim(), W - 44)
-        doc.text(lines.slice(0, 1), 20, y + 13)
-      }
-      y += 28
+        if (y > 253) { doc.addPage(); y = 20 }
+        doc.setFillColor(...COLOR_STRIPE)
+        doc.roundedRect(MARGIN, y, CONTENT_W, 20, 2, 2, 'F')
+        doc.setDrawColor(...COLOR_BORDER)
+        doc.setLineWidth(0.3)
+        doc.roundedRect(MARGIN, y, CONTENT_W, 20, 2, 2, 'S')
+        doc.setFillColor(...COLOR_ACCENT)
+        doc.rect(MARGIN, y, 3, 20, 'F')
 
-      // ── Footer ──
+        doc.setTextColor(...COLOR_GRAY_MID)
+        doc.setFontSize(6.5)
+        doc.setFont('helvetica', 'bold')
+        doc.text('NOTA', MARGIN + 7, y + 6)
+        doc.setTextColor(...COLOR_DARK)
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'normal')
+        const notaLines = doc.splitTextToSize(nota.trim(), CONTENT_W - 16)
+        doc.text(notaLines.slice(0, 1), MARGIN + 7, y + 13)
+        y += 26
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // LOGOS DE MARCAS — antes del footer
+      // ═══════════════════════════════════════════════════════
+      const marcas = tallerInfo.marcas_aceite
+      if (marcas && marcas.length > 0) {
+        // Verificar que hay al menos una marca con logo
+        const marcasConLogo = marcas.filter(m => m.logo_url)
+
+        if (marcasConLogo.length > 0) {
+          // Espacio entre contenido y logos
+          const logoSectionY = Math.max(y + 10, 230)
+
+          if (logoSectionY < 262) {
+            // Línea separadora con texto "Productos de confianza"
+            doc.setDrawColor(...COLOR_BORDER)
+            doc.setLineWidth(0.3)
+            doc.line(MARGIN, logoSectionY, W - MARGIN, logoSectionY)
+
+            doc.setTextColor(...COLOR_GRAY_MID)
+            doc.setFontSize(6.5)
+            doc.setFont('helvetica', 'bold')
+            doc.text('PRODUCTOS DE CONFIANZA', W / 2, logoSectionY + 5, { align: 'center' })
+
+            // Cargar y renderizar logos en fila centrada
+            const logoH = 12
+            const logoMaxW = 28
+            const logoGap = 10
+            const totalLogosW = marcasConLogo.length * logoMaxW + (marcasConLogo.length - 1) * logoGap
+            let logoX = (W - totalLogosW) / 2
+
+            for (const marca of marcasConLogo) {
+              try {
+                const { img, ok } = await loadImageAsBase64(marca.logo_url)
+                if (ok) {
+                  const aspectW = Math.min((img.width / img.height) * logoH, logoMaxW)
+                  doc.addImage(img, 'PNG', logoX, logoSectionY + 8, aspectW, logoH)
+                  logoX += logoMaxW + logoGap
+                }
+              } catch { /* skip */ }
+            }
+          }
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════
+      // FOOTER — fondo oscuro con datos del taller
+      // ═══════════════════════════════════════════════════════
       const footerY = 277
-      doc.setFillColor(245, 245, 245)
+      doc.setFillColor(...COLOR_HEADER_BG)
       doc.rect(0, footerY, W, 20, 'F')
-      doc.setDrawColor(200, 200, 200)
-      doc.setLineWidth(0.3)
-      doc.line(0, footerY, W, footerY)
-      doc.setTextColor(120, 120, 120)
-      doc.setFontSize(7)
-      doc.setFont('helvetica', 'normal')
-      doc.text(tallerNombre.toUpperCase(), W / 2, footerY + 7, { align: 'center' })
+
+      // Franja naranja top del footer
+      doc.setFillColor(...COLOR_ACCENT)
+      doc.rect(0, footerY, W, 1.2, 'F')
+
+      doc.setTextColor(...COLOR_WHITE)
+      doc.setFontSize(7.5)
+      doc.setFont('helvetica', 'bold')
+      doc.text(tallerNombre.toUpperCase(), W / 2, footerY + 8, { align: 'center' })
+
       if (tallerInfo.telefono || tallerInfo.direccion) {
         const sub = [tallerInfo.telefono, tallerInfo.direccion].filter(Boolean).join('  ·  ')
-        doc.text(sub, W / 2, footerY + 13, { align: 'center' })
+        doc.setFontSize(6.5)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(180, 190, 215)
+        doc.text(sub, W / 2, footerY + 15, { align: 'center' })
       }
 
       doc.save(`Cotizacion_${placa || nombre}_${fecha}.pdf`)
