@@ -720,32 +720,33 @@ export default function AtencionPage() {
               ) : (
                 <div className="space-y-3">
                   {productosAd.map((p, i) => (
-                    <div key={i} className="flex gap-3 items-center">
-                      <div className="flex-1">
+                    <div key={i} className="flex gap-2 items-center">
+                      {/* Nombre — crece todo lo posible */}
+                      <div className="flex-1 min-w-0">
                         <AutocompleteInput
                           value={p.nombre}
                           onChange={v => { const a = [...productosAd]; a[i].nombre = v; setProductosAd(a) }}
                           onSelect={item => { const a = [...productosAd]; a[i].nombre = item.nombre; a[i].precio = String(item.precio); a[i].inventarioId = item.id; setProductosAd(a) }}
                           placeholder="Nombre del producto..."
-                          className={inp + ' uppercase'}
+                          className={inp + ' uppercase w-full'}
                           items={invTodos} />
                       </div>
-                      {/* Cantidad */}
-                      <div className="flex items-center gap-1.5 rounded-xl px-3 py-2.5" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.3)', minWidth: '72px' }}>
-                        <span className="font-display font-bold text-xs shrink-0" style={{ color: '#a78bfa' }}>Cant</span>
+                      {/* Cantidad — ancho fijo pequeño */}
+                      <div className="flex items-center gap-1 rounded-xl px-2 py-2.5 shrink-0" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.3)', width: '76px' }}>
+                        <span className="font-display font-bold text-[10px] shrink-0" style={{ color: '#a78bfa' }}>Cant</span>
                         <input type="number" value={p.cantidad}
                           onChange={e => { const a = [...productosAd]; a[i].cantidad = e.target.value; setProductosAd(a) }}
                           placeholder="1" min="1" step="1"
                           className="font-mono bg-transparent outline-none font-bold text-sm w-full text-center" style={{ color: '#a78bfa' }} />
                       </div>
-                      {/* Precio unitario */}
-                      <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 min-w-28" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.3)' }}>
-                        <span className="font-display font-bold text-sm" style={{ color: '#a78bfa' }}>S/</span>
+                      {/* Precio — ancho fijo pequeño */}
+                      <div className="flex items-center gap-1.5 rounded-xl px-2 py-2.5 shrink-0" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.3)', width: '96px' }}>
+                        <span className="font-display font-bold text-sm shrink-0" style={{ color: '#a78bfa' }}>S/</span>
                         <input type="number" value={p.precio}
                           onChange={e => { const a = [...productosAd]; a[i].precio = e.target.value; setProductosAd(a) }}
-                          placeholder="0.00" step="0.10" className="font-mono bg-transparent outline-none font-bold text-base w-full" style={{ color: '#a78bfa' }} />
+                          placeholder="0.00" step="0.10" className="font-mono bg-transparent outline-none font-bold text-sm w-full" style={{ color: '#a78bfa' }} />
                       </div>
-                      <button onClick={() => setProductosAd(productosAd.filter((_, j) => j !== i))} className="font-bold text-lg transition-colors" style={{ color: 'var(--text-muted)' }}
+                      <button onClick={() => setProductosAd(productosAd.filter((_, j) => j !== i))} className="font-bold text-lg transition-colors shrink-0" style={{ color: 'var(--text-muted)' }}
                         onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>✕</button>
                     </div>
                   ))}
