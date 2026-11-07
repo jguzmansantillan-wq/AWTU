@@ -65,6 +65,13 @@ export default function ConfigPage() {
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([])
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
 
+  // Acceso a Configuración — verificación de clave
+  const [accesoVerificado, setAccesoVerificado] = useState(false)
+  const [claveAcceso, setClaveAcceso] = useState('')
+  const [errorAcceso, setErrorAcceso] = useState('')
+  const [verificandoAcceso, setVerificandoAcceso] = useState(false)
+  const [mostrarClaveAcceso, setMostrarClaveAcceso] = useState(false)
+
   const [archivoExcel, setArchivoExcel] = useState<File | null>(null)
   const [previstaProductos, setPrevistaProductos] = useState<any[]>([])
   const [importando, setImportando] = useState(false)
@@ -343,9 +350,75 @@ export default function ConfigPage() {
   const lbl = "lbl"
   const selectCls = "inp appearance-none cursor-pointer"
 
+  const verificarAcceso = async () => {
+    if (!claveAcceso.trim()) { setErrorAcceso('Ingresa la clave'); return }
+    setVerificandoAcceso(true)
+    setErrorAcceso('')
+    const { data: t } = await supabase.from('talleres').select('clave_inventario').eq('id', tallerID).single()
+    const claveReal = t?.clave_inventario || CLAVE_DEFECTO
+    if (claveAcceso.trim() === claveReal) {
+      setAccesoVerificado(true)
+    } else {
+      setErrorAcceso('Clave incorrecta')
+    }
+    setVerificandoAcceso(false)
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-10 h-10 rounded-full animate-spin" style={{ border: '4px solid var(--accent-teal)', borderTopColor: 'transparent' }} />
+    </div>
+  )
+
+  if (!accesoVerificado) return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'var(--bg)' }}>
+      <div className="w-full max-w-sm rounded-3xl p-8 space-y-6"
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: '0 32px 80px -12px rgba(0,0,0,0.5)' }}>
+        <div className="flex flex-col items-center gap-3 text-center">
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"
+            style={{ background: 'rgba(255,106,31,0.12)', border: '1px solid rgba(255,106,31,0.35)' }}>🔐</div>
+          <div>
+            <h2 className="font-display font-bold text-lg uppercase tracking-tight" style={{ color: 'var(--text)' }}>
+              Acceso a Configuración
+            </h2>
+            <p className="text-xs font-semibold mt-1" style={{ color: 'var(--text-muted)' }}>
+              Ingresa la clave para continuar
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <label className="lbl">Clave de acceso</label>
+          <div className="relative">
+            <input
+              type={mostrarClaveAcceso ? 'text' : 'password'}
+              value={claveAcceso}
+              onChange={e => { setClaveAcceso(e.target.value); setErrorAcceso('') }}
+              onKeyDown={e => e.key === 'Enter' && verificarAcceso()}
+              placeholder="Ingresa tu clave..."
+              autoFocus
+              className="inp font-mono tracking-widest pr-10"
+            />
+            <button
+              onClick={() => setMostrarClaveAcceso(!mostrarClaveAcceso)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-sm"
+              style={{ color: 'var(--text-muted)' }}>
+              {mostrarClaveAcceso ? '🙈' : '👁️'}
+            </button>
+          </div>
+          {errorAcceso && (
+            <p className="text-xs font-bold mt-2" style={{ color: 'var(--accent)' }}>❌ {errorAcceso}</p>
+          )}
+        </div>
+
+        <button
+          onClick={verificarAcceso}
+          disabled={verificandoAcceso}
+          className="font-display w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50"
+          style={{ background: 'var(--accent)', color: '#fff' }}>
+          {verificandoAcceso ? '⏳ Verificando...' : '🔓 Ingresar'}
+        </button>
+      </div>
     </div>
   )
 
@@ -745,12 +818,7 @@ export default function ConfigPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3 justify-end mt-5">
-          <button onClick={restablecerClave} disabled={guardandoClave}
-            className="font-display disabled:opacity-50 font-bold px-5 py-3 rounded-xl transition-all uppercase tracking-widest text-xs active:scale-95"
-            style={{ background: 'var(--accent-yellow)', color: 'var(--bg)' }}>
-            🔄 Olvidé mi clave — Restablecer a "{CLAVE_DEFECTO}"
-          </button>
+        <div className="flex justify-end mt-5">
           <button onClick={guardarClave} disabled={guardandoClave}
             className="font-display disabled:opacity-40 font-bold px-6 py-3 rounded-xl transition-all uppercase tracking-widest text-xs active:scale-95"
             style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>
