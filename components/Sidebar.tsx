@@ -18,6 +18,7 @@ const modulos = [
   { id: 'inventario',       label: 'Inventario',       icono: '📦', href: '/dashboard/inventario'         },
   { id: 'historial-cliente',label: 'Hist. Cliente',    icono: '🔗', href: '/dashboard/historial-cliente'  },
   { id: 'documentos',       label: 'Documentos',       icono: '🧾', href: '/dashboard/documentos'         },
+    { id: 'consulta-ia',      label: 'Consulta IA',      icono: '🤖', href: '/dashboard/consulta-ia'        },
   { id: 'config',           label: 'Config',           icono: '⚙️', href: '/dashboard/config'             },
 ]
 
