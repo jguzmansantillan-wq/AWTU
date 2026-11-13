@@ -58,7 +58,8 @@ export default function Sidebar({ tallerNombre, plan }: Props) {
         <div className="grid grid-cols-2 gap-2">
           {modulos.map(m => {
             const activo = pathname === m.href ||
-              (m.href !== '/dashboard' && pathname.startsWith(m.href))
+              (m.href !== '/dashboard' && pathname.startsWith(m.href + '/')) ||
+              (m.href !== '/dashboard' && pathname === m.href)
             return (
               <button key={m.id} onClick={() => router.push(m.href)}
                 className="relative flex flex-col items-center gap-1.5 rounded-xl p-3 transition-all active:scale-95"
