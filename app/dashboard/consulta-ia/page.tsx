@@ -2,30 +2,26 @@
 
 import { useState } from 'react'
 
-type DatosVehiculo = {
-  placa?: string
-  marca?: string
-  modelo?: string
-  anio?: string
-  color?: string
-  tipo?: string
-  combustible?: string
-  motor?: string
-  serie?: string
-  propietario?: string
-  [key: string]: string | undefined
-}
-
 export default function ConsultaIAPage() {
   const [placa, setPlaca] = useState('')
-  const [vehiculo, setVehiculo] = useState<DatosVehiculo | null>(null)
+  const [vehiculo, setVehiculo] = useState<Record<string, string> | null>(null)
   const [loadingPlaca, setLoadingPlaca] = useState(false)
   const [errorPlaca, setErrorPlaca] = useState('')
-
   const [pregunta, setPregunta] = useState('')
   const [respuesta, setRespuesta] = useState('')
   const [loadingIA, setLoadingIA] = useState(false)
   const [historial, setHistorial] = useState<{ q: string; a: string }[]>([])
+
+  const extraerTexto = (val: unknown): string => {
+    if (typeof val === 'string') return val
+    if (typeof val === 'number') return String(val)
+    if (val && typeof val === 'object') {
+      const obj = val as Record<string, unknown>
+      if (obj.CurrentTextValue) return String(obj.CurrentTextValue)
+      if (obj.CurrentValue) return String(obj.CurrentValue)
+    }
+    return ''
+  }
 
   const consultarPlaca = async () => {
     if (!placa.trim()) return
@@ -38,7 +34,28 @@ export default function ConsultaIAPage() {
       if (data.error || data.message) {
         setErrorPlaca('No se encontraron datos para esta placa.')
       } else {
-        setVehiculo(data)
+        const campos: Record<string, string> = {
+          Placa: placa.toUpperCase().trim(),
+        }
+        const mapeo: Record<string, string> = {
+          Description: 'Descripcion',
+          CarMake: 'Marca',
+          CarModel: 'Modelo',
+          RegistrationYear: 'Año',
+          FuelType: 'Combustible',
+          BodyStyle: 'Carroceria',
+          EngineSize: 'Motor',
+          Transmission: 'Transmision',
+          NumberOfDoors: 'Puertas',
+          NumberOfSeats: 'Asientos',
+          MakeDescription: 'Fabricante',
+          ModelDescription: 'Modelo Detalle',
+        }
+        for (const [key, label] of Object.entries(mapeo)) {
+          const val = extraerTexto(data[key])
+          if (val) campos[label] = val
+        }
+        setVehiculo(campos)
       }
     } catch {
       setErrorPlaca('Error al consultar. Intenta nuevamente.')
@@ -51,7 +68,7 @@ export default function ConsultaIAPage() {
     setLoadingIA(true)
     setRespuesta('')
     const contexto = vehiculo
-      ? `${vehiculo.marca || ''} ${vehiculo.modelo || ''} ${vehiculo.anio || ''} - Placa: ${vehiculo.placa || placa}`
+      ? Object.entries(vehiculo).map(([k, v]) => `${k}: ${v}`).join(', ')
       : ''
     try {
       const res = await fetch('/api/ia', {
@@ -71,8 +88,6 @@ export default function ConsultaIAPage() {
 
   return (
     <div className="max-w-4xl mx-auto pb-10 space-y-5">
-
-      {/* Header */}
       <div>
         <h2 className="font-display text-2xl font-bold uppercase tracking-tighter" style={{ color: 'var(--text)' }}>
           Consulta IA
@@ -82,7 +97,6 @@ export default function ConsultaIAPage() {
         </p>
       </div>
 
-      {/* Consulta por placa */}
       <div className="card space-y-4">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
@@ -90,7 +104,6 @@ export default function ConsultaIAPage() {
           <p className="font-display text-[10px] font-bold uppercase tracking-widest"
             style={{ color: 'var(--accent-teal)' }}>Consulta Vehicular por Placa</p>
         </div>
-
         <div className="flex gap-3">
           <input
             value={placa}
@@ -100,19 +113,13 @@ export default function ConsultaIAPage() {
             maxLength={8}
             className="inp flex-1 font-mono uppercase font-bold tracking-widest"
           />
-          <button
-            onClick={consultarPlaca}
-            disabled={loadingPlaca || !placa.trim()}
+          <button onClick={consultarPlaca} disabled={loadingPlaca || !placa.trim()}
             className="font-display font-bold text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all disabled:opacity-50"
             style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>
             {loadingPlaca ? 'Buscando...' : 'Consultar'}
           </button>
         </div>
-
-        {errorPlaca && (
-          <p className="text-sm font-semibold" style={{ color: '#ff5252' }}>❌ {errorPlaca}</p>
-        )}
-
+        {errorPlaca && <p className="text-sm font-semibold" style={{ color: '#ff5252' }}>❌ {errorPlaca}</p>}
         {vehiculo && (
           <div className="rounded-2xl p-4 space-y-3"
             style={{ background: 'rgba(33,199,184,0.06)', border: '1px solid rgba(33,199,184,0.2)' }}>
@@ -122,7 +129,7 @@ export default function ConsultaIAPage() {
                 style={{ color: 'var(--accent-teal)' }}>Datos del Vehiculo</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {Object.entries(vehiculo).filter(([, v]) => v).map(([k, v]) => (
+              {Object.entries(vehiculo).map(([k, v]) => (
                 <div key={k} className="rounded-xl p-3"
                   style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
                   <p className="font-display text-[9px] font-bold uppercase tracking-widest mb-1"
@@ -135,7 +142,6 @@ export default function ConsultaIAPage() {
         )}
       </div>
 
-      {/* Asistente IA */}
       <div className="card space-y-4">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
@@ -145,17 +151,15 @@ export default function ConsultaIAPage() {
           {vehiculo && (
             <span className="font-display text-[9px] font-bold px-2 py-0.5 rounded-lg"
               style={{ background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)', border: '1px solid rgba(33,199,184,0.3)' }}>
-              🚗 {vehiculo.marca} {vehiculo.modelo}
+              🚗 {vehiculo['Marca']} {vehiculo['Modelo']}
             </span>
           )}
         </div>
-
         {!vehiculo && (
           <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
             💡 Consulta una placa primero para obtener respuestas especificas al vehiculo, o haz preguntas generales de mecanica.
           </p>
         )}
-
         <div className="flex gap-3">
           <input
             value={pregunta}
@@ -164,15 +168,12 @@ export default function ConsultaIAPage() {
             placeholder="Ej: Que aceite usa este motor? Cuanto cuesta una faja de distribución?"
             className="inp flex-1"
           />
-          <button
-            onClick={consultarIA}
-            disabled={loadingIA || !pregunta.trim()}
+          <button onClick={consultarIA} disabled={loadingIA || !pregunta.trim()}
             className="font-display font-bold text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all disabled:opacity-50"
             style={{ background: '#a78bfa', color: 'var(--bg)' }}>
             {loadingIA ? 'Pensando...' : 'Preguntar'}
           </button>
         </div>
-
         {loadingIA && (
           <div className="flex items-center gap-2 py-2">
             <div className="w-4 h-4 rounded-full animate-spin"
@@ -180,7 +181,6 @@ export default function ConsultaIAPage() {
             <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Consultando IA...</p>
           </div>
         )}
-
         {respuesta && (
           <div className="rounded-2xl p-4"
             style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.2)' }}>
@@ -189,7 +189,6 @@ export default function ConsultaIAPage() {
             <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text)' }}>{respuesta}</p>
           </div>
         )}
-
         {historial.length > 0 && (
           <div className="space-y-2">
             <p className="font-display text-[9px] font-bold uppercase tracking-widest"
@@ -206,7 +205,6 @@ export default function ConsultaIAPage() {
           </div>
         )}
       </div>
-
     </div>
   )
 }
