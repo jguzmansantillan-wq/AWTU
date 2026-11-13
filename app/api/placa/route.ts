@@ -5,8 +5,11 @@ export async function GET(request: Request) {
   const placa = searchParams.get('placa')
   if (!placa) return NextResponse.json({ error: 'Placa requerida' }, { status: 400 })
 
-  const res = await fetch(`https://api.decolecta.com/api/vehiculo?placa=${placa}`, {
-    headers: { 'Authorization': `Bearer ${process.env.DECOLECTA_KEY}` }
+  const res = await fetch(`https://api.decolecta.com/api/vehiculos/placa/${placa}`, {
+    headers: { 
+      'Authorization': `Bearer ${process.env.DECOLECTA_KEY}`,
+      'Content-Type': 'application/json'
+    }
   })
   const data = await res.json()
   return NextResponse.json(data)
