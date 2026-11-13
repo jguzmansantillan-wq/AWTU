@@ -12,7 +12,7 @@ const modulos = [
   { id: 'atencion',         label: 'Atención',         icono: '🔧', href: '/dashboard/atencion'           },
   { id: 'tienda',           label: 'Tienda / POS',     icono: '🛒', href: '/dashboard/tienda'             },
   { id: 'historial',        label: 'Ventas',           icono: '📋', href: '/dashboard/historial'          },
-  { id: 'consulta-placa',   label: 'Consulta Placa',   icono: '🔍', href: '/dashboard/consulta'           },
+  { id: 'consulta-placa', label: 'Consulta Placa', icono: '🔍', href: '/dashboard/consulta-placa'         },
   { id: 'reportes',         label: 'Reportes',         icono: '📈', href: '/dashboard/reportes'           },
   { id: 'contactos',        label: 'Contactos',        icono: '👥', href: '/dashboard/contactos'          },
   { id: 'inventario',       label: 'Inventario',       icono: '📦', href: '/dashboard/inventario'         },
