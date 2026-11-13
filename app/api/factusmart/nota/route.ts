@@ -56,12 +56,17 @@ export async function POST(req: NextRequest) {
     const fecha = ahora.toLocaleDateString('sv-SE', { timeZone: 'America/Lima' })
     const hora  = ahora.toLocaleTimeString('es-PE', { hour12: false, timeZone: 'America/Lima' })
 
+    // Serie según tipo: nota crédito boleta=BN01, nota crédito factura=FN01
+    // nota débito boleta=BN01, nota débito factura=FN01
+    const serie_documento = tipo_doc_ref === '01' ? 'FN01' : 'BN01'
+
     const payload: any = {
       ruc:                       RUC,
       numero_documento:          '#',
       fecha_de_emision:          fecha,
       hora_de_emision:           hora,
       codigo_tipo_documento:     tipo_nota, // '07' o '08'
+      serie_documento,
       codigo_tipo_moneda:        'PEN',
       datos_del_cliente_o_receptor: {
         codigo_tipo_documento_identidad: tipo_doc_cliente || '1',
