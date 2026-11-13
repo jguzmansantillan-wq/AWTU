@@ -15,9 +15,7 @@ export async function GET(request: Request) {
     })
 
     const xml = await res.text()
-
-    // Extraer el JSON del campo vehicleJson dentro del XML
-    const match = xml.match(/<vehicleJson>(.*?)<\/vehicleJson>/s)
+    const match = xml.match(/<vehicleJson>([^<]*)<\/vehicleJson>/)
     if (!match) return NextResponse.json({ error: 'No se encontraron datos para esta placa' }, { status: 404 })
 
     const vehicleData = JSON.parse(match[1].replace(/&quot;/g, '"'))
