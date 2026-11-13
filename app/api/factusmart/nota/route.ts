@@ -70,11 +70,13 @@ export async function POST(req: NextRequest) {
         ...(cliente_dir    ? { direccion: cliente_dir }                             : {}),
       },
       // Referencia al comprobante original
-      documento_que_se_modifica_tipo:          tipo_doc_ref,    // '01' o '03'
-      documento_que_se_modifica_numero_serie:  serie_numero_ref.split('-')[0] || '',
-      documento_que_se_modifica_numero_numero: serie_numero_ref.split('-')[1] || '',
-      codigo_tipo_nota_credito_o_debito:       codigo_motivo,
-      descripcion_motivo_nota:                 motivo,
+      documento_afectado: {
+        codigo_tipo_documento: tipo_doc_ref,
+        numero_serie:          serie_numero_ref.split('-')[0] || '',
+        numero_correlativo:    serie_numero_ref.split('-')[1] || '',
+      },
+      codigo_tipo_nota_credito_o_debito: codigo_motivo,
+      descripcion_motivo_nota:           motivo,
       // Items y totales calculados
       items:   calcData.items,
       totales: calcData.totales,
