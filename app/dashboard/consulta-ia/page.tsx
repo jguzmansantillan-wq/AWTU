@@ -42,14 +42,17 @@ export default function ConsultaIAPage() {
           CarMake: 'Marca',
           CarModel: 'Modelo',
           RegistrationYear: 'Año',
+          VIN: 'VIN',
+          Owner: 'Propietario',
+          DeliveryPoint: 'Direccion',
+          Use: 'Uso',
+          Date: 'Fecha',
           FuelType: 'Combustible',
           BodyStyle: 'Carroceria',
           EngineSize: 'Motor',
           Transmission: 'Transmision',
           NumberOfDoors: 'Puertas',
           NumberOfSeats: 'Asientos',
-          MakeDescription: 'Fabricante',
-          ModelDescription: 'Modelo Detalle',
         }
         for (const [key, label] of Object.entries(mapeo)) {
           const val = extraerTexto(data[key])
@@ -88,6 +91,7 @@ export default function ConsultaIAPage() {
 
   return (
     <div className="max-w-4xl mx-auto pb-10 space-y-5">
+
       <div>
         <h2 className="font-display text-2xl font-bold uppercase tracking-tighter" style={{ color: 'var(--text)' }}>
           Consulta IA
@@ -97,6 +101,7 @@ export default function ConsultaIAPage() {
         </p>
       </div>
 
+      {/* Consulta por placa */}
       <div className="card space-y-4">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
@@ -104,6 +109,7 @@ export default function ConsultaIAPage() {
           <p className="font-display text-[10px] font-bold uppercase tracking-widest"
             style={{ color: 'var(--accent-teal)' }}>Consulta Vehicular por Placa</p>
         </div>
+
         <div className="flex gap-3">
           <input
             value={placa}
@@ -119,7 +125,11 @@ export default function ConsultaIAPage() {
             {loadingPlaca ? 'Buscando...' : 'Consultar'}
           </button>
         </div>
-        {errorPlaca && <p className="text-sm font-semibold" style={{ color: '#ff5252' }}>❌ {errorPlaca}</p>}
+
+        {errorPlaca && (
+          <p className="text-sm font-semibold" style={{ color: '#ff5252' }}>❌ {errorPlaca}</p>
+        )}
+
         {vehiculo && (
           <div className="rounded-2xl p-4 space-y-3"
             style={{ background: 'rgba(33,199,184,0.06)', border: '1px solid rgba(33,199,184,0.2)' }}>
@@ -130,11 +140,12 @@ export default function ConsultaIAPage() {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {Object.entries(vehiculo).map(([k, v]) => (
-                <div key={k} className="rounded-xl p-3"
-                  style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                <div key={k} className={`rounded-xl p-3 ${k === 'VIN' ? 'col-span-2 md:col-span-3' : ''}`}
+                  style={{ background: 'var(--surface-2)', border: `1px solid ${k === 'VIN' ? 'rgba(33,199,184,0.4)' : 'var(--border)'}` }}>
                   <p className="font-display text-[9px] font-bold uppercase tracking-widest mb-1"
-                    style={{ color: 'var(--text-muted)' }}>{k}</p>
-                  <p className="font-mono text-xs font-bold uppercase" style={{ color: 'var(--text)' }}>{v}</p>
+                    style={{ color: k === 'VIN' ? 'var(--accent-teal)' : 'var(--text-muted)' }}>{k}</p>
+                  <p className={`font-mono font-bold uppercase ${k === 'VIN' ? 'text-sm' : 'text-xs'}`}
+                    style={{ color: 'var(--text)' }}>{v}</p>
                 </div>
               ))}
             </div>
@@ -142,6 +153,7 @@ export default function ConsultaIAPage() {
         )}
       </div>
 
+      {/* Asistente IA */}
       <div className="card space-y-4">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-xl flex items-center justify-center text-sm"
@@ -155,17 +167,19 @@ export default function ConsultaIAPage() {
             </span>
           )}
         </div>
+
         {!vehiculo && (
           <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
             💡 Consulta una placa primero para obtener respuestas especificas al vehiculo, o haz preguntas generales de mecanica.
           </p>
         )}
+
         <div className="flex gap-3">
           <input
             value={pregunta}
             onChange={e => setPregunta(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && consultarIA()}
-            placeholder="Ej: Que aceite usa este motor? Cuanto cuesta una faja de distribución?"
+            placeholder="Ej: Que aceite usa este motor? Cuanto cuesta una faja de distribucion?"
             className="inp flex-1"
           />
           <button onClick={consultarIA} disabled={loadingIA || !pregunta.trim()}
@@ -174,6 +188,7 @@ export default function ConsultaIAPage() {
             {loadingIA ? 'Pensando...' : 'Preguntar'}
           </button>
         </div>
+
         {loadingIA && (
           <div className="flex items-center gap-2 py-2">
             <div className="w-4 h-4 rounded-full animate-spin"
@@ -181,6 +196,7 @@ export default function ConsultaIAPage() {
             <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Consultando IA...</p>
           </div>
         )}
+
         {respuesta && (
           <div className="rounded-2xl p-4"
             style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.2)' }}>
@@ -189,6 +205,7 @@ export default function ConsultaIAPage() {
             <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ color: 'var(--text)' }}>{respuesta}</p>
           </div>
         )}
+
         {historial.length > 0 && (
           <div className="space-y-2">
             <p className="font-display text-[9px] font-bold uppercase tracking-widest"
@@ -205,6 +222,7 @@ export default function ConsultaIAPage() {
           </div>
         )}
       </div>
+
     </div>
   )
 }
