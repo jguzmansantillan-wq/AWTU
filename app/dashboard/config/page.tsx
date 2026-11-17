@@ -21,21 +21,15 @@ Gracias por confiar en nosotros. 🙏`
 
 const CLAVE_DEFECTO = '1234'
 
-type LogoMarca = { logo_url: string }
+type LogoMarca  = { logo_url: string }
 type MetodoPago = { tipo: string; numero: string; titular: string }
-type Sucursal = { nombre: string; direccion: string; telefono: string }
+type Sucursal   = { nombre: string; direccion: string; telefono: string }
 
 function Modulo({
-  icon, iconBg, iconBorder, titulo, subtitulo, children, defaultOpen = false,
-  accion,
+  icon, iconBg, iconBorder, titulo, subtitulo, children, defaultOpen = false, accion,
 }: {
-  icon: string
-  iconBg: string
-  iconBorder: string
-  titulo: string
-  subtitulo?: string
-  children: React.ReactNode
-  defaultOpen?: boolean
+  icon: string; iconBg: string; iconBorder: string; titulo: string
+  subtitulo?: string; children: React.ReactNode; defaultOpen?: boolean
   accion?: React.ReactNode
 }) {
   const [abierto, setAbierto] = useState(defaultOpen)
@@ -76,47 +70,50 @@ function Modulo({
 
 export default function ConfigPage() {
   const [tallerID, setTallerID] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading,  setLoading]  = useState(true)
   const [guardando, setGuardando] = useState(false)
-  const [ok, setOk] = useState('')
+  const [ok,    setOk]    = useState('')
   const [error, setError] = useState('')
 
-  const [nombre, setNombre] = useState('')
-  const [ruc, setRuc] = useState('')
-  const [telefono, setTelefono] = useState('')
+  const [nombre,    setNombre]    = useState('')
+  const [ruc,       setRuc]       = useState('')
+  const [telefono,  setTelefono]  = useState('')
   const [direccion, setDireccion] = useState('')
-  const [logoUrl, setLogoUrl] = useState('')
+  const [logoUrl,     setLogoUrl]     = useState('')
   const [logoPreview, setLogoPreview] = useState('')
   const [subiendoLogo, setSubiendoLogo] = useState(false)
 
-  const [marcas, setMarcas] = useState<LogoMarca[]>([])
-  const [subiendoMarca, setSubiendoMarca] = useState(false)
+  const [marcas,         setMarcas]         = useState<LogoMarca[]>([])
+  const [subiendoMarca,  setSubiendoMarca]  = useState(false)
 
   const [plantilla, setPlantilla] = useState(PLANTILLA_DEFAULT)
 
-  const [claveActualInput, setClaveActualInput] = useState('')
-  const [claveNueva, setClaveNueva] = useState('')
-  const [claveConfirm, setClaveConfirm] = useState('')
+  const [claveActualInput,       setClaveActualInput]       = useState('')
+  const [claveNueva,             setClaveNueva]             = useState('')
+  const [claveConfirm,           setClaveConfirm]           = useState('')
   const [mostrarClaveActualInput, setMostrarClaveActualInput] = useState(false)
-  const [mostrarClaveNueva, setMostrarClaveNueva] = useState(false)
-  const [guardandoClave, setGuardandoClave] = useState(false)
+  const [mostrarClaveNueva,      setMostrarClaveNueva]      = useState(false)
+  const [guardandoClave,         setGuardandoClave]         = useState(false)
 
-  const [uso, setUso] = useState<any>(null)
+  const [uso,  setUso]  = useState<any>(null)
   const [plan, setPlan] = useState('basico')
 
   const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([])
-  const [sucursales, setSucursales] = useState<Sucursal[]>([])
+  const [sucursales,  setSucursales]  = useState<Sucursal[]>([])
 
-  const [accesoVerificado, setAccesoVerificado] = useState(false)
-  const [claveAcceso, setClaveAcceso] = useState('')
-  const [errorAcceso, setErrorAcceso] = useState('')
-  const [verificandoAcceso, setVerificandoAcceso] = useState(false)
+  const [accesoVerificado,   setAccesoVerificado]   = useState(false)
+  const [claveAcceso,        setClaveAcceso]        = useState('')
+  const [errorAcceso,        setErrorAcceso]        = useState('')
+  const [verificandoAcceso,  setVerificandoAcceso]  = useState(false)
   const [mostrarClaveAcceso, setMostrarClaveAcceso] = useState(false)
 
-  const [archivoExcel, setArchivoExcel] = useState<File | null>(null)
+  const [archivoExcel,      setArchivoExcel]      = useState<File | null>(null)
   const [previstaProductos, setPrevistaProductos] = useState<any[]>([])
-  const [importando, setImportando] = useState(false)
-  const [resultadoImport, setResultadoImport] = useState('')
+  const [importando,        setImportando]        = useState(false)
+  const [resultadoImport,   setResultadoImport]   = useState('')
+
+  // Para saber si el modo es producción (afecta qué API key usa Factusmart)
+  const [modoFactusmart, setModoFactusmart] = useState<'demo' | 'produccion'>('demo')
 
   useEffect(() => {
     const init = async () => {
@@ -132,14 +129,15 @@ export default function ConfigPage() {
       setLogoUrl(t.logo_url || '')
       setLogoPreview(t.logo_url || '')
       setPlantilla(t.whatsapp_plantilla || PLANTILLA_DEFAULT)
+      setModoFactusmart(t.modo_factusmart || 'demo')
 
       const marcasLimpias = (Array.isArray(t.marcas_aceite) ? t.marcas_aceite : [])
         .filter((m: any) => m && m.logo_url)
       setMarcas(marcasLimpias)
 
       setPlan(t.plan || 'basico')
-      setMetodosPago(Array.isArray(t.metodos_pago) ? t.metodos_pago : [])
-      setSucursales(Array.isArray(t.sucursales) ? t.sucursales : [])
+      setMetodosPago(Array.isArray(t.metodos_pago)  ? t.metodos_pago  : [])
+      setSucursales(Array.isArray(t.sucursales)      ? t.sucursales    : [])
 
       if (!t.clave_inventario) {
         await supabase.from('talleres').update({ clave_inventario: CLAVE_DEFECTO }).eq('id', t.id)
@@ -154,27 +152,63 @@ export default function ConfigPage() {
     init()
   }, [])
 
+  // ── Subir logo → Supabase + sincronizar a Factusmart ────────────────────
   const subirLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     setSubiendoLogo(true)
+    setError('')
+
+    // Preview inmediato
     const reader = new FileReader()
     reader.onload = (ev) => setLogoPreview(ev.target?.result as string)
     reader.readAsDataURL(file)
-    const ext = file.name.split('.').pop()
+
+    // 1. Subir a Supabase Storage (por taller_id — cada taller su propio logo)
+    const ext  = file.name.split('.').pop()
     const path = `logos/${tallerID}.${ext}`
-    const { error: upError } = await supabase.storage.from('talleres').upload(path, file, { upsert: true })
-    if (upError) { setError('Error subiendo logo: ' + upError.message); setSubiendoLogo(false); return }
+    const { error: upError } = await supabase.storage
+      .from('talleres').upload(path, file, { upsert: true })
+    if (upError) {
+      setError('Error subiendo logo: ' + upError.message)
+      setSubiendoLogo(false)
+      return
+    }
+
     const { data: urlData } = supabase.storage.from('talleres').getPublicUrl(path)
     const url = urlData.publicUrl + '?t=' + Date.now()
     setLogoUrl(url)
+
+    // 2. Guardar en la tabla talleres
     await supabase.from('talleres').update({ logo_url: url }).eq('id', tallerID)
+
+    // 3. Sincronizar logo a Factusmart (empresa de este taller)
+    try {
+      const fsRes = await fetch('/api/factusmart/empresa', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ logo_url: url, modo: modoFactusmart }),
+      })
+      const fsData = await fsRes.json()
+      if (!fsRes.ok) {
+        // No bloqueamos al usuario, solo avisamos
+        console.warn('⚠️ Logo guardado en AWTU pero no se pudo sincronizar a Factusmart:', fsData)
+        setOk('Logo guardado. No se pudo sincronizar a Factusmart — inténtalo de nuevo más tarde.')
+      } else {
+        setOk('✅ Logo actualizado y sincronizado con Factusmart')
+      }
+    } catch (fsErr) {
+      console.warn('⚠️ Error sincronizando logo a Factusmart:', fsErr)
+      setOk('Logo guardado. No se pudo conectar con Factusmart — inténtalo de nuevo más tarde.')
+    }
+
+    setTimeout(() => setOk(''), 5000)
     setSubiendoLogo(false)
-    setOk('Logo actualizado'); setTimeout(() => setOk(''), 3000)
   }
 
   const quitarLogo = async () => {
-    setLogoUrl(''); setLogoPreview('')
+    setLogoUrl('')
+    setLogoPreview('')
     await supabase.from('talleres').update({ logo_url: null }).eq('id', tallerID)
   }
 
@@ -183,7 +217,7 @@ export default function ConfigPage() {
     if (!file) return
     if (marcas.length >= 6) { setError('Máximo 6 logos de marcas'); return }
     setSubiendoMarca(true)
-    const ext = file.name.split('.').pop()
+    const ext  = file.name.split('.').pop()
     const path = `${tallerID}/${Date.now()}.${ext}`
     const { error: upError } = await supabase.storage.from('marcas').upload(path, file, { upsert: true })
     if (upError) { setError('Error subiendo logo: ' + upError.message); setSubiendoMarca(false); return }
@@ -202,25 +236,23 @@ export default function ConfigPage() {
     await supabase.from('talleres').update({ marcas_aceite: nuevasMarcas }).eq('id', tallerID)
   }
 
-  const agregarMetodoPago = () => setMetodosPago(prev => [...prev, { tipo: 'Yape', numero: '', titular: '' }])
-  const actualizarMetodoPago = (i: number, campo: keyof MetodoPago, valor: string) => {
+  const agregarMetodoPago    = () => setMetodosPago(prev => [...prev, { tipo: 'Yape', numero: '', titular: '' }])
+  const actualizarMetodoPago = (i: number, campo: keyof MetodoPago, valor: string) =>
     setMetodosPago(prev => prev.map((m, idx) => idx === i ? { ...m, [campo]: valor } : m))
-  }
-  const eliminarMetodoPago = (i: number) => setMetodosPago(prev => prev.filter((_, idx) => idx !== i))
+  const eliminarMetodoPago   = (i: number) => setMetodosPago(prev => prev.filter((_, idx) => idx !== i))
 
-  const agregarSucursal = () => setSucursales(prev => [...prev, { nombre: '', direccion: '', telefono: '' }])
-  const actualizarSucursal = (i: number, campo: keyof Sucursal, valor: string) => {
+  const agregarSucursal    = () => setSucursales(prev => [...prev, { nombre: '', direccion: '', telefono: '' }])
+  const actualizarSucursal = (i: number, campo: keyof Sucursal, valor: string) =>
     setSucursales(prev => prev.map((s, idx) => idx === i ? { ...s, [campo]: valor } : s))
-  }
-  const eliminarSucursal = (i: number) => setSucursales(prev => prev.filter((_, idx) => idx !== i))
+  const eliminarSucursal   = (i: number) => setSucursales(prev => prev.filter((_, idx) => idx !== i))
 
   const guardarPerfil = async () => {
     setGuardando(true); setError(''); setOk('')
     const { error: e } = await supabase.from('talleres').update({
       nombre, ruc, telefono, direccion,
       whatsapp_plantilla: plantilla,
-      metodos_pago: metodosPago,
-      sucursales: sucursales,
+      metodos_pago:       metodosPago,
+      sucursales:         sucursales,
     }).eq('id', tallerID)
     if (e) { setError(e.message); setGuardando(false); return }
     setOk('Configuración guardada'); setGuardando(false)
@@ -230,9 +262,9 @@ export default function ConfigPage() {
   const guardarClave = async () => {
     setError('')
     const actual = claveActualInput.trim()
-    const nueva = claveNueva.trim()
+    const nueva  = claveNueva.trim()
     if (!actual) { setError('Ingresa la clave actual del inventario'); return }
-    if (!nueva) { setError('Escribe la nueva clave'); return }
+    if (!nueva)  { setError('Escribe la nueva clave'); return }
     if (nueva.length < 4) { setError('La nueva clave debe tener mínimo 4 caracteres'); return }
     if (nueva !== claveConfirm) { setError('Las claves nuevas no coinciden'); return }
     setGuardandoClave(true)
@@ -241,14 +273,14 @@ export default function ConfigPage() {
     if (fetchErr) { setError(fetchErr.message); setGuardandoClave(false); return }
     if ((t?.clave_inventario || '') !== actual) {
       setError('La clave actual ingresada es incorrecta')
-      setGuardandoClave(false)
-      return
+      setGuardandoClave(false); return
     }
     const { error: e } = await supabase.from('talleres').update({ clave_inventario: nueva }).eq('id', tallerID)
     if (e) { setError(e.message); setGuardandoClave(false); return }
     setClaveActualInput(''); setClaveNueva(''); setClaveConfirm('')
     setGuardandoClave(false)
-    setOk('Clave de inventario actualizada correctamente'); setTimeout(() => setOk(''), 3000)
+    setOk('Clave de inventario actualizada correctamente')
+    setTimeout(() => setOk(''), 3000)
   }
 
   const descargarPlantillaExcel = () => {
@@ -267,36 +299,34 @@ export default function ConfigPage() {
   const leerExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setArchivoExcel(file)
-    setResultadoImport('')
+    setArchivoExcel(file); setResultadoImport('')
     const reader = new FileReader()
     reader.onload = (ev) => {
       try {
         const data = new Uint8Array(ev.target?.result as ArrayBuffer)
-        const wb = XLSX.read(data, { type: 'array' })
-        const ws = wb.Sheets[wb.SheetNames[0]]
+        const wb   = XLSX.read(data, { type: 'array' })
+        const ws   = wb.Sheets[wb.SheetNames[0]]
         const rows: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 })
         if (rows.length < 2) { setError('El archivo está vacío o no tiene datos'); return }
         const headers: string[] = (rows[0] as string[]).map(h => String(h).toUpperCase().trim())
         const idx = {
-          nombre: headers.findIndex(h => h.includes('NOMBRE') || h.includes('PRODUCTO')),
+          nombre:    headers.findIndex(h => h.includes('NOMBRE') || h.includes('PRODUCTO')),
           categoria: headers.findIndex(h => h.includes('CATEG')),
-          stock: headers.findIndex(h => h.includes('STOCK') || h.includes('CANTIDAD')),
-          costo: headers.findIndex(h => h.includes('COSTO') || h.includes('COMPRA')),
-          precio: headers.findIndex(h => h.includes('PRECIO') || h.includes('VENTA')),
+          stock:     headers.findIndex(h => h.includes('STOCK') || h.includes('CANTIDAD')),
+          costo:     headers.findIndex(h => h.includes('COSTO') || h.includes('COMPRA')),
+          precio:    headers.findIndex(h => h.includes('PRECIO') || h.includes('VENTA')),
           ubicacion: headers.findIndex(h => h.includes('UBIC') || h.includes('ESTANTE')),
         }
         if (idx.nombre === -1) { setError('No se encontró columna NOMBRE o PRODUCTO'); return }
         const productos = rows.slice(1).filter((row: any) => row[idx.nombre]).map((row: any) => ({
-          nombre: String(row[idx.nombre] || '').toUpperCase().trim(),
+          nombre:    String(row[idx.nombre] || '').toUpperCase().trim(),
           categoria: idx.categoria >= 0 ? String(row[idx.categoria] || 'Otros').trim() : 'Otros',
-          stock: idx.stock >= 0 ? parseInt(row[idx.stock]) || 0 : 0,
-          costo: idx.costo >= 0 ? parseFloat(row[idx.costo]) || 0 : 0,
-          precio: idx.precio >= 0 ? parseFloat(row[idx.precio]) || 0 : 0,
+          stock:     idx.stock     >= 0 ? parseInt(row[idx.stock])          || 0 : 0,
+          costo:     idx.costo     >= 0 ? parseFloat(row[idx.costo])        || 0 : 0,
+          precio:    idx.precio    >= 0 ? parseFloat(row[idx.precio])       || 0 : 0,
           ubicacion: idx.ubicacion >= 0 ? String(row[idx.ubicacion] || 'A1').toUpperCase().trim() : 'A1',
         }))
-        setPrevistaProductos(productos)
-        setError('')
+        setPrevistaProductos(productos); setError('')
       } catch {
         setError('Error leyendo el archivo. Asegúrate de que sea un Excel válido (.xlsx)')
       }
@@ -306,52 +336,40 @@ export default function ConfigPage() {
 
   const importarProductos = async () => {
     if (previstaProductos.length === 0) return
-    setImportando(true)
-    setResultadoImport('')
-    let exitosos = 0
-    let fallidos = 0
+    setImportando(true); setResultadoImport('')
+    let exitosos = 0, fallidos = 0
     for (const p of previstaProductos) {
       const { error: e } = await supabase.from('inventario').insert({
-        taller_id: tallerID,
-        nombre: p.nombre,
-        categoria: p.categoria,
-        stock: p.stock,
-        costo: p.costo,
-        precio: p.precio,
-        ubicacion: p.ubicacion,
+        taller_id: tallerID, nombre: p.nombre, categoria: p.categoria,
+        stock: p.stock, costo: p.costo, precio: p.precio, ubicacion: p.ubicacion,
       })
-      if (e) fallidos++
-      else exitosos++
+      if (e) fallidos++; else exitosos++
     }
     setImportando(false)
     setResultadoImport(`✅ ${exitosos} productos importados correctamente${fallidos > 0 ? ` · ❌ ${fallidos} fallidos` : ''}`)
-    setPrevistaProductos([])
-    setArchivoExcel(null)
+    setPrevistaProductos([]); setArchivoExcel(null)
     setOk(`${exitosos} productos importados al inventario`)
     setTimeout(() => setOk(''), 5000)
   }
 
   const limpiarImport = () => {
-    setPrevistaProductos([])
-    setArchivoExcel(null)
-    setResultadoImport('')
+    setPrevistaProductos([]); setArchivoExcel(null); setResultadoImport('')
   }
 
   const limitesPlan: Record<string, { servicios: number; comprobantes: number; consultas: number }> = {
-    basico: { servicios: 50, comprobantes: 50, consultas: 50 },
-    pro: { servicios: 200, comprobantes: 200, consultas: 200 },
+    basico:    { servicios: 50,     comprobantes: 50,     consultas: 50 },
+    pro:       { servicios: 200,    comprobantes: 200,    consultas: 200 },
     exclusive: { servicios: 999999, comprobantes: 999999, consultas: 999999 },
   }
   const limites = limitesPlan[plan] || limitesPlan.basico
 
-  const inp = "inp"
-  const lbl = "lbl"
+  const inp       = "inp"
+  const lbl       = "lbl"
   const selectCls = "inp appearance-none cursor-pointer"
 
   const verificarAcceso = async () => {
     if (!claveAcceso.trim()) { setErrorAcceso('Ingresa la clave'); return }
-    setVerificandoAcceso(true)
-    setErrorAcceso('')
+    setVerificandoAcceso(true); setErrorAcceso('')
     const { data: t } = await supabase.from('talleres').select('clave_inventario').eq('id', tallerID).single()
     const claveReal = t?.clave_inventario || CLAVE_DEFECTO
     if (claveAcceso.trim() === claveReal) {
@@ -364,7 +382,8 @@ export default function ConfigPage() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <div className="w-10 h-10 rounded-full animate-spin" style={{ border: '4px solid var(--accent-teal)', borderTopColor: 'transparent' }} />
+      <div className="w-10 h-10 rounded-full animate-spin"
+        style={{ border: '4px solid var(--accent-teal)', borderTopColor: 'transparent' }} />
     </div>
   )
 
@@ -423,8 +442,7 @@ export default function ConfigPage() {
           </p>
           <a
             href="https://wa.me/51925988464?text=Hola%2C%20necesito%20restablecer%20mi%20clave%20de%20Configuraci%C3%B3n%20en%20AWTU"
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_blank" rel="noopener noreferrer"
             className="font-display flex items-center gap-2 font-bold text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all"
             style={{ background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.3)', color: '#25D366' }}>
             💬 Contactar Soporte
@@ -455,18 +473,17 @@ export default function ConfigPage() {
         </div>
       )}
 
-      {/* ── 1. PERFIL DEL NEGOCIO ─────────────────────────────────── */}
+      {/* ── 1. PERFIL DEL NEGOCIO ──────────────────────────────────────────── */}
       <Modulo
-        icon="🏪"
-        iconBg="rgba(33,199,184,0.12)"
-        iconBorder="rgba(33,199,184,0.35)"
-        titulo="Perfil del Negocio"
-        subtitulo="Nombre, logo, teléfono, dirección"
+        icon="🏪" iconBg="rgba(33,199,184,0.12)" iconBorder="rgba(33,199,184,0.35)"
+        titulo="Perfil del Negocio" subtitulo="Nombre, logo, teléfono, dirección"
         defaultOpen={true}>
 
         <div>
           <label className={lbl}>Logotipo del Taller</label>
-          <p className="text-[10px] font-bold mb-3" style={{ color: 'var(--text-muted)' }}>Aparece en cartilla, ticket y factura</p>
+          <p className="text-[10px] font-bold mb-3" style={{ color: 'var(--text-muted)' }}>
+            Aparece en cartilla, ticket, cotización y factura electrónica
+          </p>
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-2xl flex items-center justify-center overflow-hidden shrink-0"
               style={{ border: '2px dashed var(--border)', background: 'var(--surface-2)' }}>
@@ -476,17 +493,22 @@ export default function ConfigPage() {
             </div>
             <div className="flex flex-col gap-2">
               <label className="font-display font-bold text-xs uppercase tracking-widest px-4 py-2.5 rounded-xl cursor-pointer transition-all"
-                style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>
-                {subiendoLogo ? '⏳ Subiendo...' : '📤 Seleccionar archivo'}
-                <input type="file" accept="image/*" onChange={subirLogo} className="hidden" />
+                style={{ background: subiendoLogo ? 'var(--surface-2)' : 'var(--accent-teal)', color: subiendoLogo ? 'var(--text-muted)' : 'var(--bg)' }}>
+                {subiendoLogo ? '⏳ Subiendo y sincronizando...' : '📤 Seleccionar archivo'}
+                <input type="file" accept="image/png,image/jpeg,image/jpg" onChange={subirLogo} className="hidden" disabled={subiendoLogo} />
               </label>
-              {logoPreview && (
+              {logoPreview && !subiendoLogo && (
                 <button onClick={quitarLogo} className="font-display font-bold text-xs uppercase tracking-widest" style={{ color: 'var(--accent)' }}>
                   🗑️ Quitar logo
                 </button>
               )}
             </div>
           </div>
+          {subiendoLogo && (
+            <p className="text-[10px] font-bold mt-2" style={{ color: 'var(--text-muted)' }}>
+              Guardando en AWTU y sincronizando con Factusmart...
+            </p>
+          )}
         </div>
 
         <div>
@@ -502,9 +524,7 @@ export default function ConfigPage() {
                   </div>
                   <button onClick={() => eliminarMarca(i)}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full text-[9px] font-bold flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
-                    style={{ background: 'var(--accent)', color: 'var(--bg)' }}>
-                    ✕
-                  </button>
+                    style={{ background: 'var(--accent)', color: 'var(--bg)' }}>✕</button>
                 </div>
               ))}
             </div>
@@ -550,13 +570,10 @@ export default function ConfigPage() {
         </div>
       </Modulo>
 
-      {/* ── 2. PLANTILLA WHATSAPP ─────────────────────────────────── */}
+      {/* ── 2. PLANTILLA WHATSAPP ──────────────────────────────────────────── */}
       <Modulo
-        icon="💬"
-        iconBg="rgba(33,199,184,0.12)"
-        iconBorder="rgba(33,199,184,0.35)"
-        titulo="Plantilla de Mensaje WhatsApp"
-        subtitulo="Mensaje automático al cliente tras el servicio">
+        icon="💬" iconBg="rgba(33,199,184,0.12)" iconBorder="rgba(33,199,184,0.35)"
+        titulo="Plantilla de Mensaje WhatsApp" subtitulo="Mensaje automático al cliente tras el servicio">
 
         <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
           Personaliza el mensaje que se enviará a tus clientes con las variables entre llaves.
@@ -588,11 +605,9 @@ export default function ConfigPage() {
         </div>
       </Modulo>
 
-      {/* ── 3. MÉTODOS DE PAGO ───────────────────────────────────────── */}
+      {/* ── 3. MÉTODOS DE PAGO ────────────────────────────────────────────── */}
       <Modulo
-        icon="💳"
-        iconBg="rgba(33,199,184,0.12)"
-        iconBorder="rgba(33,199,184,0.35)"
+        icon="💳" iconBg="rgba(33,199,184,0.12)" iconBorder="rgba(33,199,184,0.35)"
         titulo="Métodos de Pago"
         subtitulo={`${metodosPago.length} método${metodosPago.length !== 1 ? 's' : ''} registrado${metodosPago.length !== 1 ? 's' : ''}`}
         accion={
@@ -614,13 +629,8 @@ export default function ConfigPage() {
                 <div className="flex gap-2">
                   <select value={m.tipo} onChange={e => actualizarMetodoPago(i, 'tipo', e.target.value)}
                     className={selectCls + ' w-32 shrink-0'}>
-                    <option>Yape</option>
-                    <option>Plin</option>
-                    <option>BCP</option>
-                    <option>BBVA</option>
-                    <option>Interbank</option>
-                    <option>Scotiabank</option>
-                    <option>Otro</option>
+                    <option>Yape</option><option>Plin</option><option>BCP</option>
+                    <option>BBVA</option><option>Interbank</option><option>Scotiabank</option><option>Otro</option>
                   </select>
                   <input value={m.numero} onChange={e => actualizarMetodoPago(i, 'numero', e.target.value)}
                     placeholder="Número / cuenta / CCI" className={inp + ' font-mono flex-1'} />
@@ -643,11 +653,9 @@ export default function ConfigPage() {
         )}
       </Modulo>
 
-      {/* ── 4. SUCURSALES ───────────────────────────────────────────── */}
+      {/* ── 4. SUCURSALES ─────────────────────────────────────────────────── */}
       <Modulo
-        icon="📍"
-        iconBg="rgba(167,139,250,0.14)"
-        iconBorder="rgba(167,139,250,0.35)"
+        icon="📍" iconBg="rgba(167,139,250,0.14)" iconBorder="rgba(167,139,250,0.35)"
         titulo="Sucursales"
         subtitulo={`${sucursales.length} sucursal${sucursales.length !== 1 ? 'es' : ''} registrada${sucursales.length !== 1 ? 's' : ''}`}
         accion={
@@ -690,13 +698,10 @@ export default function ConfigPage() {
         )}
       </Modulo>
 
-      {/* ── 5. IMPORTACIÓN EXCEL ─────────────────────────────────────── */}
+      {/* ── 5. IMPORTACIÓN EXCEL ──────────────────────────────────────────── */}
       <Modulo
-        icon="📦"
-        iconBg="rgba(33,199,184,0.12)"
-        iconBorder="rgba(33,199,184,0.35)"
-        titulo="Importación Masiva de Productos"
-        subtitulo="Carga tu inventario completo desde un archivo Excel"
+        icon="📦" iconBg="rgba(33,199,184,0.12)" iconBorder="rgba(33,199,184,0.35)"
+        titulo="Importación Masiva de Productos" subtitulo="Carga tu inventario completo desde un archivo Excel"
         accion={
           <button onClick={descargarPlantillaExcel}
             className="font-display flex items-center gap-1.5 font-bold text-xs uppercase tracking-widest px-3 py-2 rounded-xl transition-all"
@@ -734,7 +739,8 @@ export default function ConfigPage() {
               <p className="text-[10px] font-bold" style={{ color: 'var(--accent-teal)', opacity: 0.85 }}>{previstaProductos.length} productos detectados</p>
             </div>
             <button onClick={limpiarImport} className="font-bold text-lg transition-colors" style={{ color: 'var(--text-muted)' }}
-              onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>✕</button>
+              onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>✕</button>
           </div>
         )}
 
@@ -751,7 +757,7 @@ export default function ConfigPage() {
               </div>
               {previstaProductos.map((p, i) => (
                 <div key={i} className="grid grid-cols-6 gap-2 px-4 py-2.5 items-center" style={{ borderBottom: '1px solid var(--border)' }}>
-                  <p className="font-display text-xs font-bold uppercase truncate col-span-1" style={{ color: 'var(--text)' }}>{p.nombre}</p>
+                  <p className="font-display text-xs font-bold uppercase truncate" style={{ color: 'var(--text)' }}>{p.nombre}</p>
                   <p className="text-[10px] font-bold truncate" style={{ color: 'var(--text-muted)' }}>{p.categoria}</p>
                   <p className="font-mono text-[10px] font-bold text-center" style={{ color: 'var(--text)' }}>{p.stock}</p>
                   <p className="font-mono text-[10px] font-bold" style={{ color: 'var(--accent)' }}>S/ {p.costo.toFixed(2)}</p>
@@ -764,14 +770,9 @@ export default function ConfigPage() {
               <button onClick={importarProductos} disabled={importando}
                 className="font-display flex-1 disabled:opacity-50 font-bold py-3.5 rounded-2xl transition-all uppercase tracking-widest text-sm active:scale-95 flex items-center justify-center gap-2"
                 style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>
-                {importando ? (
-                  <>
-                    <div className="w-4 h-4 rounded-full animate-spin" style={{ border: '2px solid var(--bg)', borderTopColor: 'transparent' }} />
-                    Importando...
-                  </>
-                ) : (
-                  <>📦 Importar {previstaProductos.length} Productos</>
-                )}
+                {importando
+                  ? <><div className="w-4 h-4 rounded-full animate-spin" style={{ border: '2px solid var(--bg)', borderTopColor: 'transparent' }} />Importando...</>
+                  : <>📦 Importar {previstaProductos.length} Productos</>}
               </button>
               <button onClick={limpiarImport}
                 className="font-display font-bold px-5 py-3.5 rounded-2xl transition-all uppercase tracking-widest text-xs"
@@ -790,13 +791,10 @@ export default function ConfigPage() {
         )}
       </Modulo>
 
-      {/* ── 6. SEGURIDAD — CLAVE ─────────────────────────────────────── */}
+      {/* ── 6. SEGURIDAD ──────────────────────────────────────────────────── */}
       <Modulo
-        icon="🔐"
-        iconBg="var(--surface-2)"
-        iconBorder="var(--border)"
-        titulo="Seguridad — Clave de Acceso"
-        subtitulo="Cambia la clave para entrar a Configuración e Inventario">
+        icon="🔐" iconBg="var(--surface-2)" iconBorder="var(--border)"
+        titulo="Seguridad — Clave de Acceso" subtitulo="Cambia la clave para entrar a Configuración e Inventario">
 
         <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
           Por seguridad, la clave actual nunca se muestra. Debes ingresar la clave vigente y la nueva clave para cambiarla.
@@ -851,21 +849,19 @@ export default function ConfigPage() {
         </div>
       </Modulo>
 
-      {/* ── 7. USO MENSUAL ───────────────────────────────────────────── */}
+      {/* ── 7. USO MENSUAL ────────────────────────────────────────────────── */}
       <Modulo
-        icon="📊"
-        iconBg="rgba(167,139,250,0.14)"
-        iconBorder="rgba(167,139,250,0.35)"
+        icon="📊" iconBg="rgba(167,139,250,0.14)" iconBorder="rgba(167,139,250,0.35)"
         titulo="Uso Mensual"
         subtitulo={`Plan ${plan?.toUpperCase()} · ${uso?.servicios || 0} servicios este mes`}>
 
         <div className="space-y-4">
           {[
-            { label: 'Servicios', usado: uso?.servicios || 0, limite: limites.servicios, icon: '🔧', color: 'var(--accent-teal)' },
+            { label: 'Servicios',  usado: uso?.servicios || 0,       limite: limites.servicios,    icon: '🔧', color: 'var(--accent-teal)' },
             { label: 'Comprobantes (boletas, facturas, tickets, proformas, NC)', usado: uso?.comprobantes || 0, limite: limites.comprobantes, icon: '🧾', color: 'var(--accent)' },
             { label: 'Consultas por placa', usado: uso?.consultas_placa || 0, limite: limites.consultas, icon: '🔍', color: 'var(--accent-yellow)' },
           ].map(item => {
-            const pct = plan === 'exclusive' ? 10 : Math.min((item.usado / item.limite) * 100, 100)
+            const pct     = plan === 'exclusive' ? 10 : Math.min((item.usado / item.limite) * 100, 100)
             const critico = pct >= 80 && plan !== 'exclusive'
             return (
               <div key={item.label}>
