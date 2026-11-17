@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
     // 3. Enviar logo como multipart/form-data al endpoint de actualización
     const formData = new FormData()
-    const blob = new Blob([img.buffer], { type: img.mime })
+    const blob = new Blob([img.buffer as ArrayBuffer], { type: img.mime })
     formData.append('logo_path', blob, `logo.${img.ext}`)
 
     const updateRes = await fetch(`${BASE}/companies/${empresaId}`, {
