@@ -15,7 +15,7 @@ type MarcaAceite = { logo_url: string }
 type MetodoPago = { tipo: string; numero: string; titular: string }
 type Sucursal = { nombre: string; direccion: string; telefono: string }
 
-// ── Autocomplete fuera del árbol principal ──────────────────────────────────
+// ── Autocomplete ────────────────────────────────────────────────────────────
 function AutocompleteInput({ value, onChange, onSelect, placeholder, className, items }: {
   value: string; onChange: (v: string) => void; onSelect: (item: ItemInventario) => void
   placeholder: string; className?: string; items: ItemInventario[]
@@ -71,7 +71,7 @@ function AutocompleteInput({ value, onChange, onSelect, placeholder, className, 
   )
 }
 
-// ── Fila de item fuera del árbol principal ──────────────────────────────────
+// ── Fila item ───────────────────────────────────────────────────────────────
 function FilaItem({ item, index, inventario, onChange, onSelect, onDelete, canDelete }: {
   item: ItemCotizacion; index: number; inventario: ItemInventario[]
   onChange: (i: number, campo: keyof ItemCotizacion, valor: any) => void
@@ -110,7 +110,7 @@ function FilaItem({ item, index, inventario, onChange, onSelect, onDelete, canDe
   )
 }
 
-// ── Bloque de información de pago/sucursales (reutilizable) ────────────────
+// ── InfoPagoSucursales ──────────────────────────────────────────────────────
 function InfoPagoSucursales({ metodos, sucursales, modo }: {
   metodos: MetodoPago[]; sucursales: Sucursal[]; modo: 'pdf' | 'web'
 }) {
@@ -125,8 +125,7 @@ function InfoPagoSucursales({ metodos, sucursales, modo }: {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {metodos.map((m, i) => (
                 <div key={i} style={{ fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-                  <span style={{ fontWeight: 900, color: '#0f172a' }}>{m.tipo}:</span> {m.numero}
-                  {m.titular ? ` — ${m.titular}` : ''}
+                  <span style={{ fontWeight: 900, color: '#0f172a' }}>{m.tipo}:</span> {m.numero}{m.titular ? ` — ${m.titular}` : ''}
                 </div>
               ))}
             </div>
@@ -138,8 +137,7 @@ function InfoPagoSucursales({ metodos, sucursales, modo }: {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               {sucursales.map((s, i) => (
                 <div key={i} style={{ fontSize: '11px', color: '#334155', fontWeight: 600 }}>
-                  <span style={{ fontWeight: 900, color: '#0f172a' }}>{s.nombre}:</span> {s.direccion}
-                  {s.telefono ? ` · Tel: ${s.telefono}` : ''}
+                  <span style={{ fontWeight: 900, color: '#0f172a' }}>{s.nombre}:</span> {s.direccion}{s.telefono ? ` · Tel: ${s.telefono}` : ''}
                 </div>
               ))}
             </div>
@@ -181,34 +179,34 @@ function InfoPagoSucursales({ metodos, sucursales, modo }: {
 
 // ── Componente principal ────────────────────────────────────────────────────
 export default function CotizacionesPage() {
-  const [tallerID, setTallerID] = useState('')
-  const [tallerNombre, setTallerNombre] = useState('')
-  const [tallerLogo, setTallerLogo] = useState('')
-  const [tallerRuc, setTallerRuc] = useState('')
+  const [tallerID,        setTallerID]        = useState('')
+  const [tallerNombre,    setTallerNombre]    = useState('')
+  const [tallerLogo,      setTallerLogo]      = useState('')
+  const [tallerRuc,       setTallerRuc]       = useState('')
   const [tallerDireccion, setTallerDireccion] = useState('')
-  const [tallerTelefono, setTallerTelefono] = useState('')
-  const [marcasAceite, setMarcasAceite] = useState<MarcaAceite[]>([])
-  const [metodosPago, setMetodosPago] = useState<MetodoPago[]>([])
-  const [sucursales, setSucursales] = useState<Sucursal[]>([])
-  const [inventario, setInventario] = useState<ItemInventario[]>([])
-  const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([])
-  const [vista, setVista] = useState<'lista' | 'nueva' | 'ver' | 'editar'>('lista')
+  const [tallerTelefono,  setTallerTelefono]  = useState('')
+  const [marcasAceite,    setMarcasAceite]    = useState<MarcaAceite[]>([])
+  const [metodosPago,     setMetodosPago]     = useState<MetodoPago[]>([])
+  const [sucursales,      setSucursales]      = useState<Sucursal[]>([])
+  const [inventario,      setInventario]      = useState<ItemInventario[]>([])
+  const [cotizaciones,    setCotizaciones]    = useState<Cotizacion[]>([])
+  const [vista,           setVista]           = useState<'lista' | 'nueva' | 'ver' | 'editar'>('lista')
   const [cotSeleccionada, setCotSeleccionada] = useState<Cotizacion | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [ok, setOk] = useState('')
-  const [error, setError] = useState('')
+  const [loading,         setLoading]         = useState(false)
+  const [ok,              setOk]              = useState('')
+  const [error,           setError]           = useState('')
   const pdfRef = useRef<HTMLDivElement>(null)
 
-  const [clienteNombre, setClienteNombre] = useState('')
+  const [clienteNombre,   setClienteNombre]   = useState('')
   const [clienteTelefono, setClienteTelefono] = useState('')
-  const [clienteRuc, setClienteRuc] = useState('')
-  const [clienteDni, setClienteDni] = useState('')
-  const [clientePlaca, setClientePlaca] = useState('')
-  const [clienteModelo, setClienteModelo] = useState('')
-  const [notas, setNotas] = useState('')
-  const [igvPct, setIgvPct] = useState(18)
-  const [items, setItems] = useState<ItemCotizacion[]>([{ descripcion: '', cantidad: 1, precio: 0, subtotal: 0 }])
-  const [editandoID, setEditandoID] = useState<string | null>(null)
+  const [clienteRuc,      setClienteRuc]      = useState('')
+  const [clienteDni,      setClienteDni]      = useState('')
+  const [clientePlaca,    setClientePlaca]    = useState('')
+  const [clienteModelo,   setClienteModelo]   = useState('')
+  const [notas,           setNotas]           = useState('')
+  const [igvPct,          setIgvPct]          = useState(18)
+  const [items,           setItems]           = useState<ItemCotizacion[]>([{ descripcion: '', cantidad: 1, precio: 0, subtotal: 0 }])
+  const [editandoID,      setEditandoID]      = useState<string | null>(null)
 
   useEffect(() => {
     const init = async () => {
@@ -241,8 +239,8 @@ export default function CotizacionesPage() {
       const a = [...prev]
       a[i] = { ...a[i], [campo]: valor }
       if (campo === 'cantidad' || campo === 'precio') {
-        const cant = campo === 'cantidad' ? (parseFloat(valor) || 0) : (parseFloat(String(a[i].cantidad)) || 0)
-        const precio = campo === 'precio' ? (parseFloat(valor) || 0) : (parseFloat(String(a[i].precio)) || 0)
+        const cant   = campo === 'cantidad' ? (parseFloat(valor) || 0) : (parseFloat(String(a[i].cantidad)) || 0)
+        const precio = campo === 'precio'   ? (parseFloat(valor) || 0) : (parseFloat(String(a[i].precio)) || 0)
         a[i].subtotal = cant * precio
       }
       return a
@@ -257,12 +255,12 @@ export default function CotizacionesPage() {
     })
   }
 
-  const agregarItem = () => setItems(prev => [...prev, { descripcion: '', cantidad: 1, precio: 0, subtotal: 0 }])
+  const agregarItem  = () => setItems(prev => [...prev, { descripcion: '', cantidad: 1, precio: 0, subtotal: 0 }])
   const eliminarItem = (i: number) => setItems(prev => prev.filter((_, j) => j !== i))
 
   const subtotalCalc = items.reduce((s, i) => s + (i.subtotal || 0), 0)
-  const igvCalc = subtotalCalc * (igvPct / 100)
-  const totalCalc = subtotalCalc + igvCalc
+  const igvCalc      = subtotalCalc * (igvPct / 100)
+  const totalCalc    = subtotalCalc + igvCalc
 
   const cargarParaEditar = (c: Cotizacion) => {
     setEditandoID(c.id)
@@ -325,19 +323,19 @@ export default function CotizacionesPage() {
   const descargarPDF = async () => {
     if (!pdfRef.current) return
     const { default: html2canvas } = await import('html2canvas')
-    const { default: jsPDF } = await import('jspdf')
-    const canvas = await html2canvas(pdfRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff', width: pdfRef.current.offsetWidth })
+    const { default: jsPDF }       = await import('jspdf')
+    const canvas  = await html2canvas(pdfRef.current, { scale: 2, useCORS: true, backgroundColor: '#ffffff', width: pdfRef.current.offsetWidth })
     const imgData = canvas.toDataURL('image/png')
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
-    const pdfW = pdf.internal.pageSize.getWidth()
-    const pdfH = (canvas.height * pdfW) / canvas.width
+    const pdf     = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pdfW    = pdf.internal.pageSize.getWidth()
+    const pdfH    = (canvas.height * pdfW) / canvas.width
     pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH)
     pdf.save(`Cotizacion_${cotSeleccionada?.cliente_placa || cotSeleccionada?.cliente_nombre || 'AWTU'}.pdf`)
   }
 
   const compartirWhatsApp = (c: Cotizacion) => {
     if (!c.cliente_telefono) { alert('Esta cotización no tiene teléfono registrado'); return }
-    const tel = c.cliente_telefono.replace(/\D/g, '')
+    const tel    = c.cliente_telefono.replace(/\D/g, '')
     const lineas = (Array.isArray(c.items) ? c.items : []).map((i: ItemCotizacion) =>
       `  • ${i.descripcion} x${i.cantidad} — S/ ${i.subtotal.toFixed(2)}`).join('\n')
     const msg = encodeURIComponent(
@@ -361,7 +359,6 @@ export default function CotizacionesPage() {
   const inp = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-teal-500 focus:bg-white transition-all"
   const lbl = "text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block"
 
-  // Bloque de marcas de aceite para PDF y preview
   const BloquesMarcas = ({ marcas }: { marcas: MarcaAceite[] }) => {
     if (!marcas || marcas.length === 0) return null
     return (
@@ -371,15 +368,181 @@ export default function CotizacionesPage() {
         </div>
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           {marcas.map((m, i) => (
-            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-              <img src={m.logo_url} alt="" crossOrigin="anonymous"
-                style={{ width: '48px', height: '48px', objectFit: 'contain', borderRadius: '8px' }} />
-            </div>
+            <img key={i} src={m.logo_url} alt="" crossOrigin="anonymous"
+              style={{ width: '48px', height: '48px', objectFit: 'contain', borderRadius: '8px' }} />
           ))}
         </div>
       </div>
     )
   }
+
+  // ── PDF TEMPLATE ──────────────────────────────────────────────────────────
+  const PdfTemplate = ({ c }: { c: Cotizacion }) => (
+    <div ref={pdfRef} style={{ width: '794px', background: '#ffffff', fontFamily: '"Arial", sans-serif', padding: '0' }}>
+      {/* Barra top */}
+      <div style={{ background: '#0f172a', height: '6px', width: '100%' }} />
+
+      <div style={{ padding: '44px 56px 40px' }}>
+
+        {/* ── ENCABEZADO: 3 columnas fijas ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 200px', gap: '20px', alignItems: 'start', marginBottom: '28px' }}>
+
+          {/* Col 1: logo */}
+          <div style={{ width: '64px', height: '64px', flexShrink: 0 }}>
+            {tallerLogo
+              ? <img src={tallerLogo} crossOrigin="anonymous"
+                  style={{ width: '64px', height: '64px', objectFit: 'contain', borderRadius: '10px', border: '1px solid #f1f5f9' }} />
+              : <div style={{ width: '64px', height: '64px', background: '#0f172a', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>🔧</div>}
+          </div>
+
+          {/* Col 2: datos taller */}
+          <div style={{ paddingTop: '4px' }}>
+            <div style={{ fontWeight: 900, fontSize: '20px', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1.1, marginBottom: '6px' }}>
+              {tallerNombre}
+            </div>
+            {tallerRuc       && <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginBottom: '2px' }}>RUC: {tallerRuc}</div>}
+            {tallerDireccion && <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginBottom: '2px' }}>{tallerDireccion}</div>}
+            {tallerTelefono  && <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Tel: {tallerTelefono}</div>}
+          </div>
+
+          {/* Col 3: badge COTIZACIÓN + número + fecha */}
+          <div style={{ textAlign: 'right' }}>
+            <div style={{
+              display: 'inline-block', background: '#0d9488', color: 'white',
+              fontWeight: 900, fontSize: '15px', letterSpacing: '0.12em',
+              textTransform: 'uppercase', padding: '8px 20px', borderRadius: '10px',
+              marginBottom: '10px',
+            }}>
+              COTIZACIÓN
+            </div>
+            <div style={{ fontWeight: 900, fontSize: '14px', color: '#0f172a', marginBottom: '3px' }}>
+              {nroCotizacion(c)}
+            </div>
+            <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginBottom: '2px' }}>
+              {new Date(c.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}
+            </div>
+            <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600 }}>Válido por 30 días</div>
+          </div>
+        </div>
+
+        {/* Línea separadora */}
+        <div style={{ height: '2px', background: 'linear-gradient(90deg, #0d9488 0%, #0f172a 100%)', borderRadius: '2px', marginBottom: '24px' }} />
+
+        {/* ── CLIENTE + VEHÍCULO ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+          {/* Cliente */}
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px 20px' }}>
+            <div style={{ fontSize: '9px', fontWeight: 800, color: '#0d9488', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '10px' }}>
+              Cliente
+            </div>
+            <div style={{ fontWeight: 900, fontSize: '14px', color: '#0f172a', textTransform: 'uppercase', marginBottom: '6px', lineHeight: 1.2 }}>
+              {c.cliente_nombre}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+              {c.cliente_ruc      && <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>RUC: {c.cliente_ruc}</div>}
+              {c.cliente_dni      && <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>DNI: {c.cliente_dni}</div>}
+              {c.cliente_telefono && <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Tel: {c.cliente_telefono}</div>}
+            </div>
+          </div>
+
+          {/* Vehículo */}
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '18px 20px' }}>
+            <div style={{ fontSize: '9px', fontWeight: 800, color: '#0d9488', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '10px' }}>
+              Vehículo
+            </div>
+            {c.cliente_placa
+              ? <>
+                  <div style={{ fontWeight: 900, fontSize: '22px', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.12em', lineHeight: 1, marginBottom: '6px' }}>
+                    {c.cliente_placa}
+                  </div>
+                  {c.cliente_modelo && (
+                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>{c.cliente_modelo}</div>
+                  )}
+                </>
+              : <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600, fontStyle: 'italic' }}>No especificado</div>
+            }
+          </div>
+        </div>
+
+        {/* ── TABLA ITEMS ── */}
+        <div style={{ marginBottom: '20px', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#0f172a' }}>
+                <th style={{ padding: '11px 18px', textAlign: 'left',   fontSize: '9px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', width: '52%' }}>Descripción</th>
+                <th style={{ padding: '11px 14px', textAlign: 'center', fontSize: '9px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', width: '10%' }}>Cant.</th>
+                <th style={{ padding: '11px 14px', textAlign: 'right',  fontSize: '9px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', width: '19%' }}>P. Unit.</th>
+                <th style={{ padding: '11px 18px', textAlign: 'right',  fontSize: '9px', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.12em', width: '19%' }}>Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(Array.isArray(c.items) ? c.items : []).map((item: ItemCotizacion, i: number) => (
+                <tr key={i} style={{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '11px 18px', fontSize: '11px', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase' }}>{item.descripcion}</td>
+                  <td style={{ padding: '11px 14px', fontSize: '12px', fontWeight: 800, color: '#0f172a', textAlign: 'center' }}>{item.cantidad}</td>
+                  <td style={{ padding: '11px 14px', fontSize: '11px', fontWeight: 600, color: '#64748b', textAlign: 'right' }}>S/ {(item.precio || 0).toFixed(2)}</td>
+                  <td style={{ padding: '11px 18px', fontSize: '12px', fontWeight: 900, color: '#0d9488', textAlign: 'right' }}>S/ {(item.subtotal || 0).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── TOTALES ── */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '20px' }}>
+          <div style={{ width: '260px', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 18px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Subtotal</span>
+              <span style={{ fontSize: '11px', color: '#0f172a', fontWeight: 800 }}>S/ {c.subtotal.toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 18px', background: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>IGV (18%)</span>
+              <span style={{ fontSize: '11px', color: '#0f172a', fontWeight: 800 }}>S/ {c.igv.toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', background: '#0f172a' }}>
+              <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total</span>
+              <span style={{ fontSize: '24px', color: '#2dd4bf', fontWeight: 900, letterSpacing: '-0.02em' }}>S/ {c.total.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── NOTAS ── */}
+        {c.notas && (
+          <div style={{ background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: '10px', padding: '14px 18px', marginBottom: '20px' }}>
+            <div style={{ fontWeight: 800, fontSize: '9px', color: '#0d9488', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '5px' }}>Notas y Condiciones</div>
+            <div style={{ fontSize: '11px', color: '#134e4a', fontWeight: 600, lineHeight: 1.6 }}>{c.notas}</div>
+          </div>
+        )}
+
+        {/* Métodos de pago y sucursales */}
+        <InfoPagoSucursales metodos={metodosPago} sucursales={sucursales} modo="pdf" />
+
+        {/* ── FIRMAS ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '24px', marginBottom: '24px' }}>
+          <div style={{ border: '1.5px dashed #e2e8f0', borderRadius: '10px', padding: '28px 20px', textAlign: 'center' }}>
+            <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Firma del Cliente</div>
+            <div style={{ fontSize: '10px', color: '#cbd5e1', fontWeight: 600, marginTop: '8px', textTransform: 'uppercase' }}>{c.cliente_nombre}</div>
+          </div>
+          <div style={{ border: '1.5px dashed #e2e8f0', borderRadius: '10px', padding: '28px 20px', textAlign: 'center' }}>
+            <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Firma Autorizada</div>
+            <div style={{ fontSize: '10px', color: '#cbd5e1', fontWeight: 600, marginTop: '8px', textTransform: 'uppercase' }}>{tallerNombre}</div>
+          </div>
+        </div>
+
+        {/* Marcas de aceite */}
+        <BloquesMarcas marcas={marcasAceite} />
+
+        {/* Footer */}
+        <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px', marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 600 }}>Esta cotización es válida por 30 días desde la fecha de emisión.</div>
+          <div style={{ fontSize: '9px', color: '#94a3b8', fontWeight: 600 }}>{tallerNombre}{tallerRuc ? ` · RUC ${tallerRuc}` : ''}{tallerTelefono ? ` · ${tallerTelefono}` : ''}</div>
+        </div>
+      </div>
+
+      {/* Barra bottom */}
+      <div style={{ background: '#0d9488', height: '5px', width: '100%' }} />
+    </div>
+  )
 
   return (
     <div className="max-w-5xl mx-auto pb-10">
@@ -387,129 +550,7 @@ export default function CotizacionesPage() {
       {/* PDF oculto */}
       {cotSeleccionada && (
         <div style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -1 }}>
-          <div ref={pdfRef} style={{ width: '794px', background: '#ffffff', fontFamily: '"Arial", sans-serif', padding: '0' }}>
-            <div style={{ background: '#0f172a', height: '8px', width: '100%' }} />
-            <div style={{ padding: '48px 56px 40px' }}>
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '36px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                  {tallerLogo
-                    ? <img src={tallerLogo} style={{ width: '80px', height: '80px', objectFit: 'contain', borderRadius: '12px' }} crossOrigin="anonymous" />
-                    : <div style={{ width: '80px', height: '80px', background: '#0f172a', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>🔧</div>}
-                  <div>
-                    <div style={{ fontWeight: 900, fontSize: '24px', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.03em', lineHeight: 1 }}>{tallerNombre}</div>
-                    {tallerRuc && <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginTop: '4px' }}>RUC: {tallerRuc}</div>}
-                    {tallerDireccion && <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>{tallerDireccion}</div>}
-                    {tallerTelefono && <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>Tel: {tallerTelefono}</div>}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ background: '#0d9488', color: 'white', fontWeight: 900, fontSize: '28px', padding: '12px 28px', borderRadius: '14px', letterSpacing: '0.08em', textTransform: 'uppercase', display: 'inline-block' }}>COTIZACIÓN</div>
-                  <div style={{ marginTop: '10px', color: '#0f172a', fontSize: '15px', fontWeight: 800 }}>N° {nroCotizacion(cotSeleccionada)}</div>
-                  <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, marginTop: '2px' }}>
-                    Fecha: {new Date(cotSeleccionada.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}
-                  </div>
-                  <div style={{ color: '#64748b', fontSize: '12px', fontWeight: 600, marginTop: '2px' }}>Válido por 30 días</div>
-                </div>
-              </div>
-
-              {/* Línea degradada */}
-              <div style={{ height: '3px', background: 'linear-gradient(90deg, #0d9488, #0f172a)', borderRadius: '2px', marginBottom: '28px' }} />
-
-              {/* Cliente + Vehículo */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0', marginBottom: '28px', border: '1.5px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden' }}>
-                <div style={{ background: '#f8fafc', padding: '20px 24px', borderRight: '1.5px solid #e2e8f0' }}>
-                  <div style={{ fontWeight: 800, fontSize: '10px', color: '#0d9488', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '10px' }}>Datos del Cliente</div>
-                  <div style={{ fontWeight: 900, fontSize: '16px', color: '#0f172a', textTransform: 'uppercase', marginBottom: '5px' }}>{cotSeleccionada.cliente_nombre}</div>
-                  {cotSeleccionada.cliente_ruc && <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '2px' }}>RUC: {cotSeleccionada.cliente_ruc}</div>}
-                  {cotSeleccionada.cliente_dni && <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, marginBottom: '2px' }}>DNI: {cotSeleccionada.cliente_dni}</div>}
-                  {cotSeleccionada.cliente_telefono && <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Tel: {cotSeleccionada.cliente_telefono}</div>}
-                </div>
-                <div style={{ background: '#f8fafc', padding: '20px 24px' }}>
-                  <div style={{ fontWeight: 800, fontSize: '10px', color: '#0d9488', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '10px' }}>Datos del Vehículo</div>
-                  {cotSeleccionada.cliente_placa
-                    ? <div style={{ fontWeight: 900, fontSize: '22px', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '4px' }}>{cotSeleccionada.cliente_placa}</div>
-                    : <div style={{ fontSize: '12px', color: '#94a3b8', fontWeight: 600 }}>No especificado</div>}
-                  {cotSeleccionada.cliente_modelo && <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>{cotSeleccionada.cliente_modelo}</div>}
-                </div>
-              </div>
-
-              {/* Tabla items */}
-              <div style={{ marginBottom: '24px', border: '1.5px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#0f172a' }}>
-                      <th style={{ padding: '13px 20px', textAlign: 'left', fontSize: '10px', fontWeight: 800, color: 'white', textTransform: 'uppercase', letterSpacing: '0.12em', width: '50%' }}>Descripción</th>
-                      <th style={{ padding: '13px 16px', textAlign: 'center', fontSize: '10px', fontWeight: 800, color: 'white', textTransform: 'uppercase', letterSpacing: '0.12em', width: '10%' }}>Cant.</th>
-                      <th style={{ padding: '13px 16px', textAlign: 'right', fontSize: '10px', fontWeight: 800, color: 'white', textTransform: 'uppercase', letterSpacing: '0.12em', width: '20%' }}>P. Unit.</th>
-                      <th style={{ padding: '13px 20px', textAlign: 'right', fontSize: '10px', fontWeight: 800, color: 'white', textTransform: 'uppercase', letterSpacing: '0.12em', width: '20%' }}>Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(Array.isArray(cotSeleccionada.items) ? cotSeleccionada.items : []).map((item: ItemCotizacion, i: number) => (
-                      <tr key={i} style={{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '12px 20px', fontSize: '12px', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase' }}>{item.descripcion}</td>
-                        <td style={{ padding: '12px 16px', fontSize: '13px', fontWeight: 800, color: '#0f172a', textAlign: 'center' }}>{item.cantidad}</td>
-                        <td style={{ padding: '12px 16px', fontSize: '12px', fontWeight: 700, color: '#64748b', textAlign: 'right' }}>S/ {(item.precio || 0).toFixed(2)}</td>
-                        <td style={{ padding: '12px 20px', fontSize: '13px', fontWeight: 900, color: '#0d9488', textAlign: 'right' }}>S/ {(item.subtotal || 0).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Totales */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
-                <div style={{ width: '300px', border: '1.5px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 20px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
-                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Subtotal</span>
-                    <span style={{ fontSize: '12px', color: '#0f172a', fontWeight: 800 }}>S/ {cotSeleccionada.subtotal.toFixed(2)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '11px 20px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
-                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>IGV (18%)</span>
-                    <span style={{ fontSize: '12px', color: '#0f172a', fontWeight: 800 }}>S/ {cotSeleccionada.igv.toFixed(2)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 20px', background: '#0f172a' }}>
-                    <span style={{ fontSize: '14px', color: 'white', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>TOTAL</span>
-                    <span style={{ fontSize: '26px', color: '#2dd4bf', fontWeight: 900, letterSpacing: '-0.02em' }}>S/ {cotSeleccionada.total.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notas */}
-              {cotSeleccionada.notas && (
-                <div style={{ background: '#f0fdfa', border: '1.5px solid #99f6e4', borderRadius: '12px', padding: '16px 20px', marginBottom: '24px' }}>
-                  <div style={{ fontWeight: 800, fontSize: '10px', color: '#0d9488', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '6px' }}>Notas y Condiciones</div>
-                  <div style={{ fontSize: '12px', color: '#134e4a', fontWeight: 600, lineHeight: 1.6 }}>{cotSeleccionada.notas}</div>
-                </div>
-              )}
-
-              {/* Métodos de pago y sucursales */}
-              <InfoPagoSucursales metodos={metodosPago} sucursales={sucursales} modo="pdf" />
-
-              {/* Firmas */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '24px', marginBottom: '24px' }}>
-                <div style={{ border: '1.5px dashed #e2e8f0', borderRadius: '12px', padding: '32px 20px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Firma del Cliente</div>
-                  <div style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 600, marginTop: '8px', textTransform: 'uppercase' }}>{cotSeleccionada.cliente_nombre}</div>
-                </div>
-                <div style={{ border: '1.5px dashed #e2e8f0', borderRadius: '12px', padding: '32px 20px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Firma Autorizada</div>
-                  <div style={{ fontSize: '11px', color: '#cbd5e1', fontWeight: 600, marginTop: '8px', textTransform: 'uppercase' }}>{tallerNombre}</div>
-                </div>
-              </div>
-
-              {/* Marcas de aceite */}
-              <BloquesMarcas marcas={marcasAceite} />
-
-              {/* Footer */}
-              <div style={{ borderTop: '1.5px solid #f1f5f9', paddingTop: '16px', marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600 }}>Esta cotización es válida por 30 días desde la fecha de emisión.</div>
-                <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 600 }}>{tallerNombre} · {tallerRuc ? `RUC ${tallerRuc}` : ''} · {tallerTelefono}</div>
-              </div>
-            </div>
-            <div style={{ background: '#0d9488', height: '6px', width: '100%' }} />
-          </div>
+          <PdfTemplate c={cotSeleccionada} />
         </div>
       )}
 
@@ -518,8 +559,8 @@ export default function CotizacionesPage() {
         <div>
           <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900">Cotizaciones</h2>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-            {vista === 'lista' ? `${cotizaciones.length} cotizaciones registradas` :
-             vista === 'nueva' ? 'Nueva cotización' :
+            {vista === 'lista'  ? `${cotizaciones.length} cotizaciones registradas` :
+             vista === 'nueva'  ? 'Nueva cotización' :
              vista === 'editar' ? 'Editar cotización' : 'Detalle de cotización'}
           </p>
         </div>
@@ -555,10 +596,10 @@ export default function CotizacionesPage() {
         </div>
       </div>
 
-      {ok && <div className="mb-5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl font-bold text-sm">✅ {ok}</div>}
-      {error && <div className="mb-5 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl font-bold text-sm">❌ {error}</div>}
+      {ok    && <div className="mb-5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl font-bold text-sm">✅ {ok}</div>}
+      {error && <div className="mb-5 bg-red-50    border border-red-200    text-red-700    px-4 py-3 rounded-xl font-bold text-sm">❌ {error}</div>}
 
-      {/* LISTA */}
+      {/* ── LISTA ── */}
       {vista === 'lista' && (
         <div className="space-y-3">
           {cotizaciones.length === 0 ? (
@@ -602,7 +643,7 @@ export default function CotizacionesPage() {
         </div>
       )}
 
-      {/* NUEVA / EDITAR */}
+      {/* ── NUEVA / EDITAR ── */}
       {(vista === 'nueva' || vista === 'editar') && (
         <div className="space-y-5">
           {/* Datos cliente */}
@@ -634,7 +675,6 @@ export default function CotizacionesPage() {
               </button>
             </div>
             <div className="p-5 space-y-3">
-              {/* Cabeceras */}
               <div className="grid gap-3 px-1" style={{ gridTemplateColumns: '1fr 80px 120px 100px 36px' }}>
                 <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Descripción / Producto</div>
                 <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Cant.</div>
@@ -643,16 +683,9 @@ export default function CotizacionesPage() {
                 <div />
               </div>
               {items.map((item, i) => (
-                <FilaItem
-                  key={i}
-                  item={item}
-                  index={i}
-                  inventario={inventario}
-                  onChange={actualizarItem}
-                  onSelect={seleccionarDelInventario}
-                  onDelete={eliminarItem}
-                  canDelete={items.length > 1}
-                />
+                <FilaItem key={i} item={item} index={i} inventario={inventario}
+                  onChange={actualizarItem} onSelect={seleccionarDelInventario}
+                  onDelete={eliminarItem} canDelete={items.length > 1} />
               ))}
             </div>
           </div>
@@ -696,57 +729,65 @@ export default function CotizacionesPage() {
         </div>
       )}
 
-      {/* VER */}
+      {/* ── VER ── */}
       {vista === 'ver' && cotSeleccionada && (
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="h-2 bg-gradient-to-r from-teal-600 to-slate-900" />
+          <div className="h-1.5 bg-gradient-to-r from-teal-600 to-slate-900" />
           <div className="p-8">
-            {/* Header */}
-            <div className="flex justify-between items-start mb-8 pb-6 border-b-2 border-slate-100">
-              <div className="flex items-center gap-4">
+
+            {/* Encabezado — 3 columnas estables */}
+            <div className="grid gap-5 items-start mb-7 pb-6 border-b-2 border-slate-100" style={{ gridTemplateColumns: '56px 1fr 180px' }}>
+              {/* Logo */}
+              <div className="w-14 h-14 shrink-0">
                 {tallerLogo
-                  ? <img src={tallerLogo} className="w-16 h-16 object-contain rounded-xl border border-slate-100" />
-                  : <div className="w-16 h-16 bg-slate-900 rounded-xl flex items-center justify-center text-2xl">🔧</div>}
-                <div>
-                  <h3 className="font-black text-slate-900 text-xl uppercase tracking-tight">{tallerNombre}</h3>
-                  {tallerRuc && <p className="text-xs text-slate-500 font-bold">RUC: {tallerRuc}</p>}
-                  {tallerDireccion && <p className="text-xs text-slate-500 font-bold">{tallerDireccion}</p>}
-                  {tallerTelefono && <p className="text-xs text-slate-500 font-bold">Tel: {tallerTelefono}</p>}
-                </div>
+                  ? <img src={tallerLogo} className="w-14 h-14 object-contain rounded-xl border border-slate-100" />
+                  : <div className="w-14 h-14 bg-slate-900 rounded-xl flex items-center justify-center text-2xl">🔧</div>}
               </div>
+              {/* Datos taller */}
+              <div>
+                <h3 className="font-black text-slate-900 text-xl uppercase tracking-tight leading-tight">{tallerNombre}</h3>
+                {tallerRuc       && <p className="text-xs text-slate-500 font-bold mt-1">RUC: {tallerRuc}</p>}
+                {tallerDireccion && <p className="text-xs text-slate-500 font-bold">{tallerDireccion}</p>}
+                {tallerTelefono  && <p className="text-xs text-slate-500 font-bold">Tel: {tallerTelefono}</p>}
+              </div>
+              {/* Badge + número + fecha */}
               <div className="text-right">
-                <div className="bg-teal-600 text-white font-black text-xl px-6 py-3 rounded-xl uppercase tracking-widest inline-block">Cotización</div>
-                <p className="font-black text-slate-800 text-base mt-2">{nroCotizacion(cotSeleccionada)}</p>
+                <div className="bg-teal-600 text-white font-black text-sm px-5 py-2 rounded-xl uppercase tracking-widest inline-block mb-2">Cotización</div>
+                <p className="font-black text-slate-800 text-sm">{nroCotizacion(cotSeleccionada)}</p>
                 <p className="text-xs text-slate-400 font-bold">{new Date(cotSeleccionada.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                <p className="text-[10px] text-slate-400 font-bold mt-1">Válido por 30 días</p>
+                <p className="text-[10px] text-slate-400 font-bold mt-0.5">Válido por 30 días</p>
               </div>
             </div>
 
             {/* Cliente + vehículo */}
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <p className="text-[9px] font-black text-teal-600 uppercase tracking-widest mb-3">Datos del Cliente</p>
-                <p className="font-black text-slate-900 text-base uppercase">{cotSeleccionada.cliente_nombre}</p>
-                {cotSeleccionada.cliente_ruc && <p className="text-xs text-slate-500 font-bold mt-1">RUC: {cotSeleccionada.cliente_ruc}</p>}
-                {cotSeleccionada.cliente_dni && <p className="text-xs text-slate-500 font-bold mt-1">DNI: {cotSeleccionada.cliente_dni}</p>}
-                {cotSeleccionada.cliente_telefono && <p className="text-xs text-slate-500 font-bold mt-1">Tel: {cotSeleccionada.cliente_telefono}</p>}
+                <p className="text-[9px] font-black text-teal-600 uppercase tracking-widest mb-3">Cliente</p>
+                <p className="font-black text-slate-900 text-base uppercase leading-tight">{cotSeleccionada.cliente_nombre}</p>
+                <div className="mt-2 space-y-1">
+                  {cotSeleccionada.cliente_ruc      && <p className="text-xs text-slate-500 font-bold">RUC: {cotSeleccionada.cliente_ruc}</p>}
+                  {cotSeleccionada.cliente_dni      && <p className="text-xs text-slate-500 font-bold">DNI: {cotSeleccionada.cliente_dni}</p>}
+                  {cotSeleccionada.cliente_telefono && <p className="text-xs text-slate-500 font-bold">Tel: {cotSeleccionada.cliente_telefono}</p>}
+                </div>
               </div>
               <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <p className="text-[9px] font-black text-teal-600 uppercase tracking-widest mb-3">Datos del Vehículo</p>
+                <p className="text-[9px] font-black text-teal-600 uppercase tracking-widest mb-3">Vehículo</p>
                 {cotSeleccionada.cliente_placa
-                  ? <p className="font-black text-slate-900 text-2xl uppercase tracking-widest">{cotSeleccionada.cliente_placa}</p>
-                  : <p className="text-sm text-slate-400 font-bold">No especificado</p>}
-                {cotSeleccionada.cliente_modelo && <p className="text-sm text-slate-600 font-bold uppercase mt-1">{cotSeleccionada.cliente_modelo}</p>}
+                  ? <>
+                      <p className="font-black text-slate-900 text-2xl uppercase tracking-widest leading-tight">{cotSeleccionada.cliente_placa}</p>
+                      {cotSeleccionada.cliente_modelo && <p className="text-sm text-slate-600 font-bold uppercase mt-1">{cotSeleccionada.cliente_modelo}</p>}
+                    </>
+                  : <p className="text-sm text-slate-400 font-bold italic">No especificado</p>}
               </div>
             </div>
 
             {/* Tabla */}
             <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
               <div className="grid gap-2 px-5 py-3 bg-slate-900" style={{ gridTemplateColumns: '1fr 80px 120px 120px' }}>
-                <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Descripción</div>
-                <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest text-center">Cant.</div>
-                <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest text-right">P. Unit.</div>
-                <div className="text-[9px] font-black text-slate-300 uppercase tracking-widest text-right">Subtotal</div>
+                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Descripción</div>
+                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Cant.</div>
+                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">P. Unit.</div>
+                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Subtotal</div>
               </div>
               {(Array.isArray(cotSeleccionada.items) ? cotSeleccionada.items : []).map((item: ItemCotizacion, i: number) => (
                 <div key={i} className={`grid gap-2 px-5 py-3.5 items-center border-b border-slate-50 ${i % 2 === 1 ? 'bg-slate-50/60' : ''}`} style={{ gridTemplateColumns: '1fr 80px 120px 120px' }}>
@@ -805,9 +846,7 @@ export default function CotizacionesPage() {
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center mb-4">Marcas de Aceite que Trabajamos</p>
                 <div className="flex justify-center items-center gap-6 flex-wrap">
                   {marcasAceite.map((m, i) => (
-                    <div key={i} className="flex flex-col items-center gap-1">
-                      <img src={m.logo_url} alt="" className="w-12 h-12 object-contain rounded-lg" />
-                    </div>
+                    <img key={i} src={m.logo_url} alt="" className="w-12 h-12 object-contain rounded-lg" />
                   ))}
                 </div>
               </div>
@@ -816,7 +855,7 @@ export default function CotizacionesPage() {
             {/* Footer */}
             <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
               <p className="text-[10px] text-slate-400 font-bold">Esta cotización es válida por 30 días desde la fecha de emisión.</p>
-              <p className="text-[10px] text-slate-400 font-bold">{tallerNombre} · {tallerTelefono}</p>
+              <p className="text-[10px] text-slate-400 font-bold">{tallerNombre}{tallerTelefono ? ` · ${tallerTelefono}` : ''}</p>
             </div>
           </div>
           <div className="h-1.5 bg-teal-600" />
