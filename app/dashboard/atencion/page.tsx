@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import ModalCotizador from '@/components/ModalCotizador'
+import LimiteBloqueado from '@/components/LimiteBloqueado'
 
 type ProductoAdicional = { nombre: string; precio: string; cantidad: string; inventarioId: string }
 type OtroServicio = { detalle: string; precio: string }
@@ -113,6 +114,7 @@ export default function AtencionPage() {
   const [tallerID, setTallerID] = useState('')
   const [tallerNombre, setTallerNombre] = useState('')
   const [tallerLogo, setTallerLogo] = useState('')
+  const [tallerPlan, setTallerPlan] = useState('basico')
   const [loading, setLoading] = useState(false)
   const [ok, setOk] = useState(false)
   const [error, setError] = useState('')
@@ -120,6 +122,7 @@ export default function AtencionPage() {
   const cartillaRef = useRef<HTMLDivElement>(null)
   const [inventario, setInventario] = useState<ItemInventario[]>([])
   const [showCotizador, setShowCotizador] = useState(false)
+  const [showLimite, setShowLimite] = useState(false)
 
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10))
   const [placa, setPlaca] = useState('')
@@ -179,11 +182,12 @@ export default function AtencionPage() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
-      const { data: t } = await supabase.from('talleres').select('id, nombre, logo_url').eq('user_id', user.id).single()
+      const { data: t } = await supabase.from('talleres').select('id, nombre, logo_url, plan').eq('user_id', user.id).single()
       if (t) {
         setTallerID(t.id)
         setTallerNombre(t.nombre || 'AWTU')
         setTallerLogo(t.logo_url || '')
+        setTallerPlan(t.plan || 'basico')
         const { data: inv } = await supabase.from('inventario')
           .select('id, nombre, categoria, precio, costo, stock')
           .eq('taller_id', t.id).order('nombre')
@@ -256,7 +260,11 @@ export default function AtencionPage() {
     setLoading(true); setError(''); setOk(false)
 
     const { data: limite } = await supabase.rpc('verificar_limite', { p_taller_id: tallerID, p_tipo: 'servicios' })
-    if (!limite) { setError('Límite mensual alcanzado'); setLoading(false); return }
+    if (!limite) {
+      setShowLimite(true)
+      setLoading(false)
+      return
+    }
 
     const kmNum = km ? parseInt(km) : null
     const frecNum = frecuencia ? parseInt(frecuencia) : 5000
@@ -301,28 +309,15 @@ export default function AtencionPage() {
     // ── Descuento de stock ─────────────────────────────────────────────────
     const descuentos: Promise<void>[] = []
 
-    // Aceite principal: descuenta según litros registrados (o 1 unidad si no hay cantidad)
     if (aceiteInvId) descuentos.push(descontarStock(aceiteInvId, parseFloat(aceiteCantidad) || 1))
-
-    // Aceites extra
     for (const ae of aceitesExtra) {
       if (ae.inventarioId) descuentos.push(descontarStock(ae.inventarioId, parseFloat(ae.cantidad) || 1))
     }
-
-    // Filtros (1 unidad cada uno)
     if (filtroAceiteInvId) descuentos.push(descontarStock(filtroAceiteInvId, 1))
     if (filtroAireInvId) descuentos.push(descontarStock(filtroAireInvId, 1))
-
-    // Aceite de caja (1 unidad)
     if (cajaInvId) descuentos.push(descontarStock(cajaInvId, 1))
-
-    // Refrigerante (1 unidad)
     if (refrigInvId) descuentos.push(descontarStock(refrigInvId, 1))
-
-    // Bujías (1 unidad — puede ser un juego)
     if (bujaInvId) descuentos.push(descontarStock(bujaInvId, 1))
-
-    // Productos adicionales: descuenta según cantidad indicada
     for (const p of productosAd) {
       if (p.inventarioId) descuentos.push(descontarStock(p.inventarioId, parseFloat(p.cantidad) || 1))
     }
@@ -362,6 +357,15 @@ export default function AtencionPage() {
 
   return (
     <div className="max-w-6xl mx-auto pb-10">
+
+      {/* Modal límite alcanzado */}
+      {showLimite && (
+        <LimiteBloqueado
+          tipo="servicios"
+          planActual={tallerPlan}
+          onCerrar={() => setShowLimite(false)}
+        />
+      )}
 
       {/* Modal cotización multi-opción */}
       {showCotizador && <ModalCotizador tallerID={tallerID} tallerNombre={tallerNombre} onClose={() => setShowCotizador(false)} />}
@@ -550,7 +554,6 @@ export default function AtencionPage() {
               </button>
             </div>
             <div className="p-5" style={{ background: 'var(--surface)', borderRadius: '0 0 16px 16px' }}>
-              {/* Fila principal de aceite */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div className="sm:col-span-2">
                   <label className={lbl}>Aceite Motor</label>
@@ -583,7 +586,6 @@ export default function AtencionPage() {
                 </div>
               </div>
 
-              {/* Filas de aceite extra */}
               {aceitesExtra.length > 0 && (
                 <div className="mt-4 space-y-3">
                   <p className="font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--accent-teal)' }}>Aceite adicional</p>
@@ -721,7 +723,6 @@ export default function AtencionPage() {
                 <div className="space-y-3">
                   {productosAd.map((p, i) => (
                     <div key={i} className="flex gap-2 items-center">
-                      {/* Nombre — crece todo lo posible */}
                       <div className="flex-1 min-w-0">
                         <AutocompleteInput
                           value={p.nombre}
@@ -731,7 +732,6 @@ export default function AtencionPage() {
                           className={inp + ' uppercase w-full'}
                           items={invTodos} />
                       </div>
-                      {/* Cantidad — ancho fijo pequeño */}
                       <div className="flex items-center gap-1 rounded-xl px-2 py-2.5 shrink-0" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.3)', width: '76px' }}>
                         <span className="font-display font-bold text-[10px] shrink-0" style={{ color: '#a78bfa' }}>Cant</span>
                         <input type="number" value={p.cantidad}
@@ -739,7 +739,6 @@ export default function AtencionPage() {
                           placeholder="1" min="1" step="1"
                           className="font-mono bg-transparent outline-none font-bold text-sm w-full text-center" style={{ color: '#a78bfa' }} />
                       </div>
-                      {/* Precio — ancho fijo pequeño */}
                       <div className="flex items-center gap-1.5 rounded-xl px-2 py-2.5 shrink-0" style={{ background: 'rgba(167,139,250,0.08)', border: '1px solid rgba(167,139,250,0.3)', width: '96px' }}>
                         <span className="font-display font-bold text-sm shrink-0" style={{ color: '#a78bfa' }}>S/</span>
                         <input type="number" value={p.precio}
@@ -880,23 +879,18 @@ export default function AtencionPage() {
                 </div>
               </div>
 
-              {/* ── BOTONES PRINCIPALES ───────────────────────────────── */}
               <div className="flex flex-col gap-2">
-                {/* Cotizar */}
                 <button onClick={() => setShowCotizador(true)}
                   className="font-display w-full py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95"
                   style={{ background: 'rgba(245,158,11,0.12)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}>
                   📋 Cotizar
                 </button>
-                {/* Guardar servicio */}
                 <button onClick={guardar} disabled={loading}
                   className="font-display w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
                   style={{ background: 'var(--accent)', color: 'var(--bg)' }}>
                   {metodoActual?.icon} {loading ? 'Guardando...' : `Guardar · ${metodoActual?.label}`}
                 </button>
               </div>
-              {/* ─────────────────────────────────────────────────────── */}
-
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import LimiteBloqueado from '@/components/LimiteBloqueado'
 
 type Servicio = {
   id: string; fecha: string; placa: string; nombre: string; marca: string
@@ -31,6 +32,8 @@ export default function ConsultaPage() {
   const [resultado, setResultado] = useState<{ placa: string; servicios: Servicio[] } | null>(null)
   const [error, setError] = useState('')
   const [detalle, setDetalle] = useState<Servicio | null>(null)
+  const [showLimite, setShowLimite] = useState(false)
+  const [planActual, setPlanActual] = useState('basico')
 
   // Comprobantes por servicio_id
   const [comprobantes, setComprobantes] = useState<Record<string, Comprobante>>({})
@@ -44,11 +47,17 @@ export default function ConsultaPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('No autenticado'); setLoading(false); return }
 
-    const { data: taller } = await supabase.from('talleres').select('id').eq('user_id', user.id).single()
+    const { data: taller } = await supabase.from('talleres').select('id, plan').eq('user_id', user.id).single()
     if (!taller) { setError('Taller no encontrado'); setLoading(false); return }
 
+    setPlanActual(taller.plan || 'basico')
+
     const { data: limite } = await supabase.rpc('verificar_limite', { p_taller_id: taller.id, p_tipo: 'consultas' })
-    if (!limite) { setError('Límite mensual de consultas alcanzado'); setLoading(false); return }
+    if (!limite) {
+      setShowLimite(true)
+      setLoading(false)
+      return
+    }
 
     const placaNorm = placa.toUpperCase().replace(/-/g, '')
     const { data: todos } = await supabase.from('servicios')
@@ -94,6 +103,15 @@ export default function ConsultaPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
+
+      {/* Modal límite alcanzado */}
+      {showLimite && (
+        <LimiteBloqueado
+          tipo="consultas"
+          planActual={planActual}
+          onCerrar={() => setShowLimite(false)}
+        />
+      )}
 
       {/* MODAL COMPROBANTE */}
       {modalComprobante && (

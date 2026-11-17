@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
+import LimiteBloqueado from '@/components/LimiteBloqueado'
 
 // ── Tipos ─────────────────────────────────────────────────────────────────
 type MetodoPago = { id: string; nombre: string }
@@ -410,6 +411,8 @@ export default function DocumentosPage() {
   const [resultadoFactusmart,      setResultadoFactusmart]      = useState<any>(null)
   const [consultandoDoc,           setConsultandoDoc]           = useState(false)
   const [modalComprobante,         setModalComprobante]         = useState<Comprobante | null>(null)
+  const [showLimite,               setShowLimite]               = useState(false)
+  const [planActual,               setPlanActual]               = useState('basico')
 
   // items editables
   const [itemsEditables, setItemsEditables] = useState<{ descripcion: string; precio: number }[]>([])
@@ -429,7 +432,7 @@ export default function DocumentosPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       const { data: t } = await supabase.from('talleres')
-        .select('id, nombre, logo_url, ruc, direccion, telefono, metodos_pago, sucursales')
+        .select('id, nombre, logo_url, ruc, direccion, telefono, metodos_pago, sucursales, plan')
         .eq('user_id', user.id).single()
       if (!t) return
       setTallerID(t.id)
@@ -440,6 +443,7 @@ export default function DocumentosPage() {
       setTallerTelefono(t.telefono || '')
       setMetodosPago(Array.isArray(t.metodos_pago) ? t.metodos_pago : [])
       setSucursales(Array.isArray(t.sucursales) ? t.sucursales : [])
+      setPlanActual(t.plan || 'basico')
       await cargarTodo(t.id)
     }
     init()
@@ -562,7 +566,11 @@ export default function DocumentosPage() {
     const nombreFinal = toTitleCase(form.cliente_nombre.trim())
     try {
       const { data: limite } = await supabase.rpc('verificar_limite', { p_taller_id: tallerID, p_tipo: 'comprobantes' })
-      if (!limite) { setError('Límite mensual de comprobantes alcanzado'); setLoading(false); return }
+      if (!limite) {
+        setShowLimite(true)
+        setLoading(false)
+        return
+      }
 
       const itemsParaFS = itemsEditables.map(i => ({
         descripcion:     i.descripcion,
@@ -754,6 +762,15 @@ export default function DocumentosPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
+
+      {/* Modal límite alcanzado */}
+      {showLimite && (
+        <LimiteBloqueado
+          tipo="comprobantes"
+          planActual={planActual}
+          onCerrar={() => setShowLimite(false)}
+        />
+      )}
 
       {modalComprobante && (
         <ModalAcciones
