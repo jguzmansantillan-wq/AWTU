@@ -1083,7 +1083,7 @@ export default function DocumentosPage() {
         <div className="space-y-3">
 
           {/* ── TABS de filtro por tipo ── */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
             {([
               { key: 'todos',        label: 'Todos',           icon: '🧾' },
               { key: 'factura',      label: 'Facturas',        icon: '📄' },
@@ -1095,7 +1095,7 @@ export default function DocumentosPage() {
               <button
                 key={tab.key}
                 onClick={() => setFiltroComp(tab.key)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-xs rounded-xl font-black uppercase tracking-widest transition-all ${
+                className={`shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs rounded-xl font-black uppercase tracking-widest transition-all ${
                   filtroComp === tab.key
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
                     : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
