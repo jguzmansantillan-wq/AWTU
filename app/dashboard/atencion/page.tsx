@@ -623,15 +623,15 @@ export default function AtencionPage() {
                 </div>
               )}
 
-              <div className="mt-4 pt-4 flex items-center justify-between gap-4" style={{ borderTop: '1px solid var(--border)' }}>
-                <div>
-                  <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--accent-teal)' }}>Precio — Motor y Filtros</p>
-                  <p className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>Total cobrado por aceite + filtros</p>
+              <div className="mt-4 pt-4 flex items-center gap-3" style={{ borderTop: '1px solid var(--border)' }}>
+                <div className="flex-1 min-w-0">
+                  <p className="font-display text-[10px] font-bold uppercase tracking-widest truncate" style={{ color: 'var(--accent-teal)' }}>Precio — Motor y Filtros</p>
+                  <p className="text-[10px] font-bold truncate" style={{ color: 'var(--text-muted)' }}>Aceite + filtros</p>
                 </div>
-                <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5 min-w-40" style={{ background: 'rgba(33,199,184,0.08)', border: '1px solid rgba(33,199,184,0.3)' }}>
-                  <span className="font-display font-bold text-base" style={{ color: 'var(--accent-teal)' }}>S/</span>
+                <div className="flex items-center gap-2 rounded-2xl px-4 py-2.5 shrink-0" style={{ background: 'rgba(33,199,184,0.08)', border: '1px solid rgba(33,199,184,0.3)', width: '140px' }}>
+                  <span className="font-display font-bold text-base shrink-0" style={{ color: 'var(--accent-teal)' }}>S/</span>
                   <input type="number" value={precioAceite} onChange={e => setPrecioAceite(e.target.value)} placeholder="0.00" step="0.10"
-                    className="font-mono bg-transparent outline-none font-bold text-xl text-right flex-1" style={{ color: 'var(--accent-teal)' }} />
+                    className="font-mono bg-transparent outline-none font-bold text-xl text-right w-full" style={{ color: 'var(--accent-teal)', minWidth: 0 }} />
                 </div>
               </div>
             </div>
