@@ -115,6 +115,14 @@ export default function ConfigPage() {
   // Para saber si el modo es producción (afecta qué API key usa Factusmart)
   const [modoFactusmart, setModoFactusmart] = useState<'demo' | 'produccion'>('demo')
 
+  // ── Factura Electrónica ───────────────────────────────────────────────────
+  const [fsRucRegistrado, setFsRucRegistrado] = useState(false)
+  const [fsSolUsuario,    setFsSolUsuario]    = useState('')
+  const [fsSolClave,      setFsSolClave]      = useState('')
+  const [fsModo,          setFsModo]          = useState<'prueba' | 'produccion'>('prueba')
+  const [fsMostrarClave,  setFsMostrarClave]  = useState(false)
+  const [fsGuardando,     setFsGuardando]     = useState(false)
+
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -130,6 +138,9 @@ export default function ConfigPage() {
       setLogoPreview(t.logo_url || '')
       setPlantilla(t.whatsapp_plantilla || PLANTILLA_DEFAULT)
       setModoFactusmart(t.modo_factusmart || 'demo')
+      setFsRucRegistrado(t.factusmart_ruc_registrado || false)
+      setFsSolUsuario(t.factusmart_sol_usuario || '')
+      setFsModo(t.factusmart_modo || 'prueba')
 
       const marcasLimpias = (Array.isArray(t.marcas_aceite) ? t.marcas_aceite : [])
         .filter((m: any) => m && m.logo_url)
@@ -354,6 +365,24 @@ export default function ConfigPage() {
 
   const limpiarImport = () => {
     setPrevistaProductos([]); setArchivoExcel(null); setResultadoImport('')
+  }
+
+  const registrarRucFactusmart = async () => {
+    setFsGuardando(true); setError(''); setOk('')
+    if (!ruc)              { setError('Guarda tu RUC en Perfil del Negocio primero'); setFsGuardando(false); return }
+    if (!fsSolUsuario.trim()) { setError('Ingresa tu usuario SOL de SUNAT');          setFsGuardando(false); return }
+    if (!fsSolClave.trim())   { setError('Ingresa tu clave SOL de SUNAT');            setFsGuardando(false); return }
+    const res = await fetch('/api/factusmart/registrar-ruc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taller_id: tallerID, ruc, razon_social: nombre, sol_usuario: fsSolUsuario.trim(), sol_clave: fsSolClave.trim(), modo: fsModo }),
+    })
+    const data = await res.json()
+    if (!res.ok) { setError(data.error || 'Error al registrar en Factusmart'); setFsGuardando(false); return }
+    setFsRucRegistrado(true)
+    setOk(`✅ RUC ${ruc} habilitado para emitir comprobantes en modo ${fsModo}`)
+    setFsGuardando(false)
+    setTimeout(() => setOk(''), 6000)
   }
 
   const limitesPlan: Record<string, { servicios: number; comprobantes: number; consultas: number }> = {
@@ -791,7 +820,84 @@ export default function ConfigPage() {
         )}
       </Modulo>
 
-      {/* ── 6. SEGURIDAD ──────────────────────────────────────────────────── */}
+      {/* ── 6. FACTURA ELECTRÓNICA ────────────────────────────────────────── */}
+      <Modulo
+        icon="🧾" iconBg="rgba(167,139,250,0.14)" iconBorder="rgba(167,139,250,0.35)"
+        titulo="Factura Electrónica"
+        subtitulo={fsRucRegistrado ? `${ruc} habilitado · Modo ${fsModo}` : 'Configura tu RUC para emitir comprobantes electrónicos'}>
+
+        <div className="rounded-xl p-4"
+          style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.25)' }}>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-base">{fsRucRegistrado ? '✅' : '⚠️'}</span>
+            <p className="font-display text-xs font-bold uppercase tracking-widest" style={{ color: '#a78bfa' }}>
+              {fsRucRegistrado ? `RUC ${ruc} habilitado` : 'RUC no configurado aún'}
+            </p>
+          </div>
+          <p className="text-xs font-semibold leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            {fsRucRegistrado
+              ? `Tu taller emite comprobantes electrónicos en modo ${fsModo}. Puedes actualizar tus credenciales cuando cambien.`
+              : 'Ingresa tu usuario y clave SOL para habilitar la emisión de boletas y facturas electrónicas con validez SUNAT.'}
+          </p>
+        </div>
+
+        {!ruc && (
+          <div className="px-4 py-3 rounded-xl font-bold text-sm border"
+            style={{ background: 'rgba(255,106,31,0.08)', borderColor: 'rgba(255,106,31,0.3)', color: 'var(--accent)' }}>
+            ⚠️ Primero guarda tu RUC en <strong>Perfil del Negocio</strong> (arriba)
+          </div>
+        )}
+
+        <div className="space-y-3">
+          <div>
+            <label className={lbl}>RUC del taller</label>
+            <input value={ruc} disabled className={inp + ' font-mono opacity-60 cursor-not-allowed'} placeholder="Configura tu RUC en Perfil del Negocio" />
+          </div>
+          <div>
+            <label className={lbl}>Usuario SOL</label>
+            <input value={fsSolUsuario} onChange={e => setFsSolUsuario(e.target.value)}
+              className={inp + ' font-mono'} placeholder="Ej: 20XXXXXXXXX123456" autoComplete="off" />
+          </div>
+          <div>
+            <label className={lbl}>Clave SOL</label>
+            <div className="relative">
+              <input type={fsMostrarClave ? 'text' : 'password'} value={fsSolClave}
+                onChange={e => setFsSolClave(e.target.value)}
+                className={inp + ' font-mono pr-10'} placeholder="Tu clave SOL de SUNAT" autoComplete="new-password" />
+              <button onClick={() => setFsMostrarClave(!fsMostrarClave)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--text-muted)' }}>
+                {fsMostrarClave ? '🙈' : '👁️'}
+              </button>
+            </div>
+            <p className="text-[10px] font-bold mt-1" style={{ color: 'var(--text-muted)' }}>
+              🔐 Se envían directo a Factusmart — AWTU no las almacena permanentemente
+            </p>
+          </div>
+          <div>
+            <label className={lbl}>Modo de emisión</label>
+            <select value={fsModo} onChange={e => setFsModo(e.target.value as 'prueba' | 'produccion')}
+              className={selectCls}>
+              <option value="prueba">🧪 Prueba (sin validez fiscal)</option>
+              <option value="produccion">🏭 Producción (comprobantes reales)</option>
+            </select>
+            {fsModo === 'produccion' && (
+              <p className="text-[10px] font-bold mt-1" style={{ color: 'var(--accent)' }}>
+                ⚠️ En modo producción los comprobantes tienen validez fiscal ante SUNAT
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button onClick={registrarRucFactusmart} disabled={fsGuardando || !ruc}
+            className="font-display disabled:opacity-50 font-bold px-7 py-3 rounded-2xl transition-all uppercase tracking-widest text-sm active:scale-95"
+            style={{ background: '#a78bfa', color: 'var(--bg)' }}>
+            {fsGuardando ? '⏳ Registrando...' : fsRucRegistrado ? '🔄 Actualizar configuración' : '🚀 Habilitar emisión electrónica'}
+          </button>
+        </div>
+      </Modulo>
+
+      {/* ── 7. SEGURIDAD — CLAVE DE ACCESO ───────────────────────────────── */}
       <Modulo
         icon="🔐" iconBg="var(--surface-2)" iconBorder="var(--border)"
         titulo="Seguridad — Clave de Acceso" subtitulo="Cambia la clave para entrar a Configuración e Inventario">
@@ -849,7 +955,7 @@ export default function ConfigPage() {
         </div>
       </Modulo>
 
-      {/* ── 7. USO MENSUAL ────────────────────────────────────────────────── */}
+      {/* ── 8. USO MENSUAL ────────────────────────────────────────────────── */}
       <Modulo
         icon="📊" iconBg="rgba(167,139,250,0.14)" iconBorder="rgba(167,139,250,0.35)"
         titulo="Uso Mensual"
