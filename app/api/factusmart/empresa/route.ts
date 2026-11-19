@@ -1,82 +1,129 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const API_KEY      = process.env.FACTUSMART_API_KEY!
-const API_KEY_TEST = process.env.FACTUSMART_API_KEY_TEST!
-const BASE         = 'https://s2.factusmart.pe/api/v1/issuer'
-
-// Descarga una imagen desde una URL y la convierte a File (Buffer + mime)
-async function urlToBuffer(url: string): Promise<{ buffer: Buffer; mime: string; ext: string } | null> {
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const contentType = res.headers.get('content-type') || 'image/png'
-    const mime = contentType.split(';')[0].trim()
-    const ext  = mime === 'image/jpeg' ? 'jpg' : mime === 'image/png' ? 'png' : 'jpg'
-    const buffer = Buffer.from(await res.arrayBuffer())
-    return { buffer, mime, ext }
-  } catch {
-    return null
-  }
-}
+const API_KEY       = process.env.FACTUSMART_API_KEY!
+const API_KEY_TEST  = process.env.FACTUSMART_API_KEY_TEST!
+const BASE          = 'https://s2.factusmart.pe/api/v1/issuer'
 
 export async function POST(req: NextRequest) {
   try {
-    const { logo_url, modo = 'demo' } = await req.json()
+    const body = await req.json()
+    const {
+      tipo,            // 'boleta' | 'factura'
+      cliente_nombre,
+      cliente_doc,     // DNI u RUC
+      cliente_dir,
+      items,           // [{ descripcion, cantidad, precio_unitario }]
+      modo = 'prueba', // 'prueba' | 'produccion'
+      // RUC del taller que emite — cada taller usa el suyo
+      // Si no se pasa, usa el RUC del env (fallback para pruebas)
+      taller_ruc,
+    } = body
 
-    if (!logo_url) {
-      return NextResponse.json({ error: 'logo_url requerido' }, { status: 400 })
+    const apiKey  = modo === 'produccion' ? API_KEY : API_KEY_TEST
+    const tipoDoc = tipo === 'factura' ? '01' : '03'
+
+    // RUC a usar: el del taller si está disponible, si no el del env
+    const rucEmisor = taller_ruc || process.env.FACTUSMART_RUC!
+
+    if (!rucEmisor) {
+      return NextResponse.json(
+        { error: 'No se encontró RUC del taller para emitir' },
+        { status: 400 }
+      )
     }
 
-    const apiKey = modo === 'produccion' ? API_KEY : API_KEY_TEST
+    // ── 1. Armar items para /calcular ─────────────────────────────────────
+    const itemsCalc = items.map((i: any) => ({
+      descripcion:     i.descripcion,
+      cantidad:        Number(i.cantidad) || 1,
+      precio_unitario: Number(i.precio_unitario || i.precio) || 0,
+      afectacion:      '10',   // gravado con IGV
+    }))
 
-    // 1. Descargar la imagen desde Supabase Storage
-    const img = await urlToBuffer(logo_url)
-    if (!img) {
-      return NextResponse.json({ error: 'No se pudo descargar el logo' }, { status: 400 })
-    }
-
-    // 2. Obtener el ID de la empresa actual en Factusmart
-    const listRes = await fetch(`${BASE}/companies`, {
-      headers: { 'X-API-Key': apiKey },
+    // ── 2. Calcular totales ───────────────────────────────────────────────
+    const calcRes = await fetch(`${BASE}/calcular`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      body:    JSON.stringify({ items: itemsCalc }),
     })
-    if (!listRes.ok) {
-      const err = await listRes.json()
-      return NextResponse.json({ error: 'Error listando empresas', detalle: err }, { status: 400 })
-    }
-    const listData = await listRes.json()
-    // La API devuelve array o { data: [] }
-    const empresas = Array.isArray(listData) ? listData : (listData.data || [])
-    if (empresas.length === 0) {
-      return NextResponse.json({ error: 'No hay empresa registrada en Factusmart' }, { status: 404 })
-    }
-    const empresa = empresas[0]
-    const empresaId = empresa.id
 
-    // 3. Enviar logo como multipart/form-data al endpoint de actualización
-    const formData = new FormData()
-    const blob = new Blob([new Uint8Array(img.buffer)], { type: img.mime })
-    formData.append('logo_path', blob, `logo.${img.ext}`)
+    if (!calcRes.ok) {
+      const err = await calcRes.json()
+      console.error('❌ FACTUSMART /calcular ERROR:', JSON.stringify(err, null, 2))
+      return NextResponse.json({ error: 'Error al calcular', detalle: err }, { status: 400 })
+    }
 
-    const updateRes = await fetch(`${BASE}/companies/${empresaId}`, {
-      method:  'POST', // Factusmart usa POST con _method=PUT para multipart
-      headers: {
-        'X-API-Key':     apiKey,
-        'X-HTTP-Method-Override': 'PUT',
+    const calcData = await calcRes.json()
+
+    // ── 3. Armar payload del comprobante ─────────────────────────────────
+    const ahora = new Date()
+    const fecha = ahora.toLocaleDateString('sv-SE', { timeZone: 'America/Lima' })
+    const hora  = ahora.toLocaleTimeString('es-PE', { hour12: false, timeZone: 'America/Lima' })
+
+    const payload: any = {
+      ruc:                       rucEmisor,  // ← RUC del taller
+      numero_documento:          '#',
+      fecha_de_emision:          fecha,
+      hora_de_emision:           hora,
+      codigo_tipo_operacion:     '0101',
+      codigo_tipo_documento:     tipoDoc,
+      codigo_tipo_moneda:        'PEN',
+      datos_del_cliente_o_receptor: {
+        codigo_tipo_documento_identidad: tipo === 'factura' ? '6' : '1',
+        numero_documento:                cliente_doc || '00000000',
+        ...(cliente_nombre ? { apellidos_y_nombres_o_razon_social: cliente_nombre } : {}),
+        ...(cliente_dir    ? { direccion: cliente_dir }                             : {}),
       },
-      body: formData,
-    })
-
-    const updateData = await updateRes.json()
-
-    if (!updateRes.ok) {
-      console.error('❌ FACTUSMART /companies update ERROR:', JSON.stringify(updateData, null, 2))
-      return NextResponse.json({ error: 'Error actualizando empresa', detalle: updateData }, { status: 400 })
+      items:   calcData.items,
+      totales: calcData.totales,
     }
 
-    return NextResponse.json({ ok: true, empresa: updateData })
+    // ── 4. Emitir comprobante ─────────────────────────────────────────────
+    const emitRes = await fetch(`${BASE}/documents`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':    'application/json',
+        'X-API-Key':       apiKey,
+        'Idempotency-Key': `awtu-${Date.now()}`,
+      },
+      body: JSON.stringify(payload),
+    })
+
+    const emitData = await emitRes.json()
+
+    if (!emitRes.ok) {
+      console.error('❌ FACTUSMART /documents ERROR:', JSON.stringify(emitData, null, 2))
+      return NextResponse.json({ error: 'Error al emitir', detalle: emitData }, { status: 400 })
+    }
+
+    // ── 5. Descargar PDF ──────────────────────────────────────────────────
+    let pdfUrl: string | null = null
+    if (emitData.external_id) {
+      const pdfRes = await fetch(
+        `${BASE}/documents/${emitData.external_id}/pdf`,
+        { headers: { 'X-API-Key': apiKey } }
+      )
+      if (pdfRes.ok) {
+        const pdfBuffer = await pdfRes.arrayBuffer()
+        pdfUrl = `data:application/pdf;base64,${Buffer.from(pdfBuffer).toString('base64')}`
+      }
+    }
+
+    return NextResponse.json({
+      ok:                  true,
+      external_id:         emitData.external_id,
+      serie_numero:        emitData.serie_numero,
+      estado:              emitData.estado,
+      estado_descripcion:  emitData.estado_descripcion,
+      aceptado_por_sunat:  emitData.aceptado_por_sunat ?? false,
+      sunat_descripcion:   emitData.sunat?.descripcion ?? '',
+      entorno:             emitData.entorno,
+      pdf_base64:          pdfUrl,
+      raw:                 emitData,
+    })
 
   } catch (err: any) {
-    console.error('❌ FACTUSMART /empresa route error:', err)
+    console.error('❌ FACTUSMART route error:', err)
     return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
   }
 }
