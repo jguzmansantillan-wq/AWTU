@@ -244,10 +244,10 @@ export default function ConsultaPage() {
       <form onSubmit={handleConsultar} className="flex gap-3 mb-6">
         <input value={placa} onChange={e => setPlaca(e.target.value)} required
           placeholder="Ej: ABC-123"
-          className="inp font-mono flex-1 text-lg uppercase tracking-widest"
-          style={{ color: 'var(--accent-teal)' }} />
+          className="inp font-mono flex-1 min-w-0 text-lg uppercase tracking-widest"
+          style={{ color: 'var(--accent-teal)', width: 'auto' }} />
         <button type="submit" disabled={loading}
-          className="font-display font-bold px-6 py-3 rounded-xl transition-all active:scale-95 disabled:opacity-50 uppercase tracking-widest text-sm"
+          className="font-display font-bold px-6 py-3 rounded-xl transition-all active:scale-95 disabled:opacity-50 uppercase tracking-widest text-sm shrink-0"
           style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>
           {loading ? '...' : '🔍 Buscar'}
         </button>
