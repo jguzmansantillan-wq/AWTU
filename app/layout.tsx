@@ -1,22 +1,15 @@
-import Sidebar from '@/components/Sidebar'
-import AuthGuard from '@/components/AuthGuard'
+import type { Metadata } from 'next'
+import './globals.css'
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export const metadata: Metadata = {
+  title: 'AWTU',
+  description: 'Automotriz Web Tool',
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
-      <AuthGuard>
-        <Sidebar tallerNombre="Mi Taller" plan="basico" />
-        <main
-          className="p-4 md:p-6 pb-24 md:pb-6"
-          style={{ marginLeft: 'var(--sidebar-w)' }}>
-          <style>{`
-            @media (max-width: 767px) {
-              main { margin-left: 0 !important; }
-            }
-          `}</style>
-          {children}
-        </main>
-      </AuthGuard>
-    </div>
+    <html lang="es">
+      <body>{children}</body>
+    </html>
   )
 }
