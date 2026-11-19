@@ -10,7 +10,7 @@ const PLANES = [
   {
     id: 'basico',
     nombre: 'Básico',
-    precio: 49,
+    precio: 45,
     color: 'var(--accent-teal)',
     destacado: false,
     limites: ['50 servicios / mes', '50 comprobantes / mes', '50 consultas de placa / mes'],
@@ -18,7 +18,7 @@ const PLANES = [
   {
     id: 'pro',
     nombre: 'Pro',
-    precio: 99,
+    precio: 90,
     color: 'var(--accent)',
     destacado: true,
     limites: ['200 servicios / mes', '200 comprobantes / mes', '200 consultas de placa / mes'],
@@ -26,7 +26,7 @@ const PLANES = [
   {
     id: 'exclusive',
     nombre: 'Exclusive',
-    precio: 199,
+    precio: 150,
     color: 'var(--accent-yellow)',
     destacado: false,
     limites: ['Servicios ilimitados', 'Comprobantes ilimitados', 'Consultas de placa ilimitadas'],
