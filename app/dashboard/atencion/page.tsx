@@ -492,10 +492,14 @@ export default function AtencionPage() {
                 <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Ingresa la placa para autocompletar datos históricos</p>
               </div>
             </div>
+
+            {/* FIX: Fecha de Servicio — grid con max-width para que no se expanda en móvil */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
               <div>
                 <label className={lbl}>Fecha de Servicio</label>
-                <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className={inp} />
+                {/* FIX: style width auto para que el input date no se expanda al 100% en móvil */}
+                <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
+                  className={inp} style={{ width: '100%', maxWidth: '100%' }} />
               </div>
               <div className="sm:col-span-2">
                 <label className={lbl}>Placa del Vehículo</label>
@@ -503,8 +507,8 @@ export default function AtencionPage() {
                   <input value={placa} onChange={e => setPlaca(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && buscarPlaca()}
                     placeholder="ABC-123"
-                    className={inp + ' font-mono uppercase text-lg tracking-widest flex-1'}
-                    style={{ color: 'var(--accent-teal)' }} />
+                    className={inp + ' font-mono uppercase text-lg tracking-widest flex-1 min-w-0'}
+                    style={{ color: 'var(--accent-teal)', width: 'auto' }} />
                   <button onClick={buscarPlaca}
                     className="font-display shrink-0 px-5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
                     style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>
@@ -754,18 +758,18 @@ export default function AtencionPage() {
             </div>
           </div>
 
-          {/* OTROS SERVICIOS */}
+          {/* OTROS SERVICIOS — FIX: texto "OTROS" que desbordaba el card */}
           <div className="rounded-2xl" style={{ border: '1px solid var(--border)' }}>
             <div className="flex items-center justify-between px-5 py-4 rounded-t-2xl" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>🔧</div>
-                <div>
-                  <p className="font-display text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text)' }}>Otros Servicios / Mano de Obra</p>
-                  <p className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>Trabajos adicionales realizados</p>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>🔧</div>
+                <div className="min-w-0">
+                  <p className="font-display text-xs font-bold uppercase tracking-widest truncate" style={{ color: 'var(--text)' }}>Otros Servicios / Mano de Obra</p>
+                  <p className="text-[10px] font-bold truncate" style={{ color: 'var(--text-muted)' }}>Trabajos adicionales realizados</p>
                 </div>
               </div>
               <button onClick={() => setOtrosServicios([...otrosServicios, { detalle: '', precio: '' }])}
-                className="font-display text-[10px] font-bold px-4 py-2 rounded-xl uppercase tracking-widest transition-all"
+                className="font-display text-[10px] font-bold px-4 py-2 rounded-xl uppercase tracking-widest transition-all shrink-0 ml-2"
                 style={{ background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }}>
                 + Agregar
               </button>
@@ -780,14 +784,14 @@ export default function AtencionPage() {
                       <input value={o.detalle}
                         onChange={e => { const a = [...otrosServicios]; a[i].detalle = e.target.value; setOtrosServicios(a) }}
                         placeholder="Ej: Cambio de pastillas, alineación..."
-                        className={inp + ' flex-1'} />
-                      <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 min-w-32" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-                        <span className="font-display font-bold text-sm" style={{ color: 'var(--text-muted)' }}>S/</span>
+                        className={inp + ' flex-1 min-w-0'} style={{ width: 'auto' }} />
+                      <div className="flex items-center gap-2 rounded-xl px-3 py-2.5 shrink-0" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', width: '120px' }}>
+                        <span className="font-display font-bold text-sm shrink-0" style={{ color: 'var(--text-muted)' }}>S/</span>
                         <input type="number" value={o.precio}
                           onChange={e => { const a = [...otrosServicios]; a[i].precio = e.target.value; setOtrosServicios(a) }}
                           placeholder="0.00" step="0.10" className="font-mono bg-transparent outline-none font-bold text-base w-full" style={{ color: 'var(--text)' }} />
                       </div>
-                      <button onClick={() => setOtrosServicios(otrosServicios.filter((_, j) => j !== i))} className="font-bold text-lg transition-colors" style={{ color: 'var(--text-muted)' }}
+                      <button onClick={() => setOtrosServicios(otrosServicios.filter((_, j) => j !== i))} className="font-bold text-lg transition-colors shrink-0" style={{ color: 'var(--text-muted)' }}
                         onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>✕</button>
                     </div>
                   ))}

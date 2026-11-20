@@ -163,17 +163,17 @@ export default function ReportesPage() {
         </button>
       </div>
 
-      {/* Filtros de periodo */}
+      {/* Filtros de periodo — FIX: flex-wrap → nowrap, input con max-width en móvil */}
       <div className="card">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             {[
               { key: 'dia', label: 'Día' },
               { key: 'mes', label: 'Mes' },
               { key: 'anio', label: 'Año' },
             ].map(f => (
               <button key={f.key} onClick={() => setFiltroTipo(f.key as FiltroTipo)}
-                className="font-display px-4 py-2.5 text-xs rounded-xl font-bold uppercase tracking-widest transition-all"
+                className="font-display px-4 py-2.5 text-xs rounded-xl font-bold uppercase tracking-widest transition-all shrink-0"
                 style={filtroTipo === f.key
                   ? { background: 'var(--accent-teal)', color: 'var(--bg)' }
                   : { background: 'var(--surface-2)', border: '1.5px solid var(--border)', color: 'var(--text-muted)' }}>
@@ -181,16 +181,20 @@ export default function ReportesPage() {
               </button>
             ))}
           </div>
-          <div className="flex-1 min-w-48">
+          {/* FIX: max-w para que el input no se expanda más de lo necesario en móvil */}
+          <div style={{ maxWidth: 200, minWidth: 120, flex: 1 }}>
             {filtroTipo === 'dia' && (
-              <input type="date" value={diaSel} onChange={e => setDiaSel(e.target.value)} className="inp font-mono" />
+              <input type="date" value={diaSel} onChange={e => setDiaSel(e.target.value)}
+                className="inp font-mono" style={{ width: '100%' }} />
             )}
             {filtroTipo === 'mes' && (
-              <input type="month" value={mesSel} onChange={e => setMesSel(e.target.value)} className="inp font-mono" />
+              <input type="month" value={mesSel} onChange={e => setMesSel(e.target.value)}
+                className="inp font-mono" style={{ width: '100%' }} />
             )}
             {filtroTipo === 'anio' && (
               <input type="number" value={anioSel} onChange={e => setAnioSel(e.target.value)}
-                min="2020" max="2100" placeholder="2026" className="inp font-mono" />
+                min="2020" max="2100" placeholder="2026"
+                className="inp font-mono" style={{ width: '100%' }} />
             )}
           </div>
         </div>
@@ -249,7 +253,7 @@ export default function ReportesPage() {
         </div>
       )}
 
-      {/* Detalle de transacciones */}
+      {/* Detalle de transacciones — FIX: scroll horizontal en móvil */}
       <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         <div className="flex items-center gap-3 px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="w-7 h-7 rounded-xl flex items-center justify-center text-xs"
@@ -264,50 +268,55 @@ export default function ReportesPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-12 gap-2 px-4 py-2" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
-              {[
-                { label: 'Fecha',   span: 'col-span-2' },
-                { label: 'Tipo',    span: 'col-span-1' },
-                { label: 'Cliente', span: 'col-span-2' },
-                { label: 'Detalle', span: 'col-span-4' },
-                { label: 'Pago',    span: 'col-span-2' },
-                { label: 'Monto',   span: 'col-span-1 text-right' },
-              ].map(h => (
-                <div key={h.label} className={`font-display text-[9px] font-bold uppercase tracking-widest ${h.span}`} style={{ color: 'var(--text-muted)' }}>{h.label}</div>
-              ))}
-            </div>
-            <div className="max-h-[480px] overflow-y-auto">
-              {filtrados.map(r => {
-                const accentColor = r.tipo === 'servicio' ? 'var(--accent-teal)' : 'var(--accent)'
-                const metodo = METODOS_PAGO.find(m => m.key === (r.metodo_pago || 'efectivo'))
-                return (
-                  <div key={r.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center" style={{ borderBottom: '1px solid var(--border)' }}>
-                    <div className="col-span-2 font-mono text-xs font-bold" style={{ color: 'var(--text)' }}>{fechaDe(r)}</div>
-                    <div className="col-span-1">
-                      <span className="font-display text-[9px] px-2 py-0.5 rounded-lg font-bold uppercase"
-                        style={{ background: accentColor + '1a', color: accentColor }}>
-                        {r.tipo === 'servicio' ? 'Serv.' : 'Venta'}
-                      </span>
-                    </div>
-                    <div className="col-span-2 text-xs font-semibold truncate" style={{ color: 'var(--text)' }}>
-                      {r.nombre || (r.tipo === 'venta' ? 'Directo' : '-')}
-                      {r.tipo === 'servicio' && <span className="font-mono ml-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>{r.placa}</span>}
-                    </div>
-                    <div className="col-span-4 text-xs truncate" style={{ color: 'var(--text-muted)' }}>{detalleDescripcion(r)}</div>
-                    <div className="col-span-2">
-                      {metodo ? (
-                        <span className="font-display text-[9px] font-bold flex items-center gap-1" style={{ color: metodo.color }}>
-                          <span>{metodo.icon}</span>
-                          <span className="uppercase tracking-widest">{metodo.label}</span>
-                        </span>
-                      ) : (
-                        <span className="font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>—</span>
-                      )}
-                    </div>
-                    <div className="col-span-1 text-right font-mono text-xs font-bold" style={{ color: 'var(--text)' }}>S/ {(r.monto || 0).toFixed(2)}</div>
-                  </div>
-                )
-              })}
+            {/* FIX: overflow-x-auto para que la tabla haga scroll en móvil en vez de aplastar columnas */}
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ minWidth: 560 }}>
+                <div className="grid grid-cols-12 gap-2 px-4 py-2" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+                  {[
+                    { label: 'Fecha',   span: 'col-span-2' },
+                    { label: 'Tipo',    span: 'col-span-1' },
+                    { label: 'Cliente', span: 'col-span-2' },
+                    { label: 'Detalle', span: 'col-span-4' },
+                    { label: 'Pago',    span: 'col-span-2' },
+                    { label: 'Monto',   span: 'col-span-1 text-right' },
+                  ].map(h => (
+                    <div key={h.label} className={`font-display text-[9px] font-bold uppercase tracking-widest ${h.span}`} style={{ color: 'var(--text-muted)' }}>{h.label}</div>
+                  ))}
+                </div>
+                <div className="max-h-[480px] overflow-y-auto">
+                  {filtrados.map(r => {
+                    const accentColor = r.tipo === 'servicio' ? 'var(--accent-teal)' : 'var(--accent)'
+                    const metodo = METODOS_PAGO.find(m => m.key === (r.metodo_pago || 'efectivo'))
+                    return (
+                      <div key={r.id} className="grid grid-cols-12 gap-2 px-4 py-3 items-center" style={{ borderBottom: '1px solid var(--border)' }}>
+                        <div className="col-span-2 font-mono text-xs font-bold" style={{ color: 'var(--text)' }}>{fechaDe(r)}</div>
+                        <div className="col-span-1">
+                          <span className="font-display text-[9px] px-2 py-0.5 rounded-lg font-bold uppercase"
+                            style={{ background: accentColor + '1a', color: accentColor }}>
+                            {r.tipo === 'servicio' ? 'Serv.' : 'Venta'}
+                          </span>
+                        </div>
+                        <div className="col-span-2 text-xs font-semibold truncate" style={{ color: 'var(--text)' }}>
+                          {r.nombre || (r.tipo === 'venta' ? 'Directo' : '-')}
+                          {r.tipo === 'servicio' && <span className="font-mono ml-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>{r.placa}</span>}
+                        </div>
+                        <div className="col-span-4 text-xs truncate" style={{ color: 'var(--text-muted)' }}>{detalleDescripcion(r)}</div>
+                        <div className="col-span-2">
+                          {metodo ? (
+                            <span className="font-display text-[9px] font-bold flex items-center gap-1" style={{ color: metodo.color }}>
+                              <span>{metodo.icon}</span>
+                              <span className="uppercase tracking-widest">{metodo.label}</span>
+                            </span>
+                          ) : (
+                            <span className="font-display text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>—</span>
+                          )}
+                        </div>
+                        <div className="col-span-1 text-right font-mono text-xs font-bold" style={{ color: 'var(--text)' }}>S/ {(r.monto || 0).toFixed(2)}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
             </div>
           </>
         )}

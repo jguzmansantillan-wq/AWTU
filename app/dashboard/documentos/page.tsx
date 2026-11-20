@@ -1127,7 +1127,8 @@ export default function DocumentosPage() {
             </div>
             <button
               onClick={() => setOrdenComp(o => o === 'desc' ? 'asc' : 'desc')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap">
+              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap shrink-0"
+              style={{ width: 'auto' }}>
               {ordenComp === 'desc' ? '↓ Más reciente' : '↑ Más antiguo'}
             </button>
           </div>
