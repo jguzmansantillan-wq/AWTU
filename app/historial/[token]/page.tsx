@@ -134,15 +134,17 @@ export default function HistorialClientePublico({ params }: { params: Promise<{ 
               placeholder="Ej: ABC-123"
               maxLength={8}
               style={{
-                flex: 1, background: '#0f172a', border: '2px solid #334155', borderRadius: 12,
+                flex: 1, minWidth: 0, background: '#0f172a', border: '2px solid #334155', borderRadius: 12,
                 padding: '14px 16px', color: '#f1f5f9', fontWeight: 900, fontSize: 18,
                 letterSpacing: '0.15em', textTransform: 'uppercase', outline: 'none', textAlign: 'center',
+                width: 'auto',
               }}
             />
             <button onClick={buscar} disabled={loading} style={{
               background: loading ? '#334155' : '#ff6a1f', color: loading ? '#94a3b8' : '#fff',
               border: 'none', borderRadius: 12, padding: '14px 20px', fontWeight: 900, fontSize: 14,
               cursor: loading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s',
+              flexShrink: 0,
             }}>
               {loading ? '⏳' : '🔍 Buscar'}
             </button>
