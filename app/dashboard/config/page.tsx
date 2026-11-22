@@ -74,6 +74,11 @@ export default function ConfigPage() {
   const [guardando, setGuardando] = useState(false)
   const [ok,    setOk]    = useState('')
   const [error, setError] = useState('')
+  const [okPerfil,    setOkPerfil]    = useState('')
+  const [okMetodos,   setOkMetodos]   = useState('')
+  const [okSucursales,setOkSucursales]= useState('')
+  const [okFactus,    setOkFactus]    = useState('')
+  const [errorFactus, setErrorFactus] = useState('')
 
   const [nombre,    setNombre]    = useState('')
   const [ruc,       setRuc]       = useState('')
@@ -258,7 +263,7 @@ export default function ConfigPage() {
   const eliminarSucursal   = (i: number) => setSucursales(prev => prev.filter((_, idx) => idx !== i))
 
   const guardarPerfil = async () => {
-    setGuardando(true); setError(''); setOk('')
+    setGuardando(true); setError(''); setOk(''); setOkPerfil(''); setOkMetodos(''); setOkSucursales('')
     const { error: e } = await supabase.from('talleres').update({
       nombre, ruc, telefono, direccion,
       whatsapp_plantilla: plantilla,
@@ -266,8 +271,11 @@ export default function ConfigPage() {
       sucursales:         sucursales,
     }).eq('id', tallerID)
     if (e) { setError(e.message); setGuardando(false); return }
-    setOk('Configuración guardada'); setGuardando(false)
-    setTimeout(() => setOk(''), 3000)
+    setOkPerfil('✅ Perfil guardado correctamente')
+    setOkMetodos('✅ Métodos de pago guardados')
+    setOkSucursales('✅ Sucursales guardadas')
+    setGuardando(false)
+    setTimeout(() => { setOkPerfil(''); setOkMetodos(''); setOkSucursales('') }, 4000)
   }
 
   const guardarClave = async () => {
@@ -378,11 +386,11 @@ export default function ConfigPage() {
       body: JSON.stringify({ taller_id: tallerID, ruc, razon_social: nombre, sol_usuario: fsSolUsuario.trim(), sol_clave: fsSolClave.trim(), modo: fsModo }),
     })
     const data = await res.json()
-    if (!res.ok) { setError(data.error || 'Error al registrar en Factusmart'); setFsGuardando(false); return }
+    if (!res.ok) { setErrorFactus(data.error || 'Error al registrar en Factusmart'); setFsGuardando(false); return }
     setFsRucRegistrado(true)
-    setOk(`✅ RUC ${ruc} habilitado para emitir comprobantes en modo ${fsModo}`)
+    setOkFactus(`✅ RUC ${ruc} habilitado para emitir comprobantes en modo ${fsModo}`)
     setFsGuardando(false)
-    setTimeout(() => setOk(''), 6000)
+    setTimeout(() => setOkFactus(''), 6000)
   }
 
   const limitesPlan: Record<string, { servicios: number; comprobantes: number; consultas: number }> = {
@@ -590,6 +598,11 @@ export default function ConfigPage() {
           </div>
         </div>
 
+        {okPerfil && (
+          <div className="px-4 py-3 rounded-xl font-bold text-sm" style={{ background: 'rgba(22,184,166,0.1)', border: '1px solid var(--teal-border)', color: 'var(--teal)' }}>
+            {okPerfil}
+          </div>
+        )}
         <div className="flex justify-end pt-1">
           <button onClick={guardarPerfil} disabled={guardando}
             className="font-display disabled:opacity-50 font-bold px-7 py-3 rounded-2xl transition-all uppercase tracking-widest text-sm active:scale-95"
@@ -654,10 +667,10 @@ export default function ConfigPage() {
         ) : (
           <div className="space-y-3">
             {metodosPago.map((m, i) => (
-              <div key={i} className="flex flex-col gap-2 p-3 rounded-xl" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+              <div key={i} className="flex flex-col gap-2 p-3 rounded-xl overflow-hidden" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
                 <div className="flex gap-2">
                   <select value={m.tipo} onChange={e => actualizarMetodoPago(i, 'tipo', e.target.value)}
-                    className={selectCls + ' w-32 shrink-0'}>
+                    className={selectCls + ' w-32 shrink-0 min-w-0'}>
                     <option>Yape</option><option>Plin</option><option>BCP</option>
                     <option>BBVA</option><option>Interbank</option><option>Scotiabank</option><option>Otro</option>
                   </select>
@@ -671,6 +684,11 @@ export default function ConfigPage() {
                   placeholder="Titular de la cuenta (opcional)" className={inp} />
               </div>
             ))}
+            {okMetodos && (
+              <div className="px-4 py-3 rounded-xl font-bold text-sm" style={{ background: 'rgba(22,184,166,0.1)', border: '1px solid var(--teal-border)', color: 'var(--teal)' }}>
+                {okMetodos}
+              </div>
+            )}
             <div className="flex justify-end pt-1">
               <button onClick={guardarPerfil} disabled={guardando}
                 className="font-display disabled:opacity-50 font-bold px-7 py-3 rounded-2xl transition-all uppercase tracking-widest text-sm active:scale-95"
@@ -716,6 +734,11 @@ export default function ConfigPage() {
                   placeholder="Teléfono (opcional)" className={inp + ' font-mono'} />
               </div>
             ))}
+            {okSucursales && (
+              <div className="px-4 py-3 rounded-xl font-bold text-sm" style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', color: 'rgb(167,139,250)' }}>
+                {okSucursales}
+              </div>
+            )}
             <div className="flex justify-end pt-1">
               <button onClick={guardarPerfil} disabled={guardando}
                 className="font-display disabled:opacity-50 font-bold px-7 py-3 rounded-2xl transition-all uppercase tracking-widest text-sm active:scale-95"
@@ -888,6 +911,16 @@ export default function ConfigPage() {
           </div>
         </div>
 
+        {okFactus && (
+          <div className="px-4 py-3 rounded-xl font-bold text-sm" style={{ background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', color: 'rgb(167,139,250)' }}>
+            {okFactus}
+          </div>
+        )}
+        {errorFactus && (
+          <div className="px-4 py-3 rounded-xl font-bold text-sm" style={{ background: 'var(--danger-muted)', border: '1px solid var(--danger-border)', color: 'var(--danger)' }}>
+            ❌ {errorFactus}
+          </div>
+        )}
         <div className="flex justify-end">
           <button onClick={registrarRucFactusmart} disabled={fsGuardando || !ruc}
             className="font-display disabled:opacity-50 font-bold px-7 py-3 rounded-2xl transition-all uppercase tracking-widest text-sm active:scale-95"

@@ -1,132 +1,110 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
 const API_KEY      = process.env.FACTUSMART_API_KEY!
 const API_KEY_TEST = process.env.FACTUSMART_API_KEY_TEST!
 const BASE         = 'https://s2.factusmart.pe/api/v1/issuer'
 
-// Descarga una imagen desde una URL y la convierte a Buffer
-async function urlToBuffer(url: string): Promise<{ buffer: Buffer; mime: string; ext: string } | null> {
-  try {
-    const res = await fetch(url)
-    if (!res.ok) return null
-    const contentType = res.headers.get('content-type') || 'image/png'
-    const mime = contentType.split(';')[0].trim()
-    const ext  = mime === 'image/jpeg' ? 'jpg' : mime === 'image/png' ? 'png' : 'jpg'
-    const buffer = Buffer.from(await res.arrayBuffer())
-    return { buffer, mime, ext }
-  } catch {
-    return null
-  }
-}
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(req: NextRequest) {
   try {
     const {
-      logo_url,
-      modo = 'prueba',  // 'prueba' | 'produccion'
-      taller_ruc,       // RUC del taller — para subir el logo al RUC correcto
+      taller_id,
+      ruc,
+      razon_social,
+      sol_usuario,   // Usuario SOL de SUNAT (ej. "20XXXXXXXXX123456")
+      sol_clave,     // Clave SOL de SUNAT
+      modo = 'prueba', // 'prueba' | 'produccion'
     } = await req.json()
 
-    if (!logo_url) {
-      return NextResponse.json({ error: 'logo_url requerido' }, { status: 400 })
+    if (!taller_id || !ruc || !sol_usuario || !sol_clave) {
+      return NextResponse.json(
+        { error: 'Faltan campos requeridos: taller_id, ruc, sol_usuario, sol_clave' },
+        { status: 400 }
+      )
     }
 
     const apiKey = modo === 'produccion' ? API_KEY : API_KEY_TEST
 
-    // 1. Descargar la imagen desde Supabase Storage
-    const img = await urlToBuffer(logo_url)
-    if (!img) {
-      return NextResponse.json({ error: 'No se pudo descargar el logo' }, { status: 400 })
+    // ── 1. Crear el RUC en Factusmart ────────────────────────────────────────
+    // Si ya existe, Factusmart devuelve error 409 — lo ignoramos y continuamos
+    const crearRes = await fetch(`${BASE}/rucs`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      body: JSON.stringify({
+        ruc,
+        razon_social: razon_social || '',
+      }),
+    })
+
+    const crearData = await crearRes.json()
+
+    if (!crearRes.ok && crearRes.status !== 409) {
+      console.error('❌ FACTUSMART /rucs POST ERROR:', JSON.stringify(crearData, null, 2))
+      return NextResponse.json(
+        { error: 'Error creando RUC en Factusmart', detalle: crearData },
+        { status: 400 }
+      )
     }
 
-    // 2. Preparar el FormData con el logo
-    const formData = new FormData()
-    const blob = new Blob([new Uint8Array(img.buffer)], { type: img.mime })
-    formData.append('logo_path', blob, `logo.${img.ext}`)
+    // ── 2. Configurar credenciales SOL (modo Smart PSE sin certificado) ──────
+    const solRes = await fetch(`${BASE}/rucs/${ruc}/sunat`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      body: JSON.stringify({
+        sol_usuario,
+        sol_clave,
+        modalidad: 'pse',           // Smart PSE — sin certificado propio
+        entorno:   modo === 'produccion' ? 'produccion' : 'beta',
+      }),
+    })
 
-    let updateRes: Response
-    let updateData: any
+    const solData = await solRes.json()
 
-    if (taller_ruc) {
-      // ── Modo multi-RUC: subir logo al RUC específico del taller ──────────
-      // Factusmart tiene endpoint PUT /rucs/{ruc}/logo (o similar)
-      // Intentamos primero con /rucs/{ruc} y luego con /companies/{id}
-      updateRes = await fetch(`${BASE}/rucs/${taller_ruc}`, {
-        method:  'POST',
-        headers: {
-          'X-API-Key':              apiKey,
-          'X-HTTP-Method-Override': 'PUT',
-        },
-        body: formData,
-      })
-      updateData = await updateRes.json()
-
-      if (!updateRes.ok) {
-        // Fallback: intentar con endpoint /rucs/{ruc}/logo
-        const logoRes = await fetch(`${BASE}/rucs/${taller_ruc}/logo`, {
-          method:  'POST',
-          headers: {
-            'X-API-Key':              apiKey,
-            'X-HTTP-Method-Override': 'PUT',
-          },
-          body: formData,
-        })
-        updateData = await logoRes.json()
-
-        if (!logoRes.ok) {
-          console.error('❌ FACTUSMART logo upload ERROR:', JSON.stringify(updateData, null, 2))
-          return NextResponse.json(
-            { error: 'Error subiendo logo a Factusmart', detalle: updateData },
-            { status: 400 }
-          )
-        }
-      }
-
-    } else {
-      // ── Modo legacy: subir logo a la empresa principal (companies[0]) ────
-      const listRes = await fetch(`${BASE}/companies`, {
-        headers: { 'X-API-Key': apiKey },
-      })
-      if (!listRes.ok) {
-        const err = await listRes.json()
-        return NextResponse.json(
-          { error: 'Error listando empresas', detalle: err },
-          { status: 400 }
-        )
-      }
-      const listData = await listRes.json()
-      const empresas = Array.isArray(listData) ? listData : (listData.data || [])
-      if (empresas.length === 0) {
-        return NextResponse.json(
-          { error: 'No hay empresa registrada en Factusmart' },
-          { status: 404 }
-        )
-      }
-      const empresaId = empresas[0].id
-
-      updateRes = await fetch(`${BASE}/companies/${empresaId}`, {
-        method:  'POST',
-        headers: {
-          'X-API-Key':              apiKey,
-          'X-HTTP-Method-Override': 'PUT',
-        },
-        body: formData,
-      })
-      updateData = await updateRes.json()
-
-      if (!updateRes.ok) {
-        console.error('❌ FACTUSMART /companies update ERROR:', JSON.stringify(updateData, null, 2))
-        return NextResponse.json(
-          { error: 'Error actualizando empresa', detalle: updateData },
-          { status: 400 }
-        )
-      }
+    if (!solRes.ok) {
+      console.error('❌ FACTUSMART /rucs/sunat ERROR:', JSON.stringify(solData, null, 2))
+      return NextResponse.json(
+        { error: 'Error configurando credenciales SOL', detalle: solData },
+        { status: 400 }
+      )
     }
 
-    return NextResponse.json({ ok: true, data: updateData })
+    // ── 3. Guardar credenciales PSE que devuelve Smart PSE ───────────────────
+    const pseUsuario = solData.credenciales_cpe?.usuario_secundaria || null
+    const pseClave   = solData.credenciales_cpe?.token_acceso        || null
+
+    // ── 4. Actualizar tabla talleres ─────────────────────────────────────────
+    const { error: dbError } = await supabaseAdmin
+      .from('talleres')
+      .update({
+        factusmart_ruc_registrado: true,
+        factusmart_sol_usuario:    sol_usuario,
+        factusmart_sol_clave:      sol_clave,
+        factusmart_modo:           modo,
+        apisunat_token: pseClave   || '',
+        apisunat_ruc:   pseUsuario || '',
+      })
+      .eq('id', taller_id)
+
+    if (dbError) {
+      console.error('❌ Supabase update error:', dbError)
+      // No bloqueamos — el RUC ya quedó registrado en Factusmart
+    }
+
+    return NextResponse.json({
+      ok: true,
+      mensaje: `RUC ${ruc} registrado en Factusmart correctamente`,
+      modo,
+      ruc_data: crearData,
+      sol_data: solData,
+    })
 
   } catch (err: any) {
-    console.error('❌ FACTUSMART /empresa route error:', err)
+    console.error('❌ /registrar-ruc route error:', err)
     return NextResponse.json({ error: err.message || 'Error interno' }, { status: 500 })
   }
 }
