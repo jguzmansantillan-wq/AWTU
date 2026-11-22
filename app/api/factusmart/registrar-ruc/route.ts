@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         sol_usuario,
         sol_clave,
-        modalidad: 'pse',           // Smart PSE — sin certificado propio
+        modalidad: 'sunat',         // Envío directo a SUNAT con credenciales SOL
         entorno:   modo === 'produccion' ? 'produccion' : 'prueba',
       }),
     })
