@@ -84,6 +84,7 @@ export default function ConfigPage() {
   const [ruc,       setRuc]       = useState('')
   const [telefono,  setTelefono]  = useState('')
   const [direccion, setDireccion] = useState('')
+  const [userEmail, setUserEmail] = useState('')
   const [logoUrl,     setLogoUrl]     = useState('')
   const [logoPreview, setLogoPreview] = useState('')
   const [subiendoLogo, setSubiendoLogo] = useState(false)
@@ -132,6 +133,7 @@ export default function ConfigPage() {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+      setUserEmail(user.email || '')
       const { data: t } = await supabase.from('talleres').select('*').eq('user_id', user.id).single()
       if (!t) return
       setTallerID(t.id)
@@ -383,7 +385,7 @@ export default function ConfigPage() {
     const res = await fetch('/api/factusmart/registrar-ruc', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ taller_id: tallerID, ruc, razon_social: nombre, sol_usuario: fsSolUsuario.trim(), sol_clave: fsSolClave.trim(), modo: fsModo }),
+      body: JSON.stringify({ taller_id: tallerID, ruc, razon_social: nombre, correo: userEmail, sol_usuario: fsSolUsuario.trim(), sol_clave: fsSolClave.trim(), modo: fsModo }),
     })
     const data = await res.json()
     if (!res.ok) { setErrorFactus(data.error || 'Error al registrar en Factusmart'); setFsGuardando(false); return }

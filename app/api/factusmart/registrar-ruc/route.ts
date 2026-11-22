@@ -16,6 +16,7 @@ export async function POST(req: NextRequest) {
       taller_id,
       ruc,
       razon_social,
+      correo,        // Email del taller (requerido por Factusmart)
       sol_usuario,   // Usuario SOL de SUNAT (ej. "20XXXXXXXXX123456")
       sol_clave,     // Clave SOL de SUNAT
       modo = 'prueba', // 'prueba' | 'produccion'
@@ -30,6 +31,9 @@ export async function POST(req: NextRequest) {
 
     const apiKey = modo === 'produccion' ? API_KEY : API_KEY_TEST
 
+    // Generar clave para el portal Factusmart (no es la clave SOL)
+    const clavePortal = `Awtu${ruc.slice(-4)}${Date.now().toString(36).toUpperCase()}`
+
     // ── 1. Crear el RUC en Factusmart ────────────────────────────────────────
     // Si ya existe, Factusmart devuelve error 409 — lo ignoramos y continuamos
     const crearRes = await fetch(`${BASE}/rucs`, {
@@ -37,7 +41,10 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
       body: JSON.stringify({
         ruc,
+        empresa:      razon_social || ruc,
         razon_social: razon_social || '',
+        correo:       correo || `${ruc}@awtu.pe`,
+        clave:        clavePortal,
       }),
     })
 
@@ -45,8 +52,9 @@ export async function POST(req: NextRequest) {
 
     if (!crearRes.ok && crearRes.status !== 409) {
       console.error('❌ FACTUSMART /rucs POST ERROR:', JSON.stringify(crearData, null, 2))
+      const detalleMensaje = crearData?.message || crearData?.error || crearData?.detail || JSON.stringify(crearData)
       return NextResponse.json(
-        { error: 'Error creando RUC en Factusmart', detalle: crearData },
+        { error: `Error creando RUC en Factusmart: ${detalleMensaje}` },
         { status: 400 }
       )
     }
@@ -67,8 +75,9 @@ export async function POST(req: NextRequest) {
 
     if (!solRes.ok) {
       console.error('❌ FACTUSMART /rucs/sunat ERROR:', JSON.stringify(solData, null, 2))
+      const detalleSol = solData?.message || solData?.error || solData?.detail || JSON.stringify(solData)
       return NextResponse.json(
-        { error: 'Error configurando credenciales SOL', detalle: solData },
+        { error: `Error configurando credenciales SOL: ${detalleSol}` },
         { status: 400 }
       )
     }
