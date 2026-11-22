@@ -196,8 +196,8 @@ function ModalAcciones({
   const btnBase = "flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40"
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.65)' }} onClick={onClose}>
-      <div className="rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.65)' }} onClick={onClose}>
+      <div className="rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-sm overflow-y-auto" style={{ background: 'var(--surface)', border: '1px solid var(--border)', maxHeight: '92dvh' }} onClick={e => e.stopPropagation()}>
 
         <div className="px-5 py-4 flex items-center justify-between" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
           <div>
@@ -609,8 +609,8 @@ function ModalEmitir({
   const montoTotal = itemsEditables.reduce((s, i) => s + (i.precio || 0), 0)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.65)' }} onClick={onClose}>
-      <div className="rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.65)' }} onClick={onClose}>
+      <div className="rounded-t-2xl sm:rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" style={{ background: 'var(--surface)', border: '1px solid var(--border)', maxHeight: '92dvh' }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="px-5 py-4 flex items-center justify-between shrink-0" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
