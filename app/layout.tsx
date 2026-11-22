@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'AWTU – Mi Taller',
-  description: 'Automotriz Web Tool',
+  description: 'Automotriz Web Tool — Software de gestión premium para talleres automotrices',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -12,7 +12,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
+        {/* Inter — principal UI font (Premium SaaS) */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body>{children}</body>
     </html>
