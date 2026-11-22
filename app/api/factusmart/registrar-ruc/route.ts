@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         sol_usuario,
         sol_clave,
         modalidad: 'pse',           // Smart PSE — sin certificado propio
-        entorno:   modo === 'produccion' ? 'produccion' : 'beta',
+        entorno:   modo === 'produccion' ? 'produccion' : 'prueba',
       }),
     })
 
@@ -78,7 +78,11 @@ export async function POST(req: NextRequest) {
 
     if (!solRes.ok) {
       console.error('❌ FACTUSMART /rucs/sunat ERROR:', JSON.stringify(solData, null, 2))
-      const detalleSol = solData?.message || solData?.error || solData?.detail || JSON.stringify(solData)
+      const detalleSol = typeof solData?.message === 'string'
+        ? solData.message
+        : typeof solData?.error === 'string'
+          ? solData.error
+          : JSON.stringify(solData)
       return NextResponse.json(
         { error: `Error configurando credenciales SOL: ${detalleSol}` },
         { status: 400 }
