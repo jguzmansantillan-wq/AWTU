@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
+import type { ReactElement } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
@@ -11,7 +12,7 @@ interface Props {
 const ADMIN_EMAIL = 'jguzmansantillan@gmail.com'
 
 // ── SVG Icons ──────────────────────────────────────────────────────────────
-const icons: Record<string, JSX.Element> = {
+const icons: Record<string, ReactElement> = {
   resumen: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
