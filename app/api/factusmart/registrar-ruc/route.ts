@@ -29,7 +29,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const apiKey = modo === 'produccion' ? API_KEY : API_KEY_TEST
+    // Para registrar y configurar credenciales SOL, Factusmart SIEMPRE requiere
+    // la API key de producción — la de prueba no tiene permisos de escritura.
+    // El parámetro "modo" solo afecta el entorno de envío a SUNAT (beta/produccion).
+    const apiKeyConfig = API_KEY  // siempre producción para configurar
 
     // Generar clave para el portal Factusmart (no es la clave SOL)
     const clavePortal = `Awtu${ruc.slice(-4)}${Date.now().toString(36).toUpperCase()}`
@@ -38,7 +41,7 @@ export async function POST(req: NextRequest) {
     // Si ya existe, Factusmart devuelve error 409 — lo ignoramos y continuamos
     const crearRes = await fetch(`${BASE}/rucs`, {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKeyConfig },
       body: JSON.stringify({
         ruc,
         empresa:      razon_social || ruc,
@@ -62,7 +65,7 @@ export async function POST(req: NextRequest) {
     // ── 2. Configurar credenciales SOL (modo Smart PSE sin certificado) ──────
     const solRes = await fetch(`${BASE}/rucs/${ruc}/sunat`, {
       method:  'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKey },
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': apiKeyConfig },
       body: JSON.stringify({
         sol_usuario,
         sol_clave,
