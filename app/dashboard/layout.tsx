@@ -7,8 +7,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <AuthGuard>
         <Sidebar tallerNombre="Mi Taller" plan="basico" />
         <main
-          className="p-4 md:p-6 pb-24 md:pb-6"
-          style={{ marginLeft: 'var(--sidebar-w)' }}>
+          className="p-4 md:p-6 pb-24 md:pb-8"
+          style={{ marginLeft: 'var(--sidebar-w)', background: 'var(--bg)', minHeight: '100vh' }}>
           <style>{`
             @media (max-width: 767px) {
               main { margin-left: 0 !important; }
