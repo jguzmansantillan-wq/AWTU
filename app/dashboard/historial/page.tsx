@@ -207,7 +207,7 @@ function ModalAcciones({
           <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm transition-all" style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}>✕</button>
         </div>
 
-        <div className="px-5 py-4 space-y-3" style={{ borderBottom: '1px solid var(--border)' }}
+        <div className="px-5 py-4 space-y-3" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center justify-between">
             <span className="text-xs px-3 py-1 rounded-full font-black uppercase"
               style={c.tipo === 'factura'
