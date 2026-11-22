@@ -29,7 +29,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Sidebar tallerNombre={tallerNombre} plan={plan} />
         <main
           id="main-content"
-          className="page-enter"
           style={{
             /* En desktop respeta el sidebar; en móvil no tiene margen lateral */
             marginLeft: 'var(--sidebar-w)',
