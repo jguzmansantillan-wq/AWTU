@@ -194,60 +194,59 @@ function ModalAcciones({
   }
 
   const btnBase = "flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40"
-  const btnBlue   = `${btnBase} bg-blue-600 hover:bg-blue-700 text-white`
-  const btnGreen  = `${btnBase} bg-green-600 hover:bg-green-700 text-white`
-  const btnSlate  = `${btnBase} bg-slate-100 hover:bg-slate-200 text-slate-700`
-  const btnRed    = `${btnBase} bg-red-600 hover:bg-red-700 text-white`
-  const btnOrange = `${btnBase} bg-orange-500 hover:bg-orange-600 text-white`
-  const btnPurple = `${btnBase} bg-purple-600 hover:bg-purple-700 text-white`
-  const btnTeal   = `${btnBase} bg-teal-600 hover:bg-teal-700 text-white`
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.65)' }} onClick={onClose}>
+      <div className="rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
 
-        <div className="bg-blue-600 px-5 py-4 flex items-center justify-between">
+        <div className="px-5 py-4 flex items-center justify-between" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
           <div>
-            <p className="font-black text-white text-base">Comprobante electrónico</p>
-            <p className="text-blue-200 text-xs font-bold mt-0.5">{nro}</p>
+            <p className="font-black text-base" style={{ color: 'var(--text)' }}>Comprobante electrónico</p>
+            <p className="text-xs font-bold mt-0.5" style={{ color: 'var(--teal)' }}>{nro}</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-black text-sm transition-all">✕</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm transition-all" style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}>✕</button>
         </div>
 
-        <div className="px-5 py-4 space-y-3 border-b border-slate-100">
+        <div className="px-5 py-4 space-y-3" style={{ borderBottom: '1px solid var(--border)' }}
           <div className="flex items-center justify-between">
-            <span className={`text-xs px-3 py-1 rounded-full font-black uppercase ${
-              c.tipo === 'factura' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
-            }`}>{c.tipo === 'factura' ? 'Factura Electrónica' : 'Boleta de Venta'}</span>
-            <span className={`text-xs px-3 py-1 rounded-full font-black uppercase ${
-              c.estado_sunat === 'emitido'  ? 'bg-green-100 text-green-700' :
-              c.estado_sunat === 'anulado'  ? 'bg-red-100 text-red-700' :
-              'bg-yellow-100 text-yellow-700'
-            }`}>{c.estado_sunat?.toUpperCase()}</span>
+            <span className="text-xs px-3 py-1 rounded-full font-black uppercase"
+              style={c.tipo === 'factura'
+                ? { background: 'var(--teal-muted)', color: 'var(--teal)' }
+                : { background: 'rgba(57,185,128,0.12)', color: 'var(--success)' }}>
+              {c.tipo === 'factura' ? 'Factura Electrónica' : 'Boleta de Venta'}
+            </span>
+            <span className="text-xs px-3 py-1 rounded-full font-black uppercase"
+              style={c.estado_sunat === 'emitido'
+                ? { background: 'rgba(57,185,128,0.12)', color: 'var(--success)' }
+                : c.estado_sunat === 'anulado'
+                ? { background: 'var(--danger-muted)', color: 'var(--danger)' }
+                : { background: 'var(--amber-muted)', color: 'var(--amber)' }}>
+              {c.estado_sunat?.toUpperCase()}
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Cliente</p>
-              <p className="font-black text-slate-800 mt-0.5">{toTitleCase(c.cliente_nombre || '')}</p>
-              {c.cliente_doc && <p className="text-slate-500 font-semibold">{c.tipo === 'factura' ? 'RUC' : 'DNI'}: {c.cliente_doc}</p>}
+              <p className="font-bold uppercase tracking-wider text-[9px]" style={{ color: 'var(--text-subtle)' }}>Cliente</p>
+              <p className="font-black mt-0.5" style={{ color: 'var(--text)' }}>{toTitleCase(c.cliente_nombre || '')}</p>
+              {c.cliente_doc && <p className="font-semibold" style={{ color: 'var(--text-muted)' }}>{c.tipo === 'factura' ? 'RUC' : 'DNI'}: {c.cliente_doc}</p>}
             </div>
             <div className="text-right">
-              <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Total</p>
-              <p className="font-black text-blue-600 text-xl mt-0.5">S/ {(c.monto || 0).toFixed(2)}</p>
-              <p className="text-slate-400 font-semibold text-[10px]">{c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}</p>
+              <p className="font-bold uppercase tracking-wider text-[9px]" style={{ color: 'var(--text-subtle)' }}>Total</p>
+              <p className="font-black text-xl mt-0.5" style={{ color: 'var(--teal)' }}>S/ {(c.monto || 0).toFixed(2)}</p>
+              <p className="font-semibold text-[10px]" style={{ color: 'var(--text-subtle)' }}>{c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}</p>
             </div>
           </div>
 
           {modo === 'demo' && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-center">
-              <p className="text-amber-700 font-black text-[10px] uppercase tracking-wider">🧪 Modo Demo — Sin validez fiscal</p>
+            <div className="rounded-lg px-3 py-1.5 text-center" style={{ background: 'var(--amber-muted)', border: '1px solid var(--amber-border)' }}>
+              <p className="font-black text-[10px] uppercase tracking-wider" style={{ color: 'var(--amber)' }}>🧪 Modo Demo — Sin validez fiscal</p>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              <p className="text-red-700 font-bold text-xs">{error}</p>
+            <div className="rounded-lg px-3 py-2" style={{ background: 'var(--danger-muted)', border: '1px solid var(--danger-border)' }}>
+              <p className="font-bold text-xs" style={{ color: 'var(--danger)' }}>{error}</p>
             </div>
           )}
         </div>
@@ -255,37 +254,46 @@ function ModalAcciones({
         {!showAnular && !notaModal && (
           <div className="px-5 py-4 space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={descargarPDF} disabled={!hasPDF} className={btnBlue}>
+              <button onClick={descargarPDF} disabled={!hasPDF} className={btnBase}
+                style={{ background: 'var(--teal)', color: '#000' }}>
                 📄 Ver PDF
               </button>
-              <button onClick={descargarPDF} disabled={!hasPDF} className={btnSlate}>
+              <button onClick={descargarPDF} disabled={!hasPDF} className={btnBase}
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                 📥 Descargar PDF
               </button>
-              <button onClick={enviarWhatsApp} className={btnGreen}>
+              <button onClick={enviarWhatsApp} className={btnBase}
+                style={{ background: 'rgba(37,211,102,0.15)', border: '1px solid rgba(37,211,102,0.3)', color: 'rgb(37,211,102)' }}>
                 💬 WhatsApp
               </button>
-              <button onClick={imprimir} disabled={!hasPDF} className={btnSlate}>
+              <button onClick={imprimir} disabled={!hasPDF} className={btnBase}
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                 🖨️ Imprimir
               </button>
-              <button onClick={descargarXML} disabled={loadingAccion === 'xml'} className={btnOrange}>
+              <button onClick={descargarXML} disabled={loadingAccion === 'xml'} className={btnBase}
+                style={{ background: 'var(--amber-muted)', border: '1px solid var(--amber-border)', color: 'var(--amber)' }}>
                 {loadingAccion === 'xml' ? '⏳' : '📋'} XML
               </button>
-              <button onClick={descargarCDR} disabled={loadingAccion === 'cdr'} className={btnTeal}>
+              <button onClick={descargarCDR} disabled={loadingAccion === 'cdr'} className={btnBase}
+                style={{ background: 'var(--teal-muted)', border: '1px solid var(--teal-border)', color: 'var(--teal)' }}>
                 {loadingAccion === 'cdr' ? '⏳' : '📦'} CDR
               </button>
             </div>
             {(c.tipo === 'factura' || c.tipo === 'boleta') && c.estado_sunat !== 'anulado' && (
               <div className="grid grid-cols-2 gap-2 pt-1">
-                <button onClick={() => setNotaModal('credito')} className={btnPurple}>
+                <button onClick={() => setNotaModal('credito')} className={btnBase}
+                  style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: 'rgb(167,139,250)' }}>
                   📋 Nota Crédito
                 </button>
-                <button onClick={() => setNotaModal('debito')} className={btnOrange}>
+                <button onClick={() => setNotaModal('debito')} className={btnBase}
+                  style={{ background: 'var(--amber-muted)', border: '1px solid var(--amber-border)', color: 'var(--amber)' }}>
                   📋 Nota Débito
                 </button>
               </div>
             )}
             {c.estado_sunat !== 'anulado' && (
-              <button onClick={() => setShowAnular(true)} className={`${btnBase} w-full bg-red-50 text-red-600 hover:bg-red-100 mt-1`}>
+              <button onClick={() => setShowAnular(true)} className={`${btnBase} w-full mt-1`}
+                style={{ background: 'var(--danger-muted)', border: '1px solid var(--danger-border)', color: 'var(--danger)' }}>
                 🗑️ Dar de Baja
               </button>
             )}
@@ -294,21 +302,23 @@ function ModalAcciones({
 
         {showAnular && (
           <div className="px-5 py-4 space-y-3">
-            <p className="font-black text-slate-800 text-sm">¿Anular comprobante {nro}?</p>
-            <p className="text-xs text-slate-500 font-semibold">Esta acción no se puede deshacer. El comprobante quedará marcado como anulado ante SUNAT.</p>
+            <p className="font-black text-sm" style={{ color: 'var(--text)' }}>¿Anular comprobante {nro}?</p>
+            <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Esta acción no se puede deshacer. El comprobante quedará marcado como anulado ante SUNAT.</p>
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Motivo de anulación *</label>
+              <label className="lbl">Motivo de anulación *</label>
               <input
                 value={motivoAnular}
                 onChange={e => setMotivoAnular(e.target.value)}
                 placeholder="Ej: Error en el monto, cliente incorrecto..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-red-400 transition-all"
+                className="inp"
               />
             </div>
-            {error && <p className="text-red-600 text-xs font-bold">{error}</p>}
+            {error && <p className="text-xs font-bold" style={{ color: 'var(--danger)' }}>{error}</p>}
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setShowAnular(false)} className={btnSlate}>Cancelar</button>
-              <button onClick={anular} disabled={loadingAccion === 'anular'} className={btnRed}>
+              <button onClick={() => setShowAnular(false)} className={btnBase}
+                style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>Cancelar</button>
+              <button onClick={anular} disabled={loadingAccion === 'anular'} className={btnBase}
+                style={{ background: 'var(--danger)', color: '#fff' }}>
                 {loadingAccion === 'anular' ? '⏳ Anulando...' : '🗑️ Confirmar Anulación'}
               </button>
             </div>
@@ -393,32 +403,32 @@ function NotaForm({
   return (
     <div className="px-5 py-4 space-y-3">
       <div className="flex items-center justify-between mb-1">
-        <p className="font-black text-slate-800 text-sm">
+        <p className="font-black text-sm" style={{ color: 'var(--text)' }}>
           {tipo === 'credito' ? '📋 Nota de Crédito' : '📋 Nota de Débito'}
         </p>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg font-black">✕</button>
+        <button onClick={onClose} className="text-lg font-black transition-colors" style={{ color: 'var(--text-muted)' }}>✕</button>
       </div>
       <div>
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Código Motivo</label>
-        <select value={codigo} onChange={e => setCodigo(e.target.value)}
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all">
+        <label className="lbl">Código Motivo</label>
+        <select value={codigo} onChange={e => setCodigo(e.target.value)} className="inp">
           {motivos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
       </div>
       <div>
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Descripción</label>
+        <label className="lbl">Descripción</label>
         <input value={motivo} onChange={e => setMotivo(e.target.value)}
           placeholder="Describe el motivo..."
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all" />
+          className="inp" />
       </div>
       <div>
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Monto</label>
+        <label className="lbl">Monto</label>
         <input type="number" value={monto} onChange={e => setMonto(e.target.value)} step="0.01"
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all" />
+          className="inp" />
       </div>
-      {error && <p className="text-red-600 text-xs font-bold">{error}</p>}
+      {error && <p className="text-xs font-bold" style={{ color: 'var(--danger)' }}>{error}</p>}
       <button onClick={emitir} disabled={loading}
-        className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-black py-3 rounded-xl transition-all uppercase tracking-widest text-xs">
+        className="w-full disabled:opacity-50 font-black py-3 rounded-xl transition-all uppercase tracking-widest text-xs"
+        style={{ background: 'rgba(139,92,246,0.9)', color: '#fff' }}>
         {loading ? '⏳ Emitiendo...' : `Emitir Nota`}
       </button>
     </div>
@@ -439,9 +449,6 @@ function ModalEmitir({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [consultando, setConsultando] = useState(false)
-
-  const inp = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 transition-all"
-  const lbl = "text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block"
 
   // Precarga items desde el registro
   useEffect(() => {
@@ -602,35 +609,35 @@ function ModalEmitir({
   const montoTotal = itemsEditables.reduce((s, i) => s + (i.precio || 0), 0)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.65)' }} onClick={onClose}>
+      <div className="rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="bg-blue-600 px-5 py-4 flex items-center justify-between shrink-0">
+        <div className="px-5 py-4 flex items-center justify-between shrink-0" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
           <div>
-            <p className="font-black text-white text-base">🧾 Emitir Comprobante</p>
-            <p className="text-blue-200 text-xs font-bold mt-0.5">
+            <p className="font-black text-base" style={{ color: 'var(--text)' }}>🧾 Emitir Comprobante</p>
+            <p className="text-xs font-bold mt-0.5" style={{ color: 'var(--teal)' }}>
               {registro.tipo === 'servicio' ? `Servicio · ${(registro as Servicio).placa}` :
                registro.tipo === 'venta' ? 'Venta POS' : 'Proforma'}
                {registro.nombre ? ` · ${toTitleCase(registro.nombre)}` : ''}
             </p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-black text-sm transition-all">✕</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm transition-all" style={{ background: 'var(--surface)', color: 'var(--text-muted)' }}>✕</button>
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 py-4">
           <form onSubmit={handleEmitir} className="space-y-4">
 
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-                <p className="text-red-700 font-bold text-xs">{error}</p>
+              <div className="rounded-xl px-4 py-3" style={{ background: 'var(--danger-muted)', border: '1px solid var(--danger-border)' }}>
+                <p className="font-bold text-xs" style={{ color: 'var(--danger)' }}>{error}</p>
               </div>
             )}
 
             {/* DNI / RUC */}
             <div>
-              <label className={lbl}>
-                DNI / RUC {consultando && <span className="normal-case text-blue-500 font-bold">⏳ Consultando...</span>}
+              <label className="lbl">
+                DNI / RUC {consultando && <span className="normal-case font-bold" style={{ color: 'var(--teal)' }}>⏳ Consultando...</span>}
               </label>
               <input
                 name="cliente_doc"
@@ -640,35 +647,35 @@ function ModalEmitir({
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); consultarCliente(form.cliente_doc) } }}
                 placeholder="DNI (8 dígitos) o RUC (11 dígitos)"
                 maxLength={11}
-                className={inp}
+                className="inp"
               />
-              {form.cliente_doc.length === 8 && !consultando && <p className="text-[10px] text-blue-500 font-bold mt-1">→ Boleta de Venta</p>}
-              {form.cliente_doc.length === 11 && !consultando && <p className="text-[10px] text-emerald-500 font-bold mt-1">→ Factura Electrónica</p>}
+              {form.cliente_doc.length === 8 && !consultando && <p className="text-[10px] font-bold mt-1" style={{ color: 'var(--teal)' }}>→ Boleta de Venta</p>}
+              {form.cliente_doc.length === 11 && !consultando && <p className="text-[10px] font-bold mt-1" style={{ color: 'var(--success)' }}>→ Factura Electrónica</p>}
             </div>
 
             {/* Nombre */}
             <div>
-              <label className={lbl}>Nombre / Razón social</label>
+              <label className="lbl">Nombre / Razón social</label>
               <input name="cliente_nombre" value={form.cliente_nombre} onChange={handleChange}
-                placeholder="Nombre del cliente" className={inp} />
+                placeholder="Nombre del cliente" className="inp" />
             </div>
 
             {/* Dirección */}
             <div>
-              <label className={lbl}>Dirección</label>
+              <label className="lbl">Dirección</label>
               <input name="cliente_dir" value={form.cliente_dir} onChange={handleChange}
-                placeholder="Dirección del cliente" className={inp} />
+                placeholder="Dirección del cliente" className="inp" />
             </div>
 
             {/* IGV y modo */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={lbl}>IGV (%)</label>
-                <input name="igv" type="number" value={form.igv} onChange={handleChange} className={inp} />
+                <label className="lbl">IGV (%)</label>
+                <input name="igv" type="number" value={form.igv} onChange={handleChange} className="inp" />
               </div>
               <div>
-                <label className={lbl}>Modo de emisión</label>
-                <select name="modo" value={form.modo} onChange={handleChange} className={inp}>
+                <label className="lbl">Modo de emisión</label>
+                <select name="modo" value={form.modo} onChange={handleChange} className="inp">
                   <option value="demo">🧪 Demo (prueba)</option>
                   <option value="produccion">🚀 Producción</option>
                 </select>
@@ -677,43 +684,50 @@ function ModalEmitir({
 
             {/* Items editables */}
             <div>
-              <label className={lbl}>Items del comprobante <span className="normal-case text-blue-500 font-bold">(puedes editar)</span></label>
-              <div className="border border-slate-200 rounded-xl overflow-hidden">
-                <div className="flex justify-between px-3 py-2 bg-slate-900">
-                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Descripción</span>
-                  <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Precio</span>
+              <label className="lbl">Items del comprobante <span className="normal-case font-bold" style={{ color: 'var(--teal)' }}>(puedes editar)</span></label>
+              <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                <div className="flex justify-between px-3 py-2" style={{ background: 'var(--bg)' }}>
+                  <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Descripción</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Precio</span>
                 </div>
                 {itemsEditables.map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 last:border-0 bg-white hover:bg-slate-50 transition-colors">
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 transition-colors" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
                     <input
                       value={item.descripcion}
                       onChange={e => setItemsEditables(prev => prev.map((it, idx) => idx === i ? { ...it, descripcion: e.target.value } : it))}
-                      className="flex-1 text-xs font-semibold text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-400 focus:outline-none py-1 uppercase transition-colors min-w-0"
+                      className="flex-1 text-xs font-semibold bg-transparent border-b border-transparent focus:outline-none py-1 uppercase transition-colors min-w-0"
+                      style={{ color: 'var(--text)', borderBottomColor: 'transparent' }}
+                      onFocus={e => e.currentTarget.style.borderBottomColor = 'var(--teal)'}
+                      onBlur={e => e.currentTarget.style.borderBottomColor = 'transparent'}
                       placeholder="Descripción"
                     />
                     <div className="flex items-center gap-1 shrink-0">
-                      <span className="text-xs text-slate-400 font-bold">S/</span>
+                      <span className="text-xs font-bold" style={{ color: 'var(--text-subtle)' }}>S/</span>
                       <input
                         type="number" step="0.01"
                         value={item.precio}
                         onChange={e => setItemsEditables(prev => prev.map((it, idx) => idx === i ? { ...it, precio: parseFloat(e.target.value) || 0 } : it))}
-                        className="w-20 text-xs font-black text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-400 focus:outline-none py-1 text-right transition-colors"
+                        className="w-20 text-xs font-black bg-transparent border-b border-transparent focus:outline-none py-1 text-right transition-colors"
+                        style={{ color: 'var(--text)' }}
+                        onFocus={e => e.currentTarget.style.borderBottomColor = 'var(--teal)'}
+                        onBlur={e => e.currentTarget.style.borderBottomColor = 'transparent'}
                       />
                     </div>
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-slate-400 font-bold mt-1.5">✏️ Haz click en cualquier campo para editarlo</p>
+              <p className="text-[10px] font-bold mt-1.5" style={{ color: 'var(--text-subtle)' }}>✏️ Haz click en cualquier campo para editarlo</p>
             </div>
 
             {/* Total */}
-            <div className="bg-slate-50 rounded-xl px-4 py-3 flex items-center justify-between">
-              <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Total estimado</span>
-              <span className="font-black text-blue-600 text-lg">S/ {montoTotal.toFixed(2)}</span>
+            <div className="rounded-xl px-4 py-3 flex items-center justify-between" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+              <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Total estimado</span>
+              <span className="font-black text-lg" style={{ color: 'var(--teal)' }}>S/ {montoTotal.toFixed(2)}</span>
             </div>
 
             <button type="submit" disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg shadow-blue-200 active:scale-95">
+              className="w-full disabled:opacity-50 font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-sm active:scale-95"
+              style={{ background: 'var(--teal)', color: '#000' }}>
               {loading ? '⏳ Conectando con SUNAT...' : `🧾 Emitir ${form.tipo === 'factura' ? 'Factura' : 'Boleta'} ${form.modo === 'demo' ? '(Demo)' : ''}`}
             </button>
           </form>
@@ -1046,15 +1060,15 @@ export default function HistorialPage() {
     setCartillaData(null)
   }
 
-  const coloresEstado: Record<string, { bg: string; color: string }> = {
-    Pendiente: { bg: 'rgba(255,194,60,0.12)', color: 'var(--accent-yellow)' },
-    Facturado: { bg: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)' },
+  const coloresEstado: Record<string, React.CSSProperties> = {
+    Pendiente: { background: 'var(--amber-muted)', color: 'var(--amber)' },
+    Facturado: { background: 'var(--teal-muted)',  color: 'var(--teal)'  },
   }
 
   const colorTipo = {
-    servicio: { accent: 'var(--accent-teal)',  bg: 'rgba(33,199,184,0.12)', label: 'Servicio'  },
-    venta:    { accent: 'var(--accent)',        bg: 'rgba(255,106,31,0.12)', label: 'Venta POS' },
-    proforma: { accent: 'var(--accent-yellow)', bg: 'rgba(255,194,60,0.12)', label: 'Proforma'  },
+    servicio: { accent: 'var(--teal)',  bg: 'var(--teal-muted)',  border: 'var(--teal-border)',  label: 'Servicio'  },
+    venta:    { accent: 'var(--amber)', bg: 'var(--amber-muted)', border: 'var(--amber-border)', label: 'Venta POS' },
+    proforma: { accent: 'var(--amber)', bg: 'var(--amber-muted)', border: 'var(--amber-border)', label: 'Proforma'  },
   }
 
   const filtros: { key: FiltroTipo; label: string; count: number }[] = [
@@ -1251,17 +1265,17 @@ export default function HistorialPage() {
             </div>
             <div className="pt-4 mb-6 flex items-center justify-between" style={{ borderTop: '1px dashed var(--border)' }}>
               <span className="font-display font-bold uppercase tracking-widest text-sm" style={{ color: 'var(--text-muted)' }}>Total</span>
-              <span className="font-mono font-bold text-2xl" style={{ color: 'var(--accent-teal)' }}>S/ {(ticketVenta.monto || 0).toFixed(2)}</span>
+              <span className="font-mono font-bold text-2xl" style={{ color: 'var(--teal)' }}>S/ {(ticketVenta.monto || 0).toFixed(2)}</span>
             </div>
             <div className="space-y-3">
               <button onClick={descargarTicketJPG} disabled={descargandoTicket}
                 className="font-display w-full disabled:opacity-50 active:scale-95 font-bold py-3.5 rounded-2xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
-                style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>
+                style={{ background: 'var(--teal)', color: '#000' }}>
                 📥 {descargandoTicket ? 'Generando...' : 'Descargar JPG'}
               </button>
               <button onClick={() => compartirTicketWhatsApp(ticketVenta)}
                 className="font-display w-full active:scale-95 font-bold py-3.5 rounded-2xl transition-all flex items-center justify-center gap-3 uppercase tracking-widest text-sm"
-                style={{ background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)', border: '1px solid rgba(33,199,184,0.35)' }}>
+                style={{ background: 'var(--teal-muted)', color: 'var(--teal)', border: '1px solid var(--teal-border)' }}>
                 💬 Compartir por WhatsApp
               </button>
             </div>
@@ -1279,7 +1293,7 @@ export default function HistorialPage() {
         </div>
         <button onClick={() => router.push('/dashboard/atencion')}
           className="font-display font-bold text-xs uppercase tracking-widest px-5 py-3 rounded-xl transition-all active:scale-95"
-          style={{ background: 'var(--accent-teal)', color: 'var(--bg)' }}>
+          style={{ background: 'var(--teal)', color: '#000' }}>
           + Nueva Atención
         </button>
       </div>
@@ -1290,7 +1304,7 @@ export default function HistorialPage() {
           <button key={f.key} onClick={() => setFiltroTipo(f.key)}
             className="font-display px-4 py-2.5 text-xs rounded-xl font-bold uppercase tracking-widest transition-all flex items-center gap-2"
             style={filtroTipo === f.key
-              ? { background: 'var(--accent-teal)', color: 'var(--bg)' }
+              ? { background: 'var(--teal)', color: '#000' }
               : { background: 'var(--surface-2)', border: '1.5px solid var(--border)', color: 'var(--text-muted)' }}>
             {f.label}
             <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-md"
@@ -1326,7 +1340,7 @@ export default function HistorialPage() {
         {(busqueda || desde || hasta || filtroTipo !== 'todos') && (
           <button onClick={() => { setBusqueda(''); setDesde(''); setHasta(''); setFiltroTipo('todos') }}
             className="font-bold text-lg transition-colors" style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>✕</button>
+            onMouseEnter={e => e.currentTarget.style.color = 'var(--danger)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>✕</button>
         )}
       </div>
 
@@ -1381,7 +1395,7 @@ export default function HistorialPage() {
                     )}
                     {multiOp && (
                       <span className="font-display text-[9px] px-2 py-0.5 rounded-lg font-bold uppercase"
-                        style={{ background: 'rgba(255,194,60,0.12)', color: 'var(--accent-yellow)' }}>
+                        style={{ background: 'var(--amber-muted)', color: 'var(--amber)' }}>
                         {p.items.length} opciones
                       </span>
                     )}
@@ -1404,7 +1418,7 @@ export default function HistorialPage() {
                   </p>
                   <p className="text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>{fecha}</p>
                   {esServicio && s.km && (
-                    <p className="font-mono text-[10px] font-bold" style={{ color: 'var(--accent-teal)' }}>{Number(s.km).toLocaleString()} km</p>
+                    <p className="font-mono text-[10px] font-bold" style={{ color: 'var(--teal)' }}>{Number(s.km).toLocaleString()} km</p>
                   )}
 
                   <div className="flex items-center gap-1.5 justify-end mt-2">
@@ -1412,10 +1426,10 @@ export default function HistorialPage() {
                       <>
                         <button onClick={() => descargarCartilla(s)} title="Descargar cartilla"
                           className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
-                          style={{ background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)' }}>📋</button>
+                          style={{ background: 'var(--teal-muted)', color: 'var(--teal)' }}>📋</button>
                         <button onClick={() => abrirWhatsAppServicio(s.telefono, s.placa, s.nombre)} title="WhatsApp"
                           className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
-                          style={{ background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)' }}>💬</button>
+                          style={{ background: 'rgba(37,211,102,0.15)', color: 'rgb(37,211,102)' }}>💬</button>
                       </>
                     ) : esProforma ? (
                       <>
@@ -1424,7 +1438,7 @@ export default function HistorialPage() {
                           disabled={generandoPDF === p.id}
                           title="Ver PDF"
                           className="h-8 px-2 rounded-lg flex items-center justify-center text-xs font-bold uppercase tracking-wide gap-1 transition-all disabled:opacity-50"
-                          style={{ background: 'rgba(255,194,60,0.12)', color: 'var(--accent-yellow)', border: '1px solid rgba(255,194,60,0.3)' }}>
+                          style={{ background: 'var(--amber-muted)', color: 'var(--amber)', border: '1px solid var(--amber-border)' }}>
                           {generandoPDF === p.id ? '⏳' : '📄'} PDF
                         </button>
                         <button
@@ -1438,7 +1452,7 @@ export default function HistorialPage() {
                     ) : (
                       <button onClick={() => setTicketVenta(r as Venta)} title="Ver ticket"
                         className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
-                        style={{ background: 'rgba(33,199,184,0.12)', color: 'var(--accent-teal)' }}>🎫</button>
+                        style={{ background: 'var(--teal-muted)', color: 'var(--teal)' }}>🎫</button>
                     )}
 
                     {/* Botón 🧾 — siempre abre modal de emisión */}
@@ -1452,7 +1466,7 @@ export default function HistorialPage() {
 
                     <button onClick={() => eliminar(r.id, r.tipo)} title="Eliminar"
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-sm transition-all"
-                      style={{ background: 'rgba(255,106,31,0.12)', color: 'var(--accent)' }}>🗑️</button>
+                      style={{ background: 'var(--danger-muted)', color: 'var(--danger)' }}>🗑️</button>
                   </div>
                 </div>
               </div>

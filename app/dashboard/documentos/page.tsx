@@ -150,61 +150,54 @@ function ModalAcciones({
     setLoadingAccion(null)
   }
 
-  const btnBase    = "flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40"
-  const btnBlue    = `${btnBase} bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-200`
-  const btnGreen   = `${btnBase} bg-green-600 hover:bg-green-700 text-white shadow-sm shadow-green-200`
-  const btnSlate   = `${btnBase} bg-slate-100 hover:bg-slate-200 text-slate-700`
-  const btnRed     = `${btnBase} bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-200`
-  const btnOrange  = `${btnBase} bg-orange-500 hover:bg-orange-600 text-white shadow-sm shadow-orange-200`
-  const btnPurple  = `${btnBase} bg-purple-600 hover:bg-purple-700 text-white shadow-sm shadow-purple-200`
-  const btnTeal    = `${btnBase} bg-teal-600 hover:bg-teal-700 text-white shadow-sm shadow-teal-200`
+  const btnBase = "flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40"
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+      <div className="rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
 
-        <div className="bg-blue-600 px-5 py-4 flex items-center justify-between">
+        <div className="px-5 py-4 flex items-center justify-between" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
           <div>
-            <p className="font-black text-white text-base">Comprobante electrónico</p>
-            <p className="text-blue-200 text-xs font-bold mt-0.5">{nro}</p>
+            <p className="font-black text-base" style={{ color: 'var(--text)' }}>Comprobante electrónico</p>
+            <p className="text-xs font-bold mt-0.5" style={{ color: 'var(--teal)' }}>{nro}</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-black text-sm transition-all">✕</button>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm transition-all" style={{ background: 'var(--teal-muted)', color: 'var(--teal)' }}>✕</button>
         </div>
 
-        <div className="px-5 py-4 space-y-3 border-b border-slate-100">
+        <div className="px-5 py-4 space-y-3" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center justify-between">
-            <span className={`text-xs px-3 py-1 rounded-full font-black uppercase ${
-              c.tipo === 'factura' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
-            }`}>{c.tipo === 'factura' ? 'Factura Electrónica' : 'Boleta de Venta'}</span>
-            <span className={`text-xs px-3 py-1 rounded-full font-black uppercase ${
-              c.estado_sunat === 'emitido'  ? 'bg-green-100 text-green-700' :
-              c.estado_sunat === 'anulado'  ? 'bg-red-100 text-red-700' :
-              'bg-yellow-100 text-yellow-700'
-            }`}>{c.estado_sunat?.toUpperCase()}</span>
+            <span className="text-xs px-3 py-1 rounded-full font-black uppercase" style={{
+              background: c.tipo === 'factura' ? 'var(--teal-muted)' : 'rgba(57,185,128,0.12)',
+              color: c.tipo === 'factura' ? 'var(--teal)' : 'var(--success)',
+            }}>{c.tipo === 'factura' ? 'Factura Electrónica' : 'Boleta de Venta'}</span>
+            <span className="text-xs px-3 py-1 rounded-full font-black uppercase" style={{
+              background: c.estado_sunat === 'emitido' ? 'rgba(57,185,128,0.12)' : c.estado_sunat === 'anulado' ? 'var(--danger-muted)' : 'var(--amber-muted)',
+              color: c.estado_sunat === 'emitido' ? 'var(--success)' : c.estado_sunat === 'anulado' ? 'var(--danger)' : 'var(--amber)',
+            }}>{c.estado_sunat?.toUpperCase()}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Cliente</p>
-              <p className="font-black text-slate-800 mt-0.5">{toTitleCase(c.cliente_nombre || '')}</p>
-              {c.cliente_doc && <p className="text-slate-500 font-semibold">{c.tipo === 'factura' ? 'RUC' : 'DNI'}: {c.cliente_doc}</p>}
+              <p className="font-bold uppercase tracking-wider text-[9px]" style={{ color: 'var(--text-subtle)' }}>Cliente</p>
+              <p className="font-black mt-0.5" style={{ color: 'var(--text)' }}>{toTitleCase(c.cliente_nombre || '')}</p>
+              {c.cliente_doc && <p className="font-semibold" style={{ color: 'var(--text-muted)' }}>{c.tipo === 'factura' ? 'RUC' : 'DNI'}: {c.cliente_doc}</p>}
             </div>
             <div className="text-right">
-              <p className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">Total</p>
-              <p className="font-black text-blue-600 text-xl mt-0.5">S/ {(c.monto || 0).toFixed(2)}</p>
-              <p className="text-slate-400 font-semibold text-[10px]">{c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}</p>
+              <p className="font-bold uppercase tracking-wider text-[9px]" style={{ color: 'var(--text-subtle)' }}>Total</p>
+              <p className="font-black text-xl mt-0.5" style={{ color: 'var(--teal)' }}>S/ {(c.monto || 0).toFixed(2)}</p>
+              <p className="font-semibold text-[10px]" style={{ color: 'var(--text-muted)' }}>{c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}</p>
             </div>
           </div>
 
           {modo === 'demo' && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 text-center">
-              <p className="text-amber-700 font-black text-[10px] uppercase tracking-wider">🧪 Modo Demo — Sin validez fiscal</p>
+            <div className="rounded-lg px-3 py-1.5 text-center" style={{ background: 'var(--amber-muted)', border: '1px solid var(--amber-border)' }}>
+              <p className="font-black text-[10px] uppercase tracking-wider" style={{ color: 'var(--amber)' }}>🧪 Modo Demo — Sin validez fiscal</p>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              <p className="text-red-700 font-bold text-xs">{error}</p>
+            <div className="rounded-lg px-3 py-2" style={{ background: 'var(--danger-muted)', border: '1px solid var(--danger-border)' }}>
+              <p className="font-bold text-xs" style={{ color: 'var(--danger)' }}>{error}</p>
             </div>
           )}
         </div>
@@ -212,37 +205,37 @@ function ModalAcciones({
         {!showAnular && !notaModal && (
           <div className="px-5 py-4 space-y-2">
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={descargarPDF} disabled={!hasPDF} className={btnBlue}>
+              <button onClick={descargarPDF} disabled={!hasPDF} className={btnBase} style={{ background: 'var(--teal)', color: '#000' }}>
                 📄 Ver PDF
               </button>
-              <button onClick={descargarPDF} disabled={!hasPDF} className={btnSlate}>
+              <button onClick={descargarPDF} disabled={!hasPDF} className={btnBase} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                 📥 Descargar PDF
               </button>
-              <button onClick={enviarWhatsApp} className={btnGreen}>
+              <button onClick={enviarWhatsApp} className={btnBase} style={{ background: 'rgba(37,211,102,0.15)', border: '1px solid rgba(37,211,102,0.3)', color: 'rgb(37,211,102)' }}>
                 💬 WhatsApp
               </button>
-              <button onClick={imprimir} disabled={!hasPDF} className={btnSlate}>
+              <button onClick={imprimir} disabled={!hasPDF} className={btnBase} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                 🖨️ Imprimir
               </button>
-              <button onClick={descargarXML} disabled={loadingAccion === 'xml'} className={btnOrange}>
+              <button onClick={descargarXML} disabled={loadingAccion === 'xml'} className={btnBase} style={{ background: 'var(--amber-muted)', border: '1px solid var(--amber-border)', color: 'var(--amber)' }}>
                 {loadingAccion === 'xml' ? '⏳' : '📋'} XML
               </button>
-              <button onClick={descargarCDR} disabled={loadingAccion === 'cdr'} className={btnTeal}>
+              <button onClick={descargarCDR} disabled={loadingAccion === 'cdr'} className={btnBase} style={{ background: 'var(--teal-muted)', border: '1px solid var(--teal-border)', color: 'var(--teal)' }}>
                 {loadingAccion === 'cdr' ? '⏳' : '📦'} CDR
               </button>
             </div>
             {(c.tipo === 'factura' || c.tipo === 'boleta') && c.estado_sunat !== 'anulado' && (
               <div className="grid grid-cols-2 gap-2 pt-1">
-                <button onClick={() => setNotaModal('credito')} className={btnPurple}>
+                <button onClick={() => setNotaModal('credito')} className={btnBase} style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.25)', color: 'rgb(167,139,250)' }}>
                   📋 Nota Crédito
                 </button>
-                <button onClick={() => setNotaModal('debito')} className={btnOrange}>
+                <button onClick={() => setNotaModal('debito')} className={btnBase} style={{ background: 'var(--amber-muted)', border: '1px solid var(--amber-border)', color: 'var(--amber)' }}>
                   📋 Nota Débito
                 </button>
               </div>
             )}
             {c.estado_sunat !== 'anulado' && (
-              <button onClick={() => setShowAnular(true)} className={`${btnBase} w-full bg-red-50 text-red-600 hover:bg-red-100 mt-1`}>
+              <button onClick={() => setShowAnular(true)} className={`${btnBase} w-full mt-1`} style={{ background: 'var(--danger-muted)', border: '1px solid var(--danger-border)', color: 'var(--danger)' }}>
                 🗑️ Dar de Baja
               </button>
             )}
@@ -251,21 +244,21 @@ function ModalAcciones({
 
         {showAnular && (
           <div className="px-5 py-4 space-y-3">
-            <p className="font-black text-slate-800 text-sm">¿Anular comprobante {nro}?</p>
-            <p className="text-xs text-slate-500 font-semibold">Esta acción no se puede deshacer. El comprobante quedará marcado como anulado ante SUNAT.</p>
+            <p className="font-black text-sm" style={{ color: 'var(--text)' }}>¿Anular comprobante {nro}?</p>
+            <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>Esta acción no se puede deshacer. El comprobante quedará marcado como anulado ante SUNAT.</p>
             <div>
-              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Motivo de anulación *</label>
+              <label className="text-[10px] font-black uppercase tracking-widest mb-1 block" style={{ color: 'var(--text-subtle)' }}>Motivo de anulación *</label>
               <input
                 value={motivoAnular}
                 onChange={e => setMotivoAnular(e.target.value)}
                 placeholder="Ej: Error en el monto, cliente incorrecto..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-red-400 transition-all"
+                className="inp"
               />
             </div>
-            {error && <p className="text-red-600 text-xs font-bold">{error}</p>}
+            {error && <p className="text-xs font-bold" style={{ color: 'var(--danger)' }}>{error}</p>}
             <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => setShowAnular(false)} className={btnSlate}>Cancelar</button>
-              <button onClick={anular} disabled={loadingAccion === 'anular'} className={btnRed}>
+              <button onClick={() => setShowAnular(false)} className={btnBase} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>Cancelar</button>
+              <button onClick={anular} disabled={loadingAccion === 'anular'} className={btnBase} style={{ background: 'var(--danger)', color: '#fff' }}>
                 {loadingAccion === 'anular' ? '⏳ Anulando...' : '🗑️ Confirmar Anulación'}
               </button>
             </div>
@@ -353,32 +346,32 @@ function NotaForm({
   return (
     <div className="px-5 py-4 space-y-3">
       <div className="flex items-center justify-between mb-1">
-        <p className="font-black text-slate-800 text-sm">
+        <p className="font-black text-sm" style={{ color: 'var(--text)' }}>
           {tipo === 'credito' ? '📋 Nota de Crédito' : '📋 Nota de Débito'}
         </p>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-lg font-black">✕</button>
+        <button onClick={onClose} className="text-lg font-black transition-all" style={{ color: 'var(--text-muted)' }}>✕</button>
       </div>
       <div>
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Código Motivo</label>
-        <select value={codigo} onChange={e => setCodigo(e.target.value)}
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all">
+        <label className="lbl">Código Motivo</label>
+        <select value={codigo} onChange={e => setCodigo(e.target.value)} className="inp">
           {motivos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
         </select>
       </div>
       <div>
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Descripción</label>
+        <label className="lbl">Descripción</label>
         <input value={motivo} onChange={e => setMotivo(e.target.value)}
           placeholder="Describe el motivo..."
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all" />
+          className="inp" />
       </div>
       <div>
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block">Monto</label>
+        <label className="lbl">Monto</label>
         <input type="number" value={monto} onChange={e => setMonto(e.target.value)} step="0.01"
-          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:outline-none focus:border-blue-400 transition-all" />
+          className="inp" />
       </div>
-      {error && <p className="text-red-600 text-xs font-bold">{error}</p>}
+      {error && <p className="text-xs font-bold" style={{ color: 'var(--danger)' }}>{error}</p>}
       <button onClick={emitir} disabled={loading}
-        className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-black py-3 rounded-xl transition-all uppercase tracking-widest text-xs">
+        className="w-full disabled:opacity-50 font-black py-3 rounded-xl transition-all uppercase tracking-widest text-xs"
+        style={{ background: 'rgba(139,92,246,0.9)', color: '#fff' }}>
         {loading ? '⏳ Emitiendo...' : `Emitir Nota`}
       </button>
     </div>
@@ -740,10 +733,6 @@ export default function DocumentosPage() {
     }).length,
   }
 
-  // ── Estilos base ──
-  const inp = "w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
-  const lbl = "text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block"
-
   const EncabezadoComercial = () => (
     <div style={{ marginBottom: '24px', paddingBottom: '20px', borderBottom: '2px solid #f1f5f9' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
@@ -836,61 +825,64 @@ export default function DocumentosPage() {
       {/* Header */}
       <div className="flex items-end justify-between mb-5">
         <div>
-          <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900">Documentos</h2>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Comprobantes electrónicos emitidos · SUNAT</p>
+          <h2 className="text-2xl font-black uppercase tracking-tighter font-display" style={{ color: 'var(--text)' }}>Documentos</h2>
+          <p className="text-[10px] font-bold uppercase tracking-widest mt-0.5" style={{ color: 'var(--text-muted)' }}>Comprobantes electrónicos emitidos · SUNAT</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{comprobantes.length} emitidos</span>
+          <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{comprobantes.length} emitidos</span>
         </div>
       </div>
 
-      {ok && <div className="mb-5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl font-bold text-sm">✅ Comprobante emitido y registrado correctamente</div>}
+      {ok && <div className="mb-5 px-4 py-3 rounded-xl font-bold text-sm" style={{ background: 'rgba(57,185,128,0.12)', border: '1px solid rgba(57,185,128,0.25)', color: 'var(--success)' }}>✅ Comprobante emitido y registrado correctamente</div>}
 
       {/* OPERACIONES */}
       {vista === 'operaciones' && (
         <div className="space-y-3">
-          <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-2.5 mb-4">
-            <span className="text-slate-400">🔍</span>
+          <div className="flex items-center gap-3 rounded-xl px-4 py-2.5 mb-4" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <span style={{ color: 'var(--text-subtle)' }}>🔍</span>
             <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
               placeholder="Buscar por cliente, placa o detalle..."
-              className="bg-transparent outline-none text-sm font-semibold text-slate-700 flex-1 placeholder:text-slate-400" />
+              className="bg-transparent outline-none text-sm font-semibold flex-1"
+              style={{ color: 'var(--text)', '--placeholder-color': 'var(--text-subtle)' } as React.CSSProperties} />
           </div>
           {filtradas.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center">
+            <div className="card rounded-2xl p-16 text-center">
               <p className="text-4xl mb-3">📋</p>
-              <p className="font-black text-sm text-slate-300 uppercase tracking-widest">Sin operaciones registradas</p>
+              <p className="font-black text-sm uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>Sin operaciones registradas</p>
             </div>
           ) : filtradas.map(op => (
-            <div key={op.id} className={`bg-white rounded-2xl border shadow-sm p-4 flex items-center gap-4 transition-all hover:shadow-md ${
-              op.comprobante_emitido ? 'border-green-100' : 'border-slate-100 hover:border-blue-200'
-            }`}>
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-white font-black text-sm shadow-lg ${
-                op.tipo === 'servicio' ? 'bg-blue-600 shadow-blue-200' : 'bg-emerald-500 shadow-emerald-200'
-              }`}>
+            <div key={op.id} className="card rounded-2xl p-4 flex items-center gap-4 transition-all hover:shadow-md" style={{
+              border: op.comprobante_emitido ? '1px solid rgba(57,185,128,0.25)' : '1px solid var(--border)',
+            }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 font-black text-sm" style={{
+                background: op.tipo === 'servicio' ? 'var(--teal-muted)' : 'rgba(57,185,128,0.12)',
+                color: op.tipo === 'servicio' ? 'var(--teal)' : 'var(--success)',
+                border: op.tipo === 'servicio' ? '1px solid var(--teal-border)' : '1px solid rgba(57,185,128,0.25)',
+              }}>
                 {op.tipo === 'servicio' ? (op.placa?.slice(0, 3) || '🔧') : '🛒'}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                  {op.placa && <span className="font-black text-slate-900 uppercase text-sm">{op.placa}</span>}
-                  <span className={`text-[9px] px-2 py-0.5 rounded-lg font-black uppercase ${
-                    op.tipo === 'servicio' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
-                  }`}>{op.tipo === 'servicio' ? 'Servicio' : 'Venta POS'}</span>
+                  {op.placa && <span className="font-black uppercase text-sm" style={{ color: 'var(--text)' }}>{op.placa}</span>}
+                  <span className="text-[9px] px-2 py-0.5 rounded-lg font-black uppercase" style={{
+                    background: op.tipo === 'servicio' ? 'var(--teal-muted)' : 'rgba(57,185,128,0.12)',
+                    color: op.tipo === 'servicio' ? 'var(--teal)' : 'var(--success)',
+                  }}>{op.tipo === 'servicio' ? 'Servicio' : 'Venta POS'}</span>
                   {op.comprobante_emitido && (
-                    <span className="text-[9px] px-2 py-0.5 rounded-lg font-black uppercase bg-green-100 text-green-700">✓ Facturado</span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-lg font-black uppercase" style={{ background: 'rgba(57,185,128,0.12)', color: 'var(--success)' }}>✓ Facturado</span>
                   )}
                 </div>
-                <p className="text-sm text-slate-600 font-semibold">{op.nombre}</p>
-                <p className="text-xs text-slate-400 truncate mt-0.5">{op.detalle}</p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--text-muted)' }}>{op.nombre}</p>
+                <p className="text-xs truncate mt-0.5" style={{ color: 'var(--text-subtle)' }}>{op.detalle}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="font-black text-slate-900 text-lg">S/ {op.monto.toFixed(2)}</p>
-                <p className="text-[10px] text-slate-400 font-bold">{op.fecha}</p>
+                <p className="font-black text-lg" style={{ color: 'var(--text)' }}>S/ {op.monto.toFixed(2)}</p>
+                <p className="text-[10px] font-bold" style={{ color: 'var(--text-subtle)' }}>{op.fecha}</p>
                 <button onClick={() => abrirEmision(op)}
-                  className={`mt-2 px-4 py-1.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
-                    op.comprobante_emitido
-                      ? 'bg-slate-100 text-slate-400 hover:bg-slate-200'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200 active:scale-95'
-                  }`}>
+                  className="mt-2 px-4 py-1.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all active:scale-95"
+                  style={op.comprobante_emitido
+                    ? { background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-subtle)' }
+                    : { background: 'var(--teal)', color: '#000' }}>
                   {op.comprobante_emitido ? 'Re-emitir' : '🧾 Emitir'}
                 </button>
               </div>
@@ -903,26 +895,24 @@ export default function DocumentosPage() {
       {vista === 'emitir' && opSeleccionada && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2">
-            <div className="flex items-center gap-3 mb-4 p-4 bg-blue-50 border border-blue-200 rounded-2xl">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-sm ${
-                opSeleccionada.tipo === 'servicio' ? 'bg-blue-600' : 'bg-emerald-500'
-              }`}>
+            <div className="flex items-center gap-3 mb-4 p-4 rounded-2xl" style={{ background: 'var(--teal-muted)', border: '1px solid var(--teal-border)' }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm" style={{ background: 'var(--teal)', color: '#000' }}>
                 {opSeleccionada.tipo === 'servicio' ? (opSeleccionada.placa?.slice(0, 3) || '🔧') : '🛒'}
               </div>
               <div className="flex-1">
-                <p className="font-black text-slate-800 text-sm uppercase">{opSeleccionada.placa || 'Venta POS'} · {opSeleccionada.nombre}</p>
-                <p className="text-xs text-slate-500 font-bold">{itemsEditables.length} item(s) · S/ {opSeleccionada.monto.toFixed(2)}</p>
+                <p className="font-black text-sm uppercase" style={{ color: 'var(--text)' }}>{opSeleccionada.placa || 'Venta POS'} · {opSeleccionada.nombre}</p>
+                <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>{itemsEditables.length} item(s) · S/ {opSeleccionada.monto.toFixed(2)}</p>
               </div>
-              <button onClick={() => setVista('operaciones')} className="text-slate-400 hover:text-slate-600 font-black text-lg">✕</button>
+              <button onClick={() => setVista('operaciones')} className="font-black text-lg transition-all" style={{ color: 'var(--text-muted)' }}>✕</button>
             </div>
 
-            {error && <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl font-bold text-sm">{error}</div>}
+            {error && <div className="mb-4 px-4 py-3 rounded-xl font-bold text-sm" style={{ background: 'var(--danger-muted)', border: '1px solid var(--danger-border)', color: 'var(--danger)' }}>{error}</div>}
 
             <form onSubmit={handleEmitir} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={lbl}>
-                    DNI / RUC {consultandoDoc && <span className="normal-case text-blue-500 font-bold">⏳ Consultando...</span>}
+                  <label className="lbl">
+                    DNI / RUC {consultandoDoc && <span className="normal-case font-bold" style={{ color: 'var(--teal)' }}>⏳ Consultando...</span>}
                   </label>
                   <input
                     name="cliente_doc"
@@ -937,38 +927,38 @@ export default function DocumentosPage() {
                     }}
                     placeholder="DNI (8) o RUC (11)"
                     maxLength={11}
-                    className={inp}
+                    className="inp"
                   />
-                  {form.cliente_doc.length === 8  && !consultandoDoc && <p className="text-[10px] text-blue-500 font-bold mt-1">→ Boleta de Venta</p>}
-                  {form.cliente_doc.length === 11 && !consultandoDoc && <p className="text-[10px] text-emerald-500 font-bold mt-1">→ Factura</p>}
+                  {form.cliente_doc.length === 8  && !consultandoDoc && <p className="text-[10px] font-bold mt-1" style={{ color: 'var(--teal)' }}>→ Boleta de Venta</p>}
+                  {form.cliente_doc.length === 11 && !consultandoDoc && <p className="text-[10px] font-bold mt-1" style={{ color: 'var(--success)' }}>→ Factura</p>}
                 </div>
                 <div>
-                  <label className={lbl}>Nombre / Razón social</label>
+                  <label className="lbl">Nombre / Razón social</label>
                   <input
                     name="cliente_nombre"
                     value={form.cliente_nombre}
                     onChange={handleChange}
                     onBlur={handleNombreBlur}
                     placeholder="Nombre del cliente"
-                    className={inp}
+                    className="inp"
                   />
                 </div>
               </div>
 
               <div>
-                <label className={lbl}>Dirección</label>
+                <label className="lbl">Dirección</label>
                 <input name="cliente_dir" value={form.cliente_dir} onChange={handleChange}
-                  placeholder="Dirección del cliente" className={inp} />
+                  placeholder="Dirección del cliente" className="inp" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={lbl}>IGV (%)</label>
-                  <input name="igv" type="number" value={form.igv} onChange={handleChange} className={inp} />
+                  <label className="lbl">IGV (%)</label>
+                  <input name="igv" type="number" value={form.igv} onChange={handleChange} className="inp" />
                 </div>
                 <div>
-                  <label className={lbl}>Modo de emisión</label>
-                  <select name="modo" value={form.modo} onChange={handleChange} className={inp}>
+                  <label className="lbl">Modo de emisión</label>
+                  <select name="modo" value={form.modo} onChange={handleChange} className="inp">
                     <option value="demo">🧪 Demo (prueba)</option>
                     <option value="produccion">🚀 Producción</option>
                   </select>
@@ -977,62 +967,65 @@ export default function DocumentosPage() {
 
               {/* Items editables */}
               <div>
-                <label className={lbl}>Items del comprobante <span className="normal-case text-blue-500 font-bold">(puedes editar)</span></label>
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
-                  <div className="flex justify-between px-3 py-2 bg-slate-900">
-                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Descripción</span>
-                    <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Precio</span>
+                <label className="lbl">Items del comprobante <span className="normal-case font-bold" style={{ color: 'var(--teal)' }}>(puedes editar)</span></label>
+                <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                  <div className="flex justify-between px-3 py-2" style={{ background: 'var(--surface-2)' }}>
+                    <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>Descripción</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>Precio</span>
                   </div>
                   {itemsEditables.map((item, i) => (
-                    <div key={i} className="flex items-center gap-2 px-3 py-2 border-b border-slate-100 last:border-0 bg-white hover:bg-slate-50 transition-colors">
+                    <div key={i} className="flex items-center gap-2 px-3 py-2 transition-colors" style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface-2)' }}>
                       <input
                         value={item.descripcion}
                         onChange={e => editarItemDesc(i, e.target.value)}
-                        className="flex-1 text-xs font-semibold text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-400 focus:outline-none py-1 uppercase transition-colors min-w-0"
+                        className="flex-1 text-xs font-semibold bg-transparent focus:outline-none py-1 uppercase transition-colors min-w-0"
+                        style={{ color: 'var(--text)', borderBottom: '1px solid transparent' }}
                         placeholder="Descripción del item"
                       />
                       <div className="flex items-center gap-1 shrink-0">
-                        <span className="text-xs text-slate-400 font-bold">S/</span>
+                        <span className="text-xs font-bold" style={{ color: 'var(--text-subtle)' }}>S/</span>
                         <input
                           type="number"
                           value={item.precio}
                           onChange={e => editarItemPrecio(i, e.target.value)}
                           step="0.01"
-                          className="w-20 text-xs font-black text-slate-900 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-400 focus:outline-none py-1 text-right transition-colors"
+                          className="w-20 text-xs font-black bg-transparent focus:outline-none py-1 text-right transition-colors"
+                          style={{ color: 'var(--text)' }}
                         />
                       </div>
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-slate-400 font-bold mt-1.5">✏️ Haz click en cualquier campo para editarlo</p>
+                <p className="text-[10px] font-bold mt-1.5" style={{ color: 'var(--text-subtle)' }}>✏️ Haz click en cualquier campo para editarlo</p>
               </div>
 
               <button type="submit" disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg shadow-blue-200 active:scale-95">
+                className="w-full disabled:opacity-50 font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-sm active:scale-95"
+                style={{ background: 'var(--teal)', color: '#000' }}>
                 {loading ? '⏳ Conectando con SUNAT...' : `🧾 Emitir ${form.tipo === 'factura' ? 'Factura' : 'Boleta'} ${form.modo === 'demo' ? '(Demo)' : ''}`}
               </button>
             </form>
 
             {resultadoFactusmart && resultadoFactusmart.ok && (
-              <div className="mt-4 bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
-                <p className="font-black text-emerald-700 text-sm mb-3">✅ Comprobante emitido por Factusmart</p>
+              <div className="mt-4 rounded-2xl p-5" style={{ background: 'rgba(57,185,128,0.12)', border: '1px solid rgba(57,185,128,0.25)' }}>
+                <p className="font-black text-sm mb-3" style={{ color: 'var(--success)' }}>✅ Comprobante emitido por Factusmart</p>
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div><span className="text-slate-500 font-bold">Serie/Número:</span> <span className="font-black">{resultadoFactusmart.serie_numero}</span></div>
-                  <div><span className="text-slate-500 font-bold">SUNAT:</span> <span className="font-black">{resultadoFactusmart.aceptado_por_sunat ? '✓ Aceptado' : 'Pendiente'}</span></div>
+                  <div><span className="font-bold" style={{ color: 'var(--text-muted)' }}>Serie/Número:</span> <span className="font-black" style={{ color: 'var(--text)' }}>{resultadoFactusmart.serie_numero}</span></div>
+                  <div><span className="font-bold" style={{ color: 'var(--text-muted)' }}>SUNAT:</span> <span className="font-black" style={{ color: 'var(--text)' }}>{resultadoFactusmart.aceptado_por_sunat ? '✓ Aceptado' : 'Pendiente'}</span></div>
                 </div>
               </div>
             )}
           </div>
 
           {/* Preview */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 h-fit">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Vista previa</p>
-            <div className="border-2 border-dashed border-slate-200 rounded-xl overflow-hidden">
-              <div className="bg-slate-900 px-4 py-3 text-center">
-                <p className="font-black text-white uppercase text-xs tracking-widest">
+          <div className="card rounded-2xl p-5 h-fit">
+            <p className="text-[10px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--text-subtle)' }}>Vista previa</p>
+            <div className="rounded-xl overflow-hidden" style={{ border: '2px dashed var(--border)' }}>
+              <div className="px-4 py-3 text-center" style={{ background: 'var(--surface-2)' }}>
+                <p className="font-black uppercase text-xs tracking-widest" style={{ color: 'var(--text)' }}>
                   {form.tipo === 'boleta' ? 'BOLETA DE VENTA' : 'FACTURA ELECTRÓNICA'}
                 </p>
-                <p className="text-slate-400 text-[10px] font-bold mt-0.5">
+                <p className="text-[10px] font-bold mt-0.5" style={{ color: 'var(--text-subtle)' }}>
                   {form.tipo === 'boleta' ? 'B001' : 'F001'}-{String(comprobantes.filter(c => c.tipo === form.tipo).length + 1).padStart(6, '0')}
                 </p>
               </div>
@@ -1040,35 +1033,35 @@ export default function DocumentosPage() {
               <div className="p-4 space-y-3">
                 {form.cliente_nombre && (
                   <div className="flex justify-between text-xs gap-2">
-                    <span className="text-slate-400 font-bold shrink-0">Cliente</span>
-                    <span className="font-black text-slate-800 text-right truncate">{form.cliente_nombre}</span>
+                    <span className="font-bold shrink-0" style={{ color: 'var(--text-subtle)' }}>Cliente</span>
+                    <span className="font-black text-right truncate" style={{ color: 'var(--text)' }}>{form.cliente_nombre}</span>
                   </div>
                 )}
 
                 {itemsEditables.length > 0 && (
-                  <div className="border border-slate-100 rounded-lg overflow-hidden">
+                  <div className="rounded-lg overflow-hidden" style={{ border: '1px solid var(--border)' }}>
                     {itemsEditables.map((item, i) => (
-                      <div key={i} className={`flex justify-between items-center px-2.5 py-1.5 gap-2 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                        <span className="text-[10px] font-semibold text-slate-600 uppercase flex-1 truncate">{item.descripcion}</span>
-                        <span className="text-[10px] font-black text-slate-800 shrink-0">S/ {item.precio.toFixed(2)}</span>
+                      <div key={i} className="flex justify-between items-center px-2.5 py-1.5 gap-2" style={{ background: i % 2 === 0 ? 'var(--surface)' : 'var(--surface-2)' }}>
+                        <span className="text-[10px] font-semibold uppercase flex-1 truncate" style={{ color: 'var(--text-muted)' }}>{item.descripcion}</span>
+                        <span className="text-[10px] font-black shrink-0" style={{ color: 'var(--text)' }}>S/ {item.precio.toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {montoOp > 0 && (
-                  <div className="border-t border-slate-100 pt-2 space-y-1 text-xs">
-                    <div className="flex justify-between text-slate-400">
+                  <div className="pt-2 space-y-1 text-xs" style={{ borderTop: '1px solid var(--border)' }}>
+                    <div className="flex justify-between" style={{ color: 'var(--text-muted)' }}>
                       <span className="font-bold">Subtotal</span>
                       <span className="font-black">S/ {subtotalPreview.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-slate-400">
+                    <div className="flex justify-between" style={{ color: 'var(--text-muted)' }}>
                       <span className="font-bold">IGV ({form.igv}%)</span>
                       <span className="font-black">S/ {igvPreview.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between border-t border-slate-200 pt-2">
-                      <span className="font-black text-slate-800">TOTAL</span>
-                      <span className="font-black text-blue-600 text-base">S/ {montoOp.toFixed(2)}</span>
+                    <div className="flex justify-between pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+                      <span className="font-black" style={{ color: 'var(--text)' }}>TOTAL</span>
+                      <span className="font-black text-base" style={{ color: 'var(--teal)' }}>S/ {montoOp.toFixed(2)}</span>
                     </div>
                   </div>
                 )}
@@ -1095,16 +1088,17 @@ export default function DocumentosPage() {
               <button
                 key={tab.key}
                 onClick={() => setFiltroComp(tab.key)}
-                className={`shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs rounded-xl font-black uppercase tracking-widest transition-all ${
-                  filtroComp === tab.key
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                }`}>
+                className="shrink-0 flex items-center gap-1.5 px-3 py-2 text-xs rounded-xl font-black uppercase tracking-widest transition-all"
+                style={filtroComp === tab.key
+                  ? { background: 'var(--teal)', color: '#000' }
+                  : { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                 <span>{tab.icon}</span>
                 <span>{tab.label}</span>
-                <span className={`font-mono text-[10px] px-1.5 py-0.5 rounded-md ${
-                  filtroComp === tab.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
-                }`}>
+                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-md" style={
+                  filtroComp === tab.key
+                    ? { background: 'rgba(0,0,0,0.15)', color: '#000' }
+                    : { background: 'var(--surface-2)', color: 'var(--text-subtle)' }
+                }>
                   {cuentas[tab.key]}
                 </span>
               </button>
@@ -1113,41 +1107,44 @@ export default function DocumentosPage() {
 
           {/* ── Búsqueda + ordenamiento ── */}
           <div className="flex gap-2">
-            <div className="flex items-center gap-2 flex-1 bg-white border border-slate-200 rounded-xl px-4 py-2.5">
-              <span className="text-slate-400">🔍</span>
+            <div className="flex items-center gap-2 flex-1 rounded-xl px-4 py-2.5" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <span style={{ color: 'var(--text-subtle)' }}>🔍</span>
               <input
                 value={busqComp}
                 onChange={e => setBusqComp(e.target.value)}
                 placeholder="Buscar por cliente, DNI/RUC o número..."
-                className="bg-transparent outline-none text-sm font-semibold text-slate-700 flex-1 placeholder:text-slate-400"
+                className="bg-transparent outline-none text-sm font-semibold flex-1"
+                style={{ color: 'var(--text)' }}
               />
               {busqComp && (
-                <button onClick={() => setBusqComp('')} className="text-slate-400 hover:text-slate-600 font-black">✕</button>
+                <button onClick={() => setBusqComp('')} className="font-black transition-all" style={{ color: 'var(--text-muted)' }}>✕</button>
               )}
             </div>
             <button
               onClick={() => setOrdenComp(o => o === 'desc' ? 'asc' : 'desc')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all whitespace-nowrap shrink-0"
-              style={{ width: 'auto' }}>
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap shrink-0"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)', width: 'auto' }}>
               {ordenComp === 'desc' ? '↓ Más reciente' : '↑ Más antiguo'}
             </button>
           </div>
 
           {comprobantesFiltrados.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center">
+            <div className="card rounded-2xl p-16 text-center">
               <p className="text-4xl mb-3">🧾</p>
-              <p className="font-black text-sm text-slate-300 uppercase tracking-widest">
+              <p className="font-black text-sm uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>
                 {comprobantes.length === 0 ? 'Sin comprobantes emitidos' : 'No hay resultados para este filtro'}
               </p>
               {comprobantes.length === 0 && (
                 <button onClick={() => setVista('operaciones')}
-                  className="mt-4 bg-blue-600 text-white font-black text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl">
+                  className="mt-4 font-black text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all"
+                  style={{ background: 'var(--teal)', color: '#000' }}>
                   Ver operaciones pendientes
                 </button>
               )}
               {comprobantes.length > 0 && (
                 <button onClick={() => { setFiltroComp('todos'); setBusqComp('') }}
-                  className="mt-4 bg-slate-100 text-slate-600 font-black text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl">
+                  className="mt-4 font-black text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl transition-all"
+                  style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                   Limpiar filtros
                 </button>
               )}
@@ -1155,41 +1152,43 @@ export default function DocumentosPage() {
           ) : comprobantesFiltrados.map(c => (
             <div key={c.id}
               onClick={() => setModalComprobante(c)}
-              className={`bg-white rounded-2xl border shadow-sm p-4 flex items-center gap-4 cursor-pointer transition-all hover:shadow-md hover:border-blue-200 active:scale-[0.99] ${
-                c.estado_sunat === 'anulado' ? 'opacity-60 border-red-100' : 'border-slate-100'
-              }`}>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 overflow-hidden ${
-                c.tipo === 'factura' ? 'bg-blue-100' : 'bg-emerald-100'
-              }`}>
+              className="card rounded-2xl p-4 flex items-center gap-4 cursor-pointer transition-all hover:shadow-md active:scale-[0.99]"
+              style={{
+                opacity: c.estado_sunat === 'anulado' ? 0.6 : 1,
+                border: c.estado_sunat === 'anulado' ? '1px solid var(--danger-border)' : '1px solid var(--border)',
+              }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 overflow-hidden" style={{
+                background: c.tipo === 'factura' ? 'var(--teal-muted)' : 'rgba(57,185,128,0.12)',
+                border: c.tipo === 'factura' ? '1px solid var(--teal-border)' : '1px solid rgba(57,185,128,0.25)',
+              }}>
                 {tallerLogo
                   ? <img src={tallerLogo} className="w-full h-full object-contain p-1" />
                   : (c.tipo === 'factura' ? '📄' : '🧾')}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                  <span className="font-black text-slate-900 text-sm">{c.serie}-{String(c.numero).padStart(6, '0')}</span>
-                  <span className={`text-[9px] px-2 py-0.5 rounded-lg font-black uppercase ${
-                    c.estado_sunat === 'emitido'  ? 'bg-green-100 text-green-700' :
-                    c.estado_sunat === 'anulado'  ? 'bg-red-100 text-red-700' :
-                    'bg-yellow-100 text-yellow-700'
-                  }`}>{c.estado_sunat}</span>
-                  <span className="text-[9px] px-2 py-0.5 rounded-lg font-black uppercase bg-slate-100 text-slate-500 capitalize">{c.tipo}</span>
+                  <span className="font-black text-sm" style={{ color: 'var(--text)' }}>{c.serie}-{String(c.numero).padStart(6, '0')}</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-lg font-black uppercase" style={{
+                    background: c.estado_sunat === 'emitido' ? 'rgba(57,185,128,0.12)' : c.estado_sunat === 'anulado' ? 'var(--danger-muted)' : 'var(--amber-muted)',
+                    color: c.estado_sunat === 'emitido' ? 'var(--success)' : c.estado_sunat === 'anulado' ? 'var(--danger)' : 'var(--amber)',
+                  }}>{c.estado_sunat}</span>
+                  <span className="text-[9px] px-2 py-0.5 rounded-lg font-black uppercase capitalize" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-subtle)' }}>{c.tipo}</span>
                   {c.payload?.entorno === 'prueba' && (
-                    <span className="text-[9px] px-2 py-0.5 rounded-lg font-black uppercase bg-amber-100 text-amber-700">Demo</span>
+                    <span className="text-[9px] px-2 py-0.5 rounded-lg font-black uppercase" style={{ background: 'var(--amber-muted)', border: '1px solid var(--amber-border)', color: 'var(--amber)' }}>Demo</span>
                   )}
                 </div>
-                <p className="font-semibold text-slate-700 text-sm">{toTitleCase(c.cliente_nombre || '')}</p>
+                <p className="font-semibold text-sm" style={{ color: 'var(--text-muted)' }}>{toTitleCase(c.cliente_nombre || '')}</p>
                 {c.cliente_doc && (
-                  <p className="text-[10px] text-slate-400 font-bold">{c.tipo === 'factura' ? 'RUC' : 'DNI'}: {c.cliente_doc}</p>
+                  <p className="text-[10px] font-bold" style={{ color: 'var(--text-subtle)' }}>{c.tipo === 'factura' ? 'RUC' : 'DNI'}: {c.cliente_doc}</p>
                 )}
               </div>
               <div className="text-right shrink-0">
-                <p className="font-black text-slate-900 text-lg">S/ {(c.monto || 0).toFixed(2)}</p>
-                <p className="text-[10px] text-slate-400 font-bold">
+                <p className="font-black text-lg" style={{ color: 'var(--text)' }}>S/ {(c.monto || 0).toFixed(2)}</p>
+                <p className="text-[10px] font-bold" style={{ color: 'var(--text-subtle)' }}>
                   {c.fecha_emision || new Date(c.created_at).toLocaleDateString('es-PE')}
                 </p>
                 <div className="mt-2 flex items-center justify-end gap-1">
-                  <span className="text-[10px] text-blue-500 font-bold">Ver acciones →</span>
+                  <span className="text-[10px] font-bold" style={{ color: 'var(--teal)' }}>Ver acciones →</span>
                 </div>
               </div>
             </div>

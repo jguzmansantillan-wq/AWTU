@@ -45,9 +45,9 @@ function AutocompleteInput({ value, onChange, onSelect, placeholder, className, 
       />
       {open && filtrados.length > 0 && (
         <div style={{
-          position: 'fixed', zIndex: 99999, background: 'white',
-          border: '1.5px solid #e2e8f0', borderRadius: '14px',
-          boxShadow: '0 24px 48px -8px rgba(0,0,0,0.18)',
+          position: 'fixed', zIndex: 99999, background: 'var(--surface)',
+          border: '1.5px solid var(--teal-border)', borderRadius: '14px',
+          boxShadow: '0 24px 48px -8px rgba(0,0,0,0.5)',
           maxHeight: '260px', overflowY: 'auto', minWidth: '320px',
           top: wrapRef.current ? wrapRef.current.getBoundingClientRect().bottom + 6 : 0,
           left: wrapRef.current ? wrapRef.current.getBoundingClientRect().left : 0,
@@ -55,14 +55,14 @@ function AutocompleteInput({ value, onChange, onSelect, placeholder, className, 
           {filtrados.map(item => (
             <div key={item.id}
               onMouseDown={() => { onSelect(item); setOpen(false) }}
-              style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#f0fdfa')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'white')}>
+              style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--teal-muted)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
               <div style={{ flex: 1, minWidth: 0, marginRight: '12px' }}>
-                <p style={{ fontSize: '11px', fontWeight: 900, color: '#0f172a', textTransform: 'uppercase', margin: 0 }}>{item.nombre}</p>
-                <p style={{ fontSize: '9px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', margin: 0 }}>{item.categoria}</p>
+                <p style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text)', textTransform: 'uppercase', margin: 0 }}>{item.nombre}</p>
+                <p style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-subtle)', textTransform: 'uppercase', margin: 0 }}>{item.categoria}</p>
               </div>
-              <p style={{ fontSize: '13px', fontWeight: 900, color: '#0d9488', margin: 0, flexShrink: 0 }}>S/ {item.precio.toFixed(2)}</p>
+              <p style={{ fontSize: '13px', fontWeight: 900, color: 'var(--teal)', margin: 0, flexShrink: 0 }}>S/ {item.precio.toFixed(2)}</p>
             </div>
           ))}
         </div>
@@ -85,25 +85,26 @@ function FilaItem({ item, index, inventario, onChange, onSelect, onDelete, canDe
         onChange={v => onChange(index, 'descripcion', v)}
         onSelect={inv => onSelect(index, inv)}
         placeholder="Buscar o escribir producto/servicio..."
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-teal-500 transition-all uppercase"
+        className="inp w-full uppercase"
         items={inventario}
       />
       <input
         type="number" value={item.cantidad} min="1"
         onChange={e => onChange(index, 'cantidad', parseInt(e.target.value) || 1)}
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-sm font-black text-center focus:outline-none focus:border-teal-500 transition-all"
+        className="inp w-full text-center font-black"
       />
-      <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 focus-within:border-teal-500 transition-all">
-        <span className="text-xs text-slate-400 font-black shrink-0">S/</span>
+      <div className="flex items-center gap-1 rounded-xl px-3 py-3 transition-all" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+        <span className="text-xs font-black shrink-0" style={{ color: 'var(--text-subtle)' }}>S/</span>
         <input
           type="number" value={item.precio} step="0.50"
           onChange={e => onChange(index, 'precio', parseFloat(e.target.value) || 0)}
           className="bg-transparent outline-none text-sm font-black w-full text-right"
         />
       </div>
-      <p className="text-sm font-black text-teal-600 text-right pr-1">S/ {item.subtotal.toFixed(2)}</p>
+      <p className="text-sm font-black text-right pr-1" style={{ color: 'var(--teal)' }}>S/ {item.subtotal.toFixed(2)}</p>
       <button onClick={() => onDelete(index)} disabled={!canDelete}
-        className="w-8 h-8 bg-red-100 hover:bg-red-200 rounded-lg flex items-center justify-center text-red-500 text-xs transition-all disabled:opacity-30">
+        className="w-8 h-8 rounded-lg flex items-center justify-center text-xs transition-all disabled:opacity-30"
+        style={{ background: 'var(--danger-muted)', color: 'var(--danger)' }}>
         ✕
       </button>
     </div>
@@ -150,24 +151,24 @@ function InfoPagoSucursales({ metodos, sucursales, modo }: {
   return (
     <div className={`grid gap-4 mt-4 ${metodos.length && sucursales.length ? 'grid-cols-2' : 'grid-cols-1'}`}>
       {metodos.length > 0 && (
-        <div className="border border-slate-200 rounded-2xl p-4">
-          <p className="text-[9px] font-black text-teal-600 uppercase tracking-widest mb-2">Métodos de Pago</p>
+        <div className="rounded-2xl p-4" style={{ border: '1px solid var(--border)' }}>
+          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--teal)' }}>Métodos de Pago</p>
           <div className="space-y-1">
             {metodos.map((m, i) => (
-              <p key={i} className="text-xs text-slate-600 font-semibold">
-                <span className="font-black text-slate-900">{m.tipo}:</span> {m.numero}{m.titular ? ` — ${m.titular}` : ''}
+              <p key={i} className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                <span className="font-black" style={{ color: 'var(--text)' }}>{m.tipo}:</span> {m.numero}{m.titular ? ` — ${m.titular}` : ''}
               </p>
             ))}
           </div>
         </div>
       )}
       {sucursales.length > 0 && (
-        <div className="border border-slate-200 rounded-2xl p-4">
-          <p className="text-[9px] font-black text-teal-600 uppercase tracking-widest mb-2">Sucursales</p>
+        <div className="rounded-2xl p-4" style={{ border: '1px solid var(--border)' }}>
+          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--teal)' }}>Sucursales</p>
           <div className="space-y-1">
             {sucursales.map((s, i) => (
-              <p key={i} className="text-xs text-slate-600 font-semibold">
-                <span className="font-black text-slate-900">{s.nombre}:</span> {s.direccion}{s.telefono ? ` · Tel: ${s.telefono}` : ''}
+              <p key={i} className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>
+                <span className="font-black" style={{ color: 'var(--text)' }}>{s.nombre}:</span> {s.direccion}{s.telefono ? ` · Tel: ${s.telefono}` : ''}
               </p>
             ))}
           </div>
@@ -356,8 +357,8 @@ export default function CotizacionesPage() {
     return `COT-${String(idx + 1).padStart(4, '0')}`
   }
 
-  const inp = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold focus:outline-none focus:border-teal-500 focus:bg-white transition-all"
-  const lbl = "text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1 block"
+  const inp = "inp"
+  const lbl = "lbl"
 
   const BloquesMarcas = ({ marcas }: { marcas: MarcaAceite[] }) => {
     if (!marcas || marcas.length === 0) return null
@@ -557,8 +558,8 @@ export default function CotizacionesPage() {
       {/* Header */}
       <div className="flex items-end justify-between mb-5">
         <div>
-          <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-900">Cotizaciones</h2>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+          <h2 className="font-display text-2xl font-bold uppercase tracking-tighter" style={{ color: 'var(--text)' }}>Cotizaciones</h2>
+          <p className="text-[10px] font-bold uppercase tracking-widest mt-0.5" style={{ color: 'var(--text-muted)' }}>
             {vista === 'lista'  ? `${cotizaciones.length} cotizaciones registradas` :
              vista === 'nueva'  ? 'Nueva cotización' :
              vista === 'editar' ? 'Editar cotización' : 'Detalle de cotización'}
@@ -567,28 +568,33 @@ export default function CotizacionesPage() {
         <div className="flex gap-2 flex-wrap justify-end">
           {vista !== 'lista' && (
             <button onClick={() => { setVista('lista'); setCotSeleccionada(null); limpiarForm() }}
-              className="px-4 py-2.5 text-xs rounded-xl font-black uppercase tracking-widest bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all">
+              className="px-4 py-2.5 text-xs rounded-xl font-black uppercase tracking-widest transition-all"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
               ← Volver
             </button>
           )}
           {vista === 'lista' && (
             <button onClick={() => { limpiarForm(); setVista('nueva') }}
-              className="bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-widest px-5 py-3 rounded-xl transition-all shadow-lg shadow-teal-200 active:scale-95">
+              className="font-black text-xs uppercase tracking-widest px-5 py-3 rounded-xl transition-all active:scale-95"
+              style={{ background: 'var(--teal)', color: '#000' }}>
               + Nueva Cotización
             </button>
           )}
           {vista === 'ver' && cotSeleccionada && (
             <>
               <button onClick={descargarPDF}
-                className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-widest px-5 py-3 rounded-xl transition-all shadow-lg shadow-teal-200 active:scale-95">
+                className="flex items-center gap-2 font-black text-xs uppercase tracking-widest px-5 py-3 rounded-xl transition-all active:scale-95"
+                style={{ background: 'var(--teal)', color: '#000' }}>
                 📄 PDF
               </button>
               <button onClick={() => compartirWhatsApp(cotSeleccionada)}
-                className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-black text-xs uppercase tracking-widest px-5 py-3 rounded-xl transition-all shadow-lg shadow-emerald-200 active:scale-95">
+                className="flex items-center gap-2 font-black text-xs uppercase tracking-widest px-5 py-3 rounded-xl transition-all active:scale-95"
+                style={{ background: 'rgba(37,211,102,0.15)', color: 'rgb(37,211,102)', border: '1px solid rgba(37,211,102,0.3)' }}>
                 💬 WhatsApp
               </button>
               <button onClick={() => cargarParaEditar(cotSeleccionada)}
-                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-widest px-5 py-3 rounded-xl transition-all shadow-lg shadow-amber-200 active:scale-95">
+                className="flex items-center gap-2 font-black text-xs uppercase tracking-widest px-5 py-3 rounded-xl transition-all active:scale-95"
+                style={{ background: 'var(--amber-muted)', color: 'var(--amber)', border: '1px solid var(--amber-border)' }}>
                 ✏️ Editar
               </button>
             </>
@@ -596,46 +602,51 @@ export default function CotizacionesPage() {
         </div>
       </div>
 
-      {ok    && <div className="mb-5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl font-bold text-sm">✅ {ok}</div>}
-      {error && <div className="mb-5 bg-red-50    border border-red-200    text-red-700    px-4 py-3 rounded-xl font-bold text-sm">❌ {error}</div>}
+      {ok    && <div className="mb-5 px-4 py-3 rounded-xl font-bold text-sm" style={{ background: 'var(--success-muted, rgba(57,185,128,0.12))', border: '1px solid rgba(57,185,128,0.3)', color: 'var(--success)' }}>✅ {ok}</div>}
+      {error && <div className="mb-5 px-4 py-3 rounded-xl font-bold text-sm" style={{ background: 'var(--danger-muted)', border: '1px solid var(--danger-border)', color: 'var(--danger)' }}>❌ {error}</div>}
 
       {/* ── LISTA ── */}
       {vista === 'lista' && (
         <div className="space-y-3">
           {cotizaciones.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-100 p-16 text-center">
+            <div className="card p-16 text-center">
               <p className="text-5xl mb-4">💼</p>
-              <p className="font-black text-sm text-slate-300 uppercase tracking-widest">Sin cotizaciones aún</p>
+              <p className="font-black text-sm uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>Sin cotizaciones aún</p>
               <button onClick={() => setVista('nueva')}
-                className="mt-4 bg-teal-600 text-white font-black text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl">
+                className="mt-4 font-black text-xs uppercase tracking-widest px-5 py-2.5 rounded-xl"
+                style={{ background: 'var(--teal)', color: '#000' }}>
                 Crear primera cotización
               </button>
             </div>
           ) : cotizaciones.map(c => (
-            <div key={c.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-4 hover:shadow-md transition-all">
-              <div className="w-12 h-12 bg-teal-600 rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-teal-200 shrink-0">💼</div>
+            <div key={c.id} className="card p-4 flex items-center gap-4 transition-all">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-xs shrink-0" style={{ background: 'var(--teal-muted)', color: 'var(--teal)', border: '1px solid var(--teal-border)' }}>💼</div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                  <span className="font-black text-slate-900 uppercase">{c.cliente_nombre}</span>
-                  {c.cliente_placa && <span className="text-[9px] px-2 py-0.5 bg-teal-100 text-teal-700 rounded-lg font-black uppercase">{c.cliente_placa}</span>}
+                  <span className="font-black uppercase" style={{ color: 'var(--text)' }}>{c.cliente_nombre}</span>
+                  {c.cliente_placa && <span className="text-[9px] px-2 py-0.5 rounded-lg font-black uppercase" style={{ background: 'var(--teal-muted)', color: 'var(--teal)' }}>{c.cliente_placa}</span>}
                 </div>
-                <p className="text-xs text-slate-500 font-semibold">{c.cliente_modelo || 'Sin modelo'} · {(Array.isArray(c.items) ? c.items : []).length} item(s)</p>
-                <p className="text-[10px] text-slate-400 font-bold">{new Date(c.created_at).toLocaleDateString('es-PE')}</p>
+                <p className="text-xs font-semibold" style={{ color: 'var(--text-muted)' }}>{c.cliente_modelo || 'Sin modelo'} · {(Array.isArray(c.items) ? c.items : []).length} item(s)</p>
+                <p className="text-[10px] font-bold" style={{ color: 'var(--text-subtle)' }}>{new Date(c.created_at).toLocaleDateString('es-PE')}</p>
               </div>
               <div className="text-right shrink-0">
-                <p className="font-black text-teal-600 text-xl">S/ {c.total.toFixed(2)}</p>
+                <p className="font-black text-xl" style={{ color: 'var(--teal)' }}>S/ {c.total.toFixed(2)}</p>
                 <div className="flex items-center gap-1.5 justify-end mt-2">
                   <button onClick={() => { setCotSeleccionada(c); setVista('ver') }}
-                    className="w-8 h-8 bg-teal-100 hover:bg-teal-200 rounded-lg flex items-center justify-center text-teal-600 transition-all text-sm">👁️</button>
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-sm"
+                    style={{ background: 'var(--teal-muted)', color: 'var(--teal)' }}>👁️</button>
                   <button onClick={() => cargarParaEditar(c)}
-                    className="w-8 h-8 bg-amber-100 hover:bg-amber-200 rounded-lg flex items-center justify-center text-amber-600 transition-all text-sm">✏️</button>
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-sm"
+                    style={{ background: 'var(--amber-muted)', color: 'var(--amber)' }}>✏️</button>
                   <button onClick={() => compartirWhatsApp(c)}
-                    className="w-8 h-8 bg-green-100 hover:bg-green-200 rounded-lg flex items-center justify-center text-green-600 transition-all text-sm">💬</button>
+                    className="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-sm"
+                    style={{ background: 'rgba(37,211,102,0.12)', color: 'rgb(37,211,102)' }}>💬</button>
                   <button onClick={async () => {
                     if (!confirm('¿Eliminar esta cotización?')) return
                     await supabase.from('cotizaciones').delete().eq('id', c.id)
                     await cargarCotizaciones(tallerID)
-                  }} className="w-8 h-8 bg-red-100 hover:bg-red-200 rounded-lg flex items-center justify-center text-red-500 transition-all text-sm">🗑️</button>
+                  }} className="w-8 h-8 rounded-lg flex items-center justify-center transition-all text-sm"
+                    style={{ background: 'var(--danger-muted)', color: 'var(--danger)' }}>🗑️</button>
                 </div>
               </div>
             </div>
@@ -647,39 +658,40 @@ export default function CotizacionesPage() {
       {(vista === 'nueva' || vista === 'editar') && (
         <div className="space-y-5">
           {/* Datos cliente */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-            <div className="flex items-center gap-2 mb-5 pb-4 border-b border-slate-100">
-              <div className="w-7 h-7 bg-teal-600 rounded-xl flex items-center justify-center text-white text-xs">👤</div>
-              <p className="font-black text-slate-800 text-sm uppercase tracking-widest">Datos del Cliente</p>
+          <div className="card p-6">
+            <div className="flex items-center gap-2 mb-5 pb-4" style={{ borderBottom: '1px solid var(--border)' }}>
+              <div className="w-7 h-7 rounded-xl flex items-center justify-center text-xs" style={{ background: 'var(--teal-muted)', color: 'var(--teal)' }}>👤</div>
+              <p className="font-black text-sm uppercase tracking-widest" style={{ color: 'var(--text)' }}>Datos del Cliente</p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><label className={lbl}>Nombre del Cliente *</label><input value={clienteNombre} onChange={e => setClienteNombre(e.target.value)} placeholder="Nombre completo..." className={inp + ' uppercase'} /></div>
               <div><label className={lbl}>Teléfono</label><input value={clienteTelefono} onChange={e => setClienteTelefono(e.target.value)} placeholder="9XX XXX XXX" className={inp} /></div>
               <div><label className={lbl}>RUC</label><input value={clienteRuc} onChange={e => setClienteRuc(e.target.value)} placeholder="20XXXXXXXXX" className={inp} /></div>
               <div><label className={lbl}>DNI</label><input value={clienteDni} onChange={e => setClienteDni(e.target.value)} placeholder="XXXXXXXX" className={inp} /></div>
-              <div><label className={lbl}>Placa del Vehículo</label><input value={clientePlaca} onChange={e => setClientePlaca(e.target.value)} placeholder="ABC-123" className={inp + ' uppercase font-black text-teal-700'} /></div>
+              <div><label className={lbl}>Placa del Vehículo</label><input value={clientePlaca} onChange={e => setClientePlaca(e.target.value)} placeholder="ABC-123" className={inp + ' uppercase font-black'} /></div>
               <div><label className={lbl}>Marca / Modelo</label><input value={clienteModelo} onChange={e => setClienteModelo(e.target.value)} placeholder="Toyota Corolla 2022..." className={inp + ' uppercase'} /></div>
             </div>
           </div>
 
           {/* Items */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div className="card">
+            <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 bg-teal-600 rounded-xl flex items-center justify-center text-white text-xs">📋</div>
-                <p className="font-black text-slate-800 text-sm uppercase tracking-widest">Productos y Servicios</p>
+                <div className="w-7 h-7 rounded-xl flex items-center justify-center text-xs" style={{ background: 'var(--teal-muted)', color: 'var(--teal)' }}>📋</div>
+                <p className="font-black text-sm uppercase tracking-widest" style={{ color: 'var(--text)' }}>Productos y Servicios</p>
               </div>
               <button onClick={agregarItem}
-                className="bg-teal-600 hover:bg-teal-700 text-white font-black text-xs uppercase tracking-widest px-4 py-2 rounded-xl transition-all active:scale-95">
+                className="font-black text-xs uppercase tracking-widest px-4 py-2 rounded-xl transition-all active:scale-95"
+                style={{ background: 'var(--teal)', color: '#000' }}>
                 + Agregar línea
               </button>
             </div>
             <div className="p-5 space-y-3">
               <div className="grid gap-3 px-1" style={{ gridTemplateColumns: '1fr 80px 120px 100px 36px' }}>
-                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Descripción / Producto</div>
-                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Cant.</div>
-                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">P. Unitario</div>
-                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Subtotal</div>
+                <div className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>Descripción / Producto</div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-center" style={{ color: 'var(--text-subtle)' }}>Cant.</div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-right" style={{ color: 'var(--text-subtle)' }}>P. Unitario</div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-right" style={{ color: 'var(--text-subtle)' }}>Subtotal</div>
                 <div />
               </div>
               {items.map((item, i) => (
@@ -692,7 +704,7 @@ export default function CotizacionesPage() {
 
           {/* Totales + notas */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+            <div className="card p-6 space-y-4">
               <div>
                 <label className={lbl}>Notas / Condiciones</label>
                 <textarea value={notas} onChange={e => setNotas(e.target.value)} rows={5}
@@ -704,24 +716,25 @@ export default function CotizacionesPage() {
                 <input type="number" value={igvPct} onChange={e => setIgvPct(parseFloat(e.target.value) || 0)} className={inp} />
               </div>
             </div>
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-5">Resumen de Totales</p>
+            <div className="card p-6">
+              <p className="text-[10px] font-black uppercase tracking-widest mb-5" style={{ color: 'var(--text-subtle)' }}>Resumen de Totales</p>
               <div className="space-y-3">
-                <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                  <span className="text-sm text-slate-500 font-bold">Subtotal</span>
-                  <span className="font-black text-slate-800 text-base">S/ {subtotalCalc.toFixed(2)}</span>
+                <div className="flex justify-between items-center py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>Subtotal</span>
+                  <span className="font-black text-base" style={{ color: 'var(--text)' }}>S/ {subtotalCalc.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                  <span className="text-sm text-slate-500 font-bold">IGV ({igvPct}%)</span>
-                  <span className="font-black text-slate-800 text-base">S/ {igvCalc.toFixed(2)}</span>
+                <div className="flex justify-between items-center py-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>IGV ({igvPct}%)</span>
+                  <span className="font-black text-base" style={{ color: 'var(--text)' }}>S/ {igvCalc.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center pt-3">
-                  <span className="font-black text-slate-900 text-lg uppercase">Total</span>
-                  <span className="font-black text-teal-600 text-4xl tracking-tighter">S/ {totalCalc.toFixed(2)}</span>
+                  <span className="font-black text-lg uppercase" style={{ color: 'var(--text)' }}>Total</span>
+                  <span className="font-black text-4xl tracking-tighter" style={{ color: 'var(--teal)' }}>S/ {totalCalc.toFixed(2)}</span>
                 </div>
               </div>
               <button onClick={guardarCotizacion} disabled={loading}
-                className="w-full mt-6 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-sm shadow-lg shadow-teal-200 active:scale-95 flex items-center justify-center gap-2">
+                className="w-full mt-6 disabled:opacity-50 font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-sm active:scale-95 flex items-center justify-center gap-2"
+                style={{ background: 'var(--teal)', color: '#000' }}>
                 💾 {loading ? 'Guardando...' : editandoID ? 'Actualizar Cotización' : 'Guardar Cotización'}
               </button>
             </div>
@@ -731,97 +744,97 @@ export default function CotizacionesPage() {
 
       {/* ── VER ── */}
       {vista === 'ver' && cotSeleccionada && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-          <div className="h-1.5 bg-gradient-to-r from-teal-600 to-slate-900" />
+        <div className="card overflow-hidden">
+          <div className="h-1.5" style={{ background: 'linear-gradient(90deg, var(--teal) 0%, var(--surface-2) 100%)' }} />
           <div className="p-8">
 
             {/* Encabezado — 3 columnas estables */}
-            <div className="grid gap-5 items-start mb-7 pb-6 border-b-2 border-slate-100" style={{ gridTemplateColumns: '56px 1fr 180px' }}>
+            <div className="grid gap-5 items-start mb-7 pb-6" style={{ gridTemplateColumns: '56px 1fr 180px', borderBottom: '2px solid var(--border)' }}>
               {/* Logo */}
               <div className="w-14 h-14 shrink-0">
                 {tallerLogo
-                  ? <img src={tallerLogo} className="w-14 h-14 object-contain rounded-xl border border-slate-100" />
-                  : <div className="w-14 h-14 bg-slate-900 rounded-xl flex items-center justify-center text-2xl">🔧</div>}
+                  ? <img src={tallerLogo} className="w-14 h-14 object-contain rounded-xl" style={{ border: '1px solid var(--border)' }} />
+                  : <div className="w-14 h-14 rounded-xl flex items-center justify-center text-2xl" style={{ background: 'var(--surface-2)' }}>🔧</div>}
               </div>
               {/* Datos taller */}
               <div>
-                <h3 className="font-black text-slate-900 text-xl uppercase tracking-tight leading-tight">{tallerNombre}</h3>
-                {tallerRuc       && <p className="text-xs text-slate-500 font-bold mt-1">RUC: {tallerRuc}</p>}
-                {tallerDireccion && <p className="text-xs text-slate-500 font-bold">{tallerDireccion}</p>}
-                {tallerTelefono  && <p className="text-xs text-slate-500 font-bold">Tel: {tallerTelefono}</p>}
+                <h3 className="font-black text-xl uppercase tracking-tight leading-tight" style={{ color: 'var(--text)' }}>{tallerNombre}</h3>
+                {tallerRuc       && <p className="text-xs font-bold mt-1" style={{ color: 'var(--text-muted)' }}>RUC: {tallerRuc}</p>}
+                {tallerDireccion && <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>{tallerDireccion}</p>}
+                {tallerTelefono  && <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>Tel: {tallerTelefono}</p>}
               </div>
               {/* Badge + número + fecha */}
               <div className="text-right">
-                <div className="bg-teal-600 text-white font-black text-sm px-5 py-2 rounded-xl uppercase tracking-widest inline-block mb-2">Cotización</div>
-                <p className="font-black text-slate-800 text-sm">{nroCotizacion(cotSeleccionada)}</p>
-                <p className="text-xs text-slate-400 font-bold">{new Date(cotSeleccionada.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                <p className="text-[10px] text-slate-400 font-bold mt-0.5">Válido por 30 días</p>
+                <div className="font-black text-sm px-5 py-2 rounded-xl uppercase tracking-widest inline-block mb-2" style={{ background: 'var(--teal)', color: '#000' }}>Cotización</div>
+                <p className="font-black text-sm" style={{ color: 'var(--text)' }}>{nroCotizacion(cotSeleccionada)}</p>
+                <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>{new Date(cotSeleccionada.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                <p className="text-[10px] font-bold mt-0.5" style={{ color: 'var(--text-subtle)' }}>Válido por 30 días</p>
               </div>
             </div>
 
             {/* Cliente + vehículo */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <p className="text-[9px] font-black text-teal-600 uppercase tracking-widest mb-3">Cliente</p>
-                <p className="font-black text-slate-900 text-base uppercase leading-tight">{cotSeleccionada.cliente_nombre}</p>
+              <div className="rounded-2xl p-5" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                <p className="text-[9px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--teal)' }}>Cliente</p>
+                <p className="font-black text-base uppercase leading-tight" style={{ color: 'var(--text)' }}>{cotSeleccionada.cliente_nombre}</p>
                 <div className="mt-2 space-y-1">
-                  {cotSeleccionada.cliente_ruc      && <p className="text-xs text-slate-500 font-bold">RUC: {cotSeleccionada.cliente_ruc}</p>}
-                  {cotSeleccionada.cliente_dni      && <p className="text-xs text-slate-500 font-bold">DNI: {cotSeleccionada.cliente_dni}</p>}
-                  {cotSeleccionada.cliente_telefono && <p className="text-xs text-slate-500 font-bold">Tel: {cotSeleccionada.cliente_telefono}</p>}
+                  {cotSeleccionada.cliente_ruc      && <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>RUC: {cotSeleccionada.cliente_ruc}</p>}
+                  {cotSeleccionada.cliente_dni      && <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>DNI: {cotSeleccionada.cliente_dni}</p>}
+                  {cotSeleccionada.cliente_telefono && <p className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>Tel: {cotSeleccionada.cliente_telefono}</p>}
                 </div>
               </div>
-              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
-                <p className="text-[9px] font-black text-teal-600 uppercase tracking-widest mb-3">Vehículo</p>
+              <div className="rounded-2xl p-5" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                <p className="text-[9px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--teal)' }}>Vehículo</p>
                 {cotSeleccionada.cliente_placa
                   ? <>
-                      <p className="font-black text-slate-900 text-2xl uppercase tracking-widest leading-tight">{cotSeleccionada.cliente_placa}</p>
-                      {cotSeleccionada.cliente_modelo && <p className="text-sm text-slate-600 font-bold uppercase mt-1">{cotSeleccionada.cliente_modelo}</p>}
+                      <p className="font-black text-2xl uppercase tracking-widest leading-tight" style={{ color: 'var(--text)' }}>{cotSeleccionada.cliente_placa}</p>
+                      {cotSeleccionada.cliente_modelo && <p className="text-sm font-bold uppercase mt-1" style={{ color: 'var(--text-muted)' }}>{cotSeleccionada.cliente_modelo}</p>}
                     </>
-                  : <p className="text-sm text-slate-400 font-bold italic">No especificado</p>}
+                  : <p className="text-sm font-bold italic" style={{ color: 'var(--text-subtle)' }}>No especificado</p>}
               </div>
             </div>
 
             {/* Tabla */}
-            <div className="rounded-2xl overflow-hidden border border-slate-200 mb-6">
-              <div className="grid gap-2 px-5 py-3 bg-slate-900" style={{ gridTemplateColumns: '1fr 80px 120px 120px' }}>
-                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Descripción</div>
-                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Cant.</div>
-                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">P. Unit.</div>
-                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Subtotal</div>
+            <div className="rounded-2xl overflow-hidden mb-6" style={{ border: '1px solid var(--border)' }}>
+              <div className="grid gap-2 px-5 py-3" style={{ gridTemplateColumns: '1fr 80px 120px 120px', background: 'var(--surface-2)' }}>
+                <div className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>Descripción</div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-center" style={{ color: 'var(--text-subtle)' }}>Cant.</div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-right" style={{ color: 'var(--text-subtle)' }}>P. Unit.</div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-right" style={{ color: 'var(--text-subtle)' }}>Subtotal</div>
               </div>
               {(Array.isArray(cotSeleccionada.items) ? cotSeleccionada.items : []).map((item: ItemCotizacion, i: number) => (
-                <div key={i} className={`grid gap-2 px-5 py-3.5 items-center border-b border-slate-50 ${i % 2 === 1 ? 'bg-slate-50/60' : ''}`} style={{ gridTemplateColumns: '1fr 80px 120px 120px' }}>
-                  <div className="font-semibold text-slate-800 text-sm uppercase">{item.descripcion}</div>
-                  <div className="font-black text-slate-700 text-sm text-center">{item.cantidad}</div>
-                  <div className="font-black text-slate-500 text-sm text-right">S/ {(item.precio || 0).toFixed(2)}</div>
-                  <div className="font-black text-teal-600 text-sm text-right">S/ {(item.subtotal || 0).toFixed(2)}</div>
+                <div key={i} className="grid gap-2 px-5 py-3.5 items-center" style={{ gridTemplateColumns: '1fr 80px 120px 120px', borderBottom: '1px solid var(--border)', background: i % 2 === 1 ? 'var(--surface-2)' : 'var(--surface)' }}>
+                  <div className="font-semibold text-sm uppercase" style={{ color: 'var(--text)' }}>{item.descripcion}</div>
+                  <div className="font-black text-sm text-center" style={{ color: 'var(--text)' }}>{item.cantidad}</div>
+                  <div className="font-black text-sm text-right" style={{ color: 'var(--text-muted)' }}>S/ {(item.precio || 0).toFixed(2)}</div>
+                  <div className="font-black text-sm text-right" style={{ color: 'var(--teal)' }}>S/ {(item.subtotal || 0).toFixed(2)}</div>
                 </div>
               ))}
             </div>
 
             {/* Totales */}
             <div className="flex justify-end mb-6">
-              <div className="w-72 rounded-2xl overflow-hidden border border-slate-200">
-                <div className="flex justify-between px-5 py-3 bg-slate-50 border-b border-slate-100">
-                  <span className="text-sm text-slate-500 font-bold">Subtotal</span>
-                  <span className="font-black text-slate-800">S/ {cotSeleccionada.subtotal.toFixed(2)}</span>
+              <div className="w-72 rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                <div className="flex justify-between px-5 py-3" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>Subtotal</span>
+                  <span className="font-black" style={{ color: 'var(--text)' }}>S/ {cotSeleccionada.subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between px-5 py-3 bg-slate-50 border-b border-slate-100">
-                  <span className="text-sm text-slate-500 font-bold">IGV (18%)</span>
-                  <span className="font-black text-slate-800">S/ {cotSeleccionada.igv.toFixed(2)}</span>
+                <div className="flex justify-between px-5 py-3" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm font-bold" style={{ color: 'var(--text-muted)' }}>IGV (18%)</span>
+                  <span className="font-black" style={{ color: 'var(--text)' }}>S/ {cotSeleccionada.igv.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between items-center px-5 py-4 bg-slate-900">
-                  <span className="font-black text-white text-sm uppercase tracking-widest">Total</span>
-                  <span className="font-black text-teal-400 text-2xl tracking-tighter">S/ {cotSeleccionada.total.toFixed(2)}</span>
+                <div className="flex justify-between items-center px-5 py-4" style={{ background: 'var(--bg)' }}>
+                  <span className="font-black text-sm uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Total</span>
+                  <span className="font-black text-2xl tracking-tighter" style={{ color: 'var(--teal)' }}>S/ {cotSeleccionada.total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
 
             {/* Notas */}
             {cotSeleccionada.notas && (
-              <div className="bg-teal-50 border border-teal-100 rounded-2xl p-5 mb-6">
-                <p className="text-[9px] font-black text-teal-600 uppercase tracking-widest mb-2">Notas y Condiciones</p>
-                <p className="text-sm text-teal-800 font-semibold leading-relaxed">{cotSeleccionada.notas}</p>
+              <div className="rounded-2xl p-5 mb-6" style={{ background: 'var(--teal-muted)', border: '1px solid var(--teal-border)' }}>
+                <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--teal)' }}>Notas y Condiciones</p>
+                <p className="text-sm font-semibold leading-relaxed" style={{ color: 'var(--text)' }}>{cotSeleccionada.notas}</p>
               </div>
             )}
 
@@ -830,20 +843,20 @@ export default function CotizacionesPage() {
 
             {/* Firmas */}
             <div className="grid grid-cols-2 gap-6 mb-6 mt-6">
-              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Firma del Cliente</p>
-                <p className="text-xs text-slate-300 font-bold mt-2 uppercase">{cotSeleccionada.cliente_nombre}</p>
+              <div className="rounded-2xl p-8 text-center" style={{ border: '2px dashed var(--border)' }}>
+                <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>Firma del Cliente</p>
+                <p className="text-xs font-bold mt-2 uppercase" style={{ color: 'var(--text-subtle)' }}>{cotSeleccionada.cliente_nombre}</p>
               </div>
-              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Firma Autorizada</p>
-                <p className="text-xs text-slate-300 font-bold mt-2 uppercase">{tallerNombre}</p>
+              <div className="rounded-2xl p-8 text-center" style={{ border: '2px dashed var(--border)' }}>
+                <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-subtle)' }}>Firma Autorizada</p>
+                <p className="text-xs font-bold mt-2 uppercase" style={{ color: 'var(--text-subtle)' }}>{tallerNombre}</p>
               </div>
             </div>
 
             {/* Marcas de aceite */}
             {marcasAceite.length > 0 && (
-              <div className="border-t border-slate-100 pt-6 mb-4">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center mb-4">Marcas de Aceite que Trabajamos</p>
+              <div className="pt-6 mb-4" style={{ borderTop: '1px solid var(--border)' }}>
+                <p className="text-[9px] font-black uppercase tracking-widest text-center mb-4" style={{ color: 'var(--text-subtle)' }}>Marcas de Aceite que Trabajamos</p>
                 <div className="flex justify-center items-center gap-6 flex-wrap">
                   {marcasAceite.map((m, i) => (
                     <img key={i} src={m.logo_url} alt="" className="w-12 h-12 object-contain rounded-lg" />
@@ -853,12 +866,12 @@ export default function CotizacionesPage() {
             )}
 
             {/* Footer */}
-            <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
-              <p className="text-[10px] text-slate-400 font-bold">Esta cotización es válida por 30 días desde la fecha de emisión.</p>
-              <p className="text-[10px] text-slate-400 font-bold">{tallerNombre}{tallerTelefono ? ` · ${tallerTelefono}` : ''}</p>
+            <div className="pt-4 flex justify-between items-center" style={{ borderTop: '1px solid var(--border)' }}>
+              <p className="text-[10px] font-bold" style={{ color: 'var(--text-subtle)' }}>Esta cotización es válida por 30 días desde la fecha de emisión.</p>
+              <p className="text-[10px] font-bold" style={{ color: 'var(--text-subtle)' }}>{tallerNombre}{tallerTelefono ? ` · ${tallerTelefono}` : ''}</p>
             </div>
           </div>
-          <div className="h-1.5 bg-teal-600" />
+          <div className="h-1.5" style={{ background: 'var(--teal)' }} />
         </div>
       )}
     </div>
