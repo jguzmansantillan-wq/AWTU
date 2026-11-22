@@ -196,8 +196,8 @@ function ModalAcciones({
   const btnBase = "flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider transition-all active:scale-95 disabled:opacity-40"
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.65)' }} onClick={onClose}>
-      <div className="rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-sm overflow-y-auto" style={{ background: 'var(--surface)', border: '1px solid var(--border)', maxHeight: '92dvh' }} onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.65)' }} onClick={onClose}>
+      <div className="rounded-2xl shadow-2xl w-full max-w-sm overflow-y-auto" style={{ background: 'var(--surface)', border: '1px solid var(--border)', maxHeight: 'calc(100dvh - 2rem)' }} onClick={e => e.stopPropagation()}>
 
         <div className="px-5 py-4 flex items-center justify-between" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
           <div>
@@ -609,8 +609,8 @@ function ModalEmitir({
   const montoTotal = itemsEditables.reduce((s, i) => s + (i.precio || 0), 0)
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.65)' }} onClick={onClose}>
-      <div className="rounded-t-2xl md:rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" style={{ background: 'var(--surface)', border: '1px solid var(--border)', maxHeight: '92dvh' }} onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm" style={{ background: 'rgba(0,0,0,0.65)' }} onClick={onClose}>
+      <div className="rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" style={{ background: 'var(--surface)', border: '1px solid var(--border)', maxHeight: 'calc(100dvh - 2rem)' }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="px-5 py-4 flex items-center justify-between shrink-0" style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
@@ -1222,10 +1222,10 @@ export default function HistorialPage() {
 
       {/* Modal ticket venta */}
       {ticketVenta && (
-        <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-end md:items-center justify-center md:p-4"
+        <div className="fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.65)' }}
           onClick={() => setTicketVenta(null)}>
-          <div className="rounded-t-3xl md:rounded-3xl p-8 max-w-sm w-full relative overflow-y-auto" style={{ background: 'var(--surface)', border: '1px solid var(--border)', maxHeight: '92dvh' }} onClick={e => e.stopPropagation()}>
+          <div className="rounded-3xl p-8 max-w-sm w-full relative overflow-y-auto" style={{ background: 'var(--surface)', border: '1px solid var(--border)', maxHeight: 'calc(100dvh - 2rem)' }} onClick={e => e.stopPropagation()}>
             <button onClick={() => setTicketVenta(null)}
               className="absolute top-4 right-4 font-bold text-xl transition-colors" style={{ color: 'var(--text-muted)' }}
               onMouseEnter={e => e.currentTarget.style.color = 'var(--text)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}>✕</button>
