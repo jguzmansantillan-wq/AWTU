@@ -1,29 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const [estado, setEstado] = useState<'cargando' | 'activo' | 'pendiente'>('cargando')
+  const { estado } = useAuth()
 
   useEffect(() => {
-    const verificar = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.replace('/login'); return }
-
-      const { data: t } = await supabase
-        .from('talleres')
-        .select('suscripcion_activa')
-        .eq('user_id', user.id)
-        .single()
-
-      if (!t) { router.replace('/login'); return }
-      setEstado(t.suscripcion_activa ? 'activo' : 'pendiente')
-    }
-    verificar()
-  }, [])
+    if (estado === 'sin-sesion') router.replace('/login')
+  }, [estado, router])
 
   if (estado === 'cargando') return (
     <div className="fixed inset-0 flex items-center justify-center" style={{ background: 'var(--bg)' }}>
@@ -74,6 +62,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   )
+
+  if (estado === 'sin-sesion') return null
 
   return <>{children}</>
 }

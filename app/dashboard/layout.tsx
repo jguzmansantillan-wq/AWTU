@@ -1,36 +1,31 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import Sidebar from '@/components/Sidebar'
 import AuthGuard from '@/components/AuthGuard'
+import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [tallerNombre, setTallerNombre] = useState('Mi Taller')
-  const [plan, setPlan] = useState('basico')
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+// Contenido interno que ya puede consumir el contexto
+function DashboardContent({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
+  const { taller } = useAuth()
 
-  useEffect(() => {
-    const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data: t } = await supabase.from('talleres').select('nombre, plan').eq('user_id', user.id).single()
-      if (t) {
-        setTallerNombre(t.nombre || 'Mi Taller')
-        setPlan(t.plan || 'basico')
-      }
-    }
-    load()
-  }, [])
+  const cerrarSesion = async () => {
+    await supabase.auth.signOut()
+    router.replace('/login')
+  }
 
   return (
     <AuthGuard>
       <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-        <Sidebar tallerNombre={tallerNombre} plan={plan} />
+        <Sidebar
+          tallerNombre={taller?.nombre || 'Mi Taller'}
+          plan={taller?.plan || 'basico'}
+        />
         <main
           id="main-content"
           style={{
-            /* En desktop respeta el sidebar; en móvil no tiene margen lateral */
             marginLeft: 'var(--sidebar-w)',
             minHeight: '100vh',
             background: 'var(--bg)',
@@ -42,7 +37,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
       </div>
 
-      {/* Ajuste responsivo: sin margen en móvil */}
       <style>{`
         @media (max-width: 767px) {
           #main-content {
@@ -52,5 +46,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
       `}</style>
     </AuthGuard>
+  )
+}
+
+// Layout raíz: provee el contexto una sola vez para toda la sesión
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AuthProvider>
+      <DashboardContent>
+        {children}
+      </DashboardContent>
+    </AuthProvider>
   )
 }
