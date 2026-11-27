@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const TOKEN = process.env.APIS_NET_PE_TOKEN!
+// Decolecta API — https://decolecta.gitbook.io/docs
+// Endpoints: GET /v1/reniec/dni?numero=... y /v1/sunat/ruc?numero=...
+const TOKEN = process.env.DECOLECTA_KEY
+
+const BASE = 'https://api.decolecta.com/v1'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -8,34 +12,57 @@ export async function GET(req: NextRequest) {
 
   if (!doc) return NextResponse.json({ error: 'Falta el número' }, { status: 400 })
 
+  if (!TOKEN) {
+    return NextResponse.json(
+      { error: 'Token de consulta no configurado (DECOLECTA_KEY).' },
+      { status: 500 }
+    )
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${TOKEN}`,
+  }
+
   try {
+    // ── DNI (8 dígitos) → RENIEC ──
     if (doc.length === 8) {
-      const res = await fetch(`https://api.apis.net.pe/v2/dni?numero=${doc}`, {
-        headers: { Authorization: `Bearer ${TOKEN}` },
-      })
-      if (!res.ok) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+      const res = await fetch(`${BASE}/reniec/dni?numero=${doc}`, { headers })
       const data = await res.json()
-      return NextResponse.json({
-        nombre: `${data.nombres ?? ''} ${data.apellidoPaterno ?? ''} ${data.apellidoMaterno ?? ''}`.trim(),
-        direccion: '',
-        tipo: 'dni',
-      })
+      if (!res.ok) {
+        return NextResponse.json(
+          { error: data.error || data.message || `Error ${res.status} al consultar DNI` },
+          { status: 404 }
+        )
+      }
+      // full_name viene como "APELLIDO1 APELLIDO2 NOMBRES" — reordenar a "NOMBRES APELLIDO1 APELLIDO2"
+      const nombre =
+        data.full_name ||
+        `${data.first_name ?? ''} ${data.first_last_name ?? ''} ${data.second_last_name ?? ''}`.trim()
+      return NextResponse.json({ nombre, direccion: '', tipo: 'dni' })
     }
 
+    // ── RUC (11 dígitos) → SUNAT ──
     if (doc.length === 11) {
-      const res = await fetch(`https://api.apis.net.pe/v2/ruc?numero=${doc}`, {
-        headers: { Authorization: `Bearer ${TOKEN}` },
-      })
-      if (!res.ok) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
+      const res = await fetch(`${BASE}/sunat/ruc?numero=${doc}`, { headers })
       const data = await res.json()
-      return NextResponse.json({
-        nombre: data.razonSocial ?? '',
-        direccion: data.direccion ?? '',
-        tipo: 'ruc',
-      })
+      if (!res.ok) {
+        return NextResponse.json(
+          { error: data.error || data.message || `Error ${res.status} al consultar RUC` },
+          { status: 404 }
+        )
+      }
+      const nombre = data.razon_social ?? ''
+      const direccion = [data.direccion, data.distrito, data.provincia]
+        .filter(Boolean)
+        .join(', ')
+      return NextResponse.json({ nombre, direccion, tipo: 'ruc' })
     }
 
-    return NextResponse.json({ error: 'Ingresa 8 dígitos (DNI) o 11 dígitos (RUC)' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Ingresa 8 dígitos (DNI) o 11 dígitos (RUC)' },
+      { status: 400 }
+    )
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
