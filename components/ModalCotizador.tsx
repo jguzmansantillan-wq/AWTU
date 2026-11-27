@@ -34,6 +34,321 @@ const opcionVacia = (): Opcion => ({
   items: [{ descripcion: '', precio: '' }],
 })
 
+// ─── Sub-componente: Modal de Vista Previa ───────────────────────────────────
+function ModalVistaPrevia({
+  tallerNombre,
+  fecha,
+  nombre,
+  telefono,
+  placa,
+  marca,
+  modelo,
+  opciones,
+  condiciones,
+  nota,
+  loading,
+  onConfirmar,
+  onVolver,
+}: {
+  tallerNombre: string
+  fecha: string
+  nombre: string
+  telefono: string
+  placa: string
+  marca: string
+  modelo: string
+  opciones: Opcion[]
+  condiciones: string
+  nota: string
+  loading: boolean
+  onConfirmar: () => void
+  onVolver: () => void
+}) {
+  const vehiculo = [marca, modelo].filter(Boolean).join(' ')
+  const fechaFmt = fecha.split('-').reverse().join('/')
+
+  const colores = [
+    { ring: '#21c7b8', bg: 'rgba(33,199,184,0.08)', accent: '#21c7b8', badge: 'rgba(33,199,184,0.15)', header: 'rgba(33,199,184,0.2)' },
+    { ring: '#f59e0b', bg: 'rgba(245,158,11,0.08)', accent: '#f59e0b', badge: 'rgba(245,158,11,0.15)', header: 'rgba(245,158,11,0.2)' },
+    { ring: '#a78bfa', bg: 'rgba(167,139,250,0.08)', accent: '#a78bfa', badge: 'rgba(167,139,250,0.15)', header: 'rgba(167,139,250,0.2)' },
+    { ring: '#34d399', bg: 'rgba(52,211,153,0.08)', accent: '#34d399', badge: 'rgba(52,211,153,0.15)', header: 'rgba(52,211,153,0.2)' },
+    { ring: '#fb923c', bg: 'rgba(251,146,60,0.08)', accent: '#fb923c', badge: 'rgba(251,146,60,0.15)', header: 'rgba(251,146,60,0.2)' },
+  ]
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center p-4 overflow-y-auto"
+      style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
+    >
+      <div
+        className="relative w-full my-4 rounded-3xl overflow-hidden"
+        style={{
+          maxWidth: '620px',
+          background: '#fff',
+          boxShadow: '0 40px 100px -12px rgba(0,0,0,0.8)',
+        }}
+      >
+        {/* ── Barra superior (simula ventana de documento) ── */}
+        <div
+          className="flex items-center justify-between px-5 py-3"
+          style={{ background: '#1a1a2e', borderBottom: '2px solid #f59e0b' }}
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500" />
+            <div className="w-3 h-3 rounded-full bg-yellow-400" />
+            <div className="w-3 h-3 rounded-full bg-green-500" />
+            <span className="ml-3 font-mono text-xs font-bold" style={{ color: '#f59e0b' }}>
+              COTIZACIÓN — VISTA PREVIA
+            </span>
+          </div>
+          <button
+            onClick={onVolver}
+            className="font-bold text-sm transition-opacity"
+            style={{ color: 'rgba(255,255,255,0.5)' }}
+          >✕</button>
+        </div>
+
+        {/* ── Contenido del documento (fondo blanco simulando papel) ── */}
+        <div style={{ background: '#ffffff', color: '#111' }}>
+
+          {/* HEADER DEL DOCUMENTO — 3 columnas fijas */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr auto',
+              gap: '0',
+              padding: '20px 24px 16px',
+              borderBottom: '2px solid #e5e7eb',
+            }}
+          >
+            {/* Columna izquierda: nombre taller + dirección/tel */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <p style={{ fontWeight: 900, fontSize: '20px', letterSpacing: '-0.5px', color: '#111', textTransform: 'uppercase', lineHeight: 1.1 }}>
+                {tallerNombre}
+              </p>
+            </div>
+
+            {/* Columna derecha: badge COTIZACIÓN + fecha */}
+            <div
+              style={{
+                border: '2px solid #111',
+                borderRadius: '6px',
+                padding: '8px 16px',
+                textAlign: 'center',
+                minWidth: '120px',
+              }}
+            >
+              <p style={{ fontWeight: 900, fontSize: '12px', letterSpacing: '2px', color: '#111', textTransform: 'uppercase' }}>
+                COTIZACIÓN
+              </p>
+              <p style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>
+                Fecha: {fechaFmt}
+              </p>
+            </div>
+          </div>
+
+          {/* DATOS DEL CLIENTE */}
+          <div style={{ padding: '16px 24px' }}>
+            <div
+              style={{
+                background: '#f9fafb',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                display: 'grid',
+                gridTemplateColumns: '1fr auto',
+                gap: '12px',
+                alignItems: 'center',
+              }}
+            >
+              <div>
+                <p style={{ fontSize: '9px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '4px' }}>
+                  CLIENTE
+                </p>
+                <p style={{ fontWeight: 800, fontSize: '15px', color: '#111', textTransform: 'uppercase' }}>
+                  {nombre || '—'}
+                </p>
+                {vehiculo && (
+                  <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px', textTransform: 'uppercase' }}>
+                    🚗 {vehiculo}
+                  </p>
+                )}
+                {telefono && (
+                  <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '1px' }}>
+                    📞 {telefono}
+                  </p>
+                )}
+              </div>
+              {placa && (
+                <div
+                  style={{
+                    background: '#dbeafe',
+                    border: '1px solid #93c5fd',
+                    borderRadius: '8px',
+                    padding: '8px 14px',
+                    textAlign: 'center',
+                    minWidth: '90px',
+                  }}
+                >
+                  <p style={{ fontWeight: 900, fontSize: '16px', color: '#1d4ed8', fontFamily: 'monospace', letterSpacing: '2px' }}>
+                    {placa.toUpperCase()}
+                  </p>
+                  <p style={{ fontSize: '8px', color: '#3b82f6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>
+                    PLACA
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* OPCIONES */}
+          <div style={{ padding: '0 24px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {opciones.map((opcion, idx) => {
+              const itemsFiltrados = opcion.items.filter(i => i.descripcion.trim())
+              if (itemsFiltrados.length === 0) return null
+              const tot = totalOpcion(opcion.items)
+              const col = colores[idx % colores.length]
+              return (
+                <div
+                  key={idx}
+                  style={{ border: `1.5px solid ${col.ring}`, borderRadius: '8px', overflow: 'hidden' }}
+                >
+                  {/* Header opción — negro sólido */}
+                  <div
+                    style={{
+                      background: '#111',
+                      padding: '8px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <p style={{ fontWeight: 800, fontSize: '11px', color: '#fff', textTransform: 'uppercase', letterSpacing: '1.5px' }}>
+                      {opcion.titulo
+                        ? `OPCIÓN ${idx + 1}  —  ${opcion.titulo.toUpperCase()}`
+                        : `OPCIÓN ${idx + 1}`}
+                    </p>
+                    {tot > 0 && (
+                      <p style={{ fontWeight: 800, fontSize: '12px', color: col.accent, fontFamily: 'monospace' }}>
+                        S/ {tot.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                  {/* Ítems */}
+                  <div style={{ background: '#fff' }}>
+                    {itemsFiltrados.map((item, ii) => (
+                      <div
+                        key={ii}
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '7px 14px',
+                          background: ii % 2 === 0 ? '#f9fafb' : '#fff',
+                          borderTop: ii === 0 ? 'none' : '1px solid #f3f4f6',
+                        }}
+                      >
+                        <p style={{ fontSize: '12px', color: '#374151' }}>
+                          •&nbsp;&nbsp;{item.descripcion.toUpperCase()}
+                        </p>
+                        {parseFloat(item.precio) > 0 && (
+                          <p style={{ fontWeight: 700, fontSize: '12px', color: '#111', fontFamily: 'monospace', whiteSpace: 'nowrap', marginLeft: '12px' }}>
+                            S/ {parseFloat(item.precio).toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                    {/* Total fila */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        alignItems: 'center',
+                        gap: '12px',
+                        padding: '8px 14px',
+                        background: '#f3f4f6',
+                        borderTop: '1px solid #e5e7eb',
+                      }}
+                    >
+                      <p style={{ fontSize: '9px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                        TOTAL OPCIÓN
+                      </p>
+                      <p style={{ fontWeight: 900, fontSize: '15px', color: '#111', fontFamily: 'monospace' }}>
+                        S/ {tot.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* CONDICIONES Y NOTA */}
+          {(condiciones.trim() || nota.trim()) && (
+            <div style={{ padding: '0 24px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {condiciones.trim() && (
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px 14px' }}>
+                  <p style={{ fontSize: '8px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '4px' }}>
+                    📌 CONDICIONES DEL SERVICIO
+                  </p>
+                  <p style={{ fontSize: '11px', color: '#374151', lineHeight: 1.5 }}>{condiciones.trim()}</p>
+                </div>
+              )}
+              {nota.trim() && (
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '10px 14px' }}>
+                  <p style={{ fontSize: '8px', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '1.5px', marginBottom: '4px' }}>
+                    📝 NOTA
+                  </p>
+                  <p style={{ fontSize: '11px', color: '#374151', lineHeight: 1.5 }}>{nota.trim()}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Botones de acción (fuera del área blanca) ── */}
+        <div
+          style={{ background: '#1a1a2e', padding: '16px 24px', display: 'flex', gap: '12px' }}
+        >
+          <button
+            onClick={onVolver}
+            style={{
+              flex: 1,
+              padding: '12px',
+              borderRadius: '12px',
+              fontWeight: 700,
+              fontSize: '11px',
+              textTransform: 'uppercase',
+              letterSpacing: '1.5px',
+              background: 'rgba(255,255,255,0.08)',
+              color: 'rgba(255,255,255,0.6)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              cursor: 'pointer',
+            }}
+          >← Volver y editar</button>
+          <button
+            onClick={onConfirmar}
+            disabled={loading}
+            style={{
+              flex: 2,
+              padding: '12px',
+              borderRadius: '12px',
+              fontWeight: 800,
+              fontSize: '12px',
+              textTransform: 'uppercase',
+              letterSpacing: '1.5px',
+              background: loading ? 'rgba(245,158,11,0.5)' : '#f59e0b',
+              color: '#fff',
+              border: 'none',
+              cursor: loading ? 'not-allowed' : 'pointer',
+            }}
+          >{loading ? '⏳ Guardando...' : '✅ Confirmar y Guardar'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function ModalCotizador({ tallerID, tallerNombre, onClose }: ModalCotizadorProps) {
   // Datos del taller (para PDF)
@@ -59,6 +374,7 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
   const [error, setError] = useState('')
   const [guardada, setGuardada] = useState(false)
   const [vistaPrevia, setVistaPrevia] = useState(false)
+  const [correlativo, setCorrelativo] = useState<number | null>(null)
 
   // Cargar info del taller al montar
   useEffect(() => {
@@ -98,10 +414,17 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
 
   // ── Guardar en Supabase ────────────────────────────────────────────────────
   const guardar = async () => {
-    if (!nombre.trim()) { setError('El nombre del cliente es obligatorio'); return }
-    const tieneItems = opciones.some(o => o.items.some(i => i.descripcion.trim()))
-    if (!tieneItems) { setError('Agrega al menos un ítem en alguna opción'); return }
     setLoading(true); setError('')
+
+    // Obtener correlativo: contar cotizaciones previas del taller
+    const { count } = await supabase
+      .from('proformas')
+      .select('*', { count: 'exact', head: true })
+      .eq('taller_id', tallerID)
+      .eq('tipo', 'cotizacion')
+    const nro = (count ?? 0) + 1
+    setCorrelativo(nro)
+
     const payload = opciones.map((o, idx) => ({
       titulo: o.titulo || `Opción ${idx + 1}`,
       items: o.items.filter(i => i.descripcion.trim()).map(i => ({
@@ -122,6 +445,7 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
     })
     if (e) { setError('Error al guardar: ' + e.message); setLoading(false); return }
     setGuardada(true)
+    setVistaPrevia(false)
     setLoading(false)
   }
 
@@ -142,8 +466,9 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
       return `*${titulo}*\n${lineas}\n  ➤ *Total opción: S/ ${tot.toFixed(2)}*`
     }).join('\n\n')
 
+    const nroStr = correlativo ? `COT-${String(correlativo).padStart(4, '0')}` : ''
     const msg = encodeURIComponent(
-      `📋 *COTIZACIÓN — ${tallerNombre.toUpperCase()}*\n` +
+      `📋 *COTIZACIÓN${nroStr ? ' ' + nroStr : ''} — ${tallerNombre.toUpperCase()}*\n` +
       `📅 ${fechaFmt}\n` +
       `👤 ${nombre.toUpperCase()}` +
       (placa ? `  |  🚗 ${placa.toUpperCase()}` : '') +
@@ -179,87 +504,111 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
 
       const fechaFmt = fecha.split('-').reverse().join('/')
       const vehiculo = [marca, modelo].filter(Boolean).join(' ')
+      const nroStr = correlativo ? `COT-${String(correlativo).padStart(4, '0')}` : ''
 
-      // ── Colores blanco/negro/gris ──
+      // ── Colores ──
       const C_BLACK  = [10,  10,  10]  as [number, number, number]
       const C_WHITE  = [255, 255, 255] as [number, number, number]
-      const C_GRAY_L = [245, 245, 245] as [number, number, number]  // fondo claro
-      const C_GRAY_M = [200, 200, 200] as [number, number, number]  // bordes
-      const C_GRAY_T = [120, 120, 120] as [number, number, number]  // texto secundario
-      const C_BLUE   = [219, 234, 254] as [number, number, number]  // badge placa fondo
-      const C_BLUE_T = [ 29,  78, 216] as [number, number, number]  // badge placa texto
+      const C_GRAY_L = [245, 245, 245] as [number, number, number]
+      const C_GRAY_M = [200, 200, 200] as [number, number, number]
+      const C_GRAY_T = [120, 120, 120] as [number, number, number]
+      const C_BLUE   = [219, 234, 254] as [number, number, number]
+      const C_BLUE_T = [ 29,  78, 216] as [number, number, number]
 
       // ═══════════════════════════════════════════════════════
-      // HEADER — fondo blanco, logo izquierda, nombre, badge borde negro
+      // HEADER — layout de 3 zonas con anchos fijos:
+      //   LOGO (40mm) | NOMBRE+SUBTÍTULO (relleno) | BADGE (52mm)
       // ═══════════════════════════════════════════════════════
-      const headerH = 44
+      const headerH = 46
+      const LOGO_ZONE  = 44  // ancho reservado para logo
+      const BADGE_ZONE = 52  // ancho reservado para badge derecho
 
       doc.setFillColor(...C_WHITE)
       doc.rect(0, 0, W, headerH, 'F')
 
-      // Badge "COTIZACIÓN" — borde negro, fondo blanco, texto negro
-      const badgeW = 44
-      const badgeH = 18
-      const badgeX = W - MARGIN - badgeW
-      const badgeY = (headerH - badgeH) / 2
+      // ── Zona BADGE (columna derecha fija) ──
+      const badgeW  = 44
+      const badgeH  = 20
+      const badgeX  = W - MARGIN - badgeW
+      const badgeY  = (headerH - badgeH) / 2
+
       doc.setDrawColor(...C_BLACK)
-      doc.setLineWidth(1.2)
+      doc.setLineWidth(1.4)
       doc.rect(badgeX, badgeY, badgeW, badgeH)
+
       doc.setTextColor(...C_BLACK)
       doc.setFontSize(9)
       doc.setFont('helvetica', 'bold')
-      doc.text('COTIZACIÓN', badgeX + badgeW / 2, badgeY + 7.5, { align: 'center' })
+      doc.text('COTIZACIÓN', badgeX + badgeW / 2, badgeY + 8, { align: 'center' })
+
       doc.setFontSize(7)
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(...C_GRAY_T)
-      doc.text(`Fecha: ${fechaFmt}`, badgeX + badgeW / 2, badgeY + 14, { align: 'center' })
+      doc.text(`Fecha: ${fechaFmt}`, badgeX + badgeW / 2, badgeY + 13.5, { align: 'center' })
+      if (nroStr) {
+        doc.setFontSize(6.5)
+        doc.setFont('helvetica', 'bold')
+        doc.text(nroStr, badgeX + badgeW / 2, badgeY + 18, { align: 'center' })
+      }
 
-      // Logo del taller
+      // ── Zona LOGO (columna izquierda fija) ──
       let logoEndX = MARGIN
       if (tallerInfo.logo_url) {
         const { img, ok } = await loadImageAsBase64(tallerInfo.logo_url)
         if (ok) {
-          const logoH = 24
-          const logoW = Math.min((img.width / img.height) * logoH, 40)
-          doc.addImage(img, 'PNG', MARGIN, (headerH - logoH) / 2, logoW, logoH)
-          logoEndX = MARGIN + logoW + 6
+          const maxLogoH = 28
+          const maxLogoW = LOGO_ZONE - 6
+          const aspectRatio = img.width / img.height
+          let logoH = maxLogoH
+          let logoW = aspectRatio * logoH
+          if (logoW > maxLogoW) { logoW = maxLogoW; logoH = logoW / aspectRatio }
+          const logoY = (headerH - logoH) / 2
+          doc.addImage(img, 'PNG', MARGIN, logoY, logoW, logoH)
+          logoEndX = MARGIN + LOGO_ZONE
         }
       }
 
-      // Nombre del taller — se ajusta para no pisar el badge
-      const maxNameW = badgeX - logoEndX - 6
+      // ── Zona NOMBRE (columna central — entre logo y badge) ──
+      const nameZoneX = logoEndX + 4
+      const nameZoneW = badgeX - nameZoneX - 4  // espacio disponible garantizado
+
       doc.setTextColor(...C_BLACK)
       doc.setFont('helvetica', 'bold')
-      let fs = 20
+
+      // Ajustar tamaño para que quepa en nameZoneW
+      let fs = 18
       doc.setFontSize(fs)
-      while (doc.getTextWidth(tallerNombre.toUpperCase()) > maxNameW && fs > 10) {
-        fs -= 1
+      while (doc.getTextWidth(tallerNombre.toUpperCase()) > nameZoneW && fs > 9) {
+        fs -= 0.5
         doc.setFontSize(fs)
       }
-      // Centrar verticalmente: si hay subtítulo, subir un poco
-      const hasSub = !!(tallerInfo.direccion || tallerInfo.telefono)
-      doc.text(tallerNombre.toUpperCase(), logoEndX, hasSub ? headerH / 2 - 1 : headerH / 2 + 3)
 
-      // Subtítulo: dirección y teléfono
+      const hasSub = !!(tallerInfo.direccion || tallerInfo.telefono)
+      const nameY = hasSub ? headerH / 2 - 2 : headerH / 2 + 3
+      doc.text(tallerNombre.toUpperCase(), nameZoneX, nameY)
+
       if (hasSub) {
         const sub = [tallerInfo.direccion, tallerInfo.telefono ? `Tel: ${tallerInfo.telefono}` : ''].filter(Boolean).join('  ·  ')
-        doc.setFontSize(7.5)
+        doc.setFontSize(7)
         doc.setFont('helvetica', 'normal')
         doc.setTextColor(...C_GRAY_T)
-        const subLines = doc.splitTextToSize(sub, maxNameW)
-        doc.text(subLines[0], logoEndX, headerH / 2 + 7)
+        const subLines = doc.splitTextToSize(sub, nameZoneW)
+        doc.text(subLines[0], nameZoneX, headerH / 2 + 6)
       }
 
-      // Línea separadora del header
+      // Línea separadora
       doc.setDrawColor(...C_GRAY_M)
       doc.setLineWidth(0.4)
       doc.line(0, headerH, W, headerH)
 
       // ═══════════════════════════════════════════════════════
-      // DATOS DEL CLIENTE
+      // DATOS DEL CLIENTE — nombre + placa + marca/modelo
       // ═══════════════════════════════════════════════════════
       let y = headerH + 10
-      const clienteH = vehiculo ? 28 : 20
+
+      // Altura dinámica: si hay vehículo, necesita más espacio
+      const hasVehiculo = !!vehiculo
+      const clienteH = hasVehiculo ? 32 : 22
 
       doc.setFillColor(...C_GRAY_L)
       doc.roundedRect(MARGIN, y, CONTENT_W, clienteH, 2, 2, 'F')
@@ -267,42 +616,66 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
       doc.setLineWidth(0.3)
       doc.roundedRect(MARGIN, y, CONTENT_W, clienteH, 2, 2, 'S')
 
+      // Label CLIENTE
       doc.setTextColor(...C_GRAY_T)
       doc.setFontSize(7)
       doc.setFont('helvetica', 'bold')
       doc.text('CLIENTE', MARGIN + 6, y + 7)
 
+      // Nombre del cliente
       doc.setTextColor(...C_BLACK)
       doc.setFontSize(13)
       doc.setFont('helvetica', 'bold')
+      // Limitar ancho del nombre para no pisar la placa
+      const nameMaxW = placa.trim() ? CONTENT_W - 60 : CONTENT_W - 10
+      let nameFontSize = 13
+      doc.setFontSize(nameFontSize)
+      while (doc.getTextWidth(nombre.toUpperCase()) > nameMaxW && nameFontSize > 8) {
+        nameFontSize -= 0.5
+        doc.setFontSize(nameFontSize)
+      }
       doc.text(nombre.toUpperCase(), MARGIN + 6, y + 15)
 
-      if (vehiculo) {
+      // Vehículo (marca + modelo) debajo del nombre
+      if (hasVehiculo) {
         doc.setTextColor(...C_GRAY_T)
         doc.setFontSize(8.5)
         doc.setFont('helvetica', 'normal')
-        doc.text(vehiculo.toUpperCase(), MARGIN + 6, y + 22)
+        doc.text(`🚗 ${vehiculo.toUpperCase()}`, MARGIN + 6, y + 23)
       }
 
-      // Placa — badge azul
+      // Badge PLACA (derecha)
       if (placa.trim()) {
-        const placaW = 42
-        const placaH = vehiculo ? 22 : 14
+        const placaW  = 50
+        const placaH  = hasVehiculo ? 24 : 16
+        const placaX  = W - MARGIN - placaW - 2
+        const placaBY = y + (clienteH - placaH) / 2
+
         doc.setFillColor(...C_BLUE)
-        doc.roundedRect(W - MARGIN - placaW, y + 3, placaW, placaH, 2, 2, 'F')
+        doc.roundedRect(placaX, placaBY, placaW, placaH, 3, 3, 'F')
         doc.setDrawColor(147, 197, 253)
-        doc.setLineWidth(0.5)
-        doc.roundedRect(W - MARGIN - placaW, y + 3, placaW, placaH, 2, 2, 'S')
+        doc.setLineWidth(0.6)
+        doc.roundedRect(placaX, placaBY, placaW, placaH, 3, 3, 'S')
+
+        // Texto PLACA
         doc.setTextColor(...C_BLUE_T)
-        doc.setFontSize(vehiculo ? 14 : 11)
+        doc.setFontSize(hasVehiculo ? 13 : 10)
         doc.setFont('helvetica', 'bold')
-        doc.text(placa.toUpperCase(), W - MARGIN - placaW / 2, y + 3 + placaH / 2 + 3, { align: 'center' })
+        doc.text(placa.toUpperCase(), placaX + placaW / 2, placaBY + placaH / 2 + (hasVehiculo ? 2 : 1.5), { align: 'center' })
+
+        // Label pequeño
+        if (hasVehiculo) {
+          doc.setFontSize(6)
+          doc.setFont('helvetica', 'bold')
+          doc.setTextColor(100, 150, 240)
+          doc.text('PLACA', placaX + placaW / 2, placaBY + placaH - 3, { align: 'center' })
+        }
       }
 
-      y += clienteH + 8
+      y += clienteH + 10
 
       // ═══════════════════════════════════════════════════════
-      // OPCIONES — header negro, ítems con filas alternas grises
+      // OPCIONES
       // ═══════════════════════════════════════════════════════
       opciones.forEach((opcion, idx) => {
         const itemsFiltrados = opcion.items.filter(i => i.descripcion.trim())
@@ -314,7 +687,7 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
         // Header opción — negro sólido
         doc.setFillColor(...C_BLACK)
         doc.roundedRect(MARGIN, y, CONTENT_W, 10, 1, 1, 'F')
-        doc.rect(MARGIN, y + 7, CONTENT_W, 3, 'F') // cierra esquinas inferiores
+        doc.rect(MARGIN, y + 7, CONTENT_W, 3, 'F')
 
         doc.setTextColor(...C_WHITE)
         doc.setFontSize(8.5)
@@ -323,6 +696,9 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
           ? `OPCIÓN ${idx + 1}  —  ${opcion.titulo.toUpperCase()}`
           : `OPCIÓN ${idx + 1}`
         doc.text(headerTxt, MARGIN + 5, y + 7)
+        if (tot > 0) {
+          doc.text(`S/ ${tot.toFixed(2)}`, W - MARGIN - 3, y + 7, { align: 'right' })
+        }
         y += 11
 
         // Ítems
@@ -346,7 +722,7 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
           y += 9
         })
 
-        // Fila TOTAL — fondo gris claro, borde gris
+        // Fila TOTAL
         doc.setFillColor(240, 240, 240)
         doc.roundedRect(W - MARGIN - 65, y + 1, 65, 11, 1, 1, 'F')
         doc.setDrawColor(...C_GRAY_M)
@@ -361,7 +737,6 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
         doc.text(`S/ ${tot.toFixed(2)}`, W - MARGIN - 3, y + 9, { align: 'right' })
         y += 16
 
-        // Separador punteado entre opciones
         if (idx < opciones.length - 1) {
           doc.setDrawColor(...C_GRAY_M)
           doc.setLineWidth(0.3)
@@ -377,7 +752,7 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
       y += 6
 
       // ═══════════════════════════════════════════════════════
-      // CONDICIONES DEL SERVICIO — siempre visible
+      // CONDICIONES
       // ═══════════════════════════════════════════════════════
       if (y > 240) { doc.addPage(); y = 20 }
       doc.setFillColor(...C_WHITE)
@@ -399,7 +774,7 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
       y += 34
 
       // ═══════════════════════════════════════════════════════
-      // NOTA — siempre visible
+      // NOTA
       // ═══════════════════════════════════════════════════════
       if (y > 248) { doc.addPage(); y = 20 }
       doc.setFillColor(...C_WHITE)
@@ -421,7 +796,7 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
       y += 28
 
       // ═══════════════════════════════════════════════════════
-      // LOGOS DE MARCAS — antes del footer
+      // LOGOS DE MARCAS
       // ═══════════════════════════════════════════════════════
       const marcas = tallerInfo.marcas_aceite
       if (marcas && marcas.length > 0) {
@@ -456,7 +831,7 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
       }
 
       // ═══════════════════════════════════════════════════════
-      // FOOTER — gris claro, datos del taller centrados
+      // FOOTER
       // ═══════════════════════════════════════════════════════
       const footerY = 277
       doc.setFillColor(...C_GRAY_L)
@@ -476,7 +851,10 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
         doc.text(sub, W / 2, footerY + 15, { align: 'center' })
       }
 
-      doc.save(`Cotizacion_${placa || nombre}_${fecha}.pdf`)
+      const filename = nroStr
+        ? `${nroStr}_${placa || nombre}_${fecha}.pdf`
+        : `Cotizacion_${placa || nombre}_${fecha}.pdf`
+      doc.save(filename)
     } catch (err) {
       console.error('PDF error:', err)
       alert('Error al generar el PDF')
@@ -486,440 +864,313 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
-      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
+    <>
+      {/* Modal vista previa — encima del cotizador */}
+      {vistaPrevia && !guardada && (
+        <ModalVistaPrevia
+          tallerNombre={tallerNombre}
+          fecha={fecha}
+          nombre={nombre}
+          telefono={telefono}
+          placa={placa}
+          marca={marca}
+          modelo={modelo}
+          opciones={opciones}
+          condiciones={condiciones}
+          nota={nota}
+          loading={loading}
+          onConfirmar={guardar}
+          onVolver={() => setVistaPrevia(false)}
+        />
+      )}
+
       <div
-        className="relative w-full rounded-3xl my-4"
-        style={{
-          maxWidth: '680px',
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
-          boxShadow: '0 32px 80px -12px rgba(0,0,0,0.6)',
-        }}
-        onClick={e => e.stopPropagation()}
+        className="fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto"
+        style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
+        onClick={e => { if (e.target === e.currentTarget) onClose() }}
       >
-        {/* ── Header modal ── */}
         <div
-          className="flex items-center justify-between px-6 py-5 rounded-t-3xl"
-          style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}
+          className="relative w-full rounded-3xl my-4"
+          style={{
+            maxWidth: '680px',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            boxShadow: '0 32px 80px -12px rgba(0,0,0,0.6)',
+          }}
+          onClick={e => e.stopPropagation()}
         >
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shrink-0"
-              style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)' }}
-            >📋</div>
-            <div>
-              <h2
-                className="font-display font-bold text-base uppercase tracking-tight leading-none"
-                style={{ color: 'var(--text)' }}
-              >Nueva Cotización</h2>
-              <p
-                className="text-[10px] font-bold uppercase tracking-widest mt-0.5"
-                style={{ color: 'var(--text-muted)' }}
-              >Arma las opciones y comparte con el cliente</p>
+          {/* ── Header modal ── */}
+          <div
+            className="flex items-center justify-between px-6 py-5 rounded-t-3xl"
+            style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shrink-0"
+                style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.35)' }}
+              >📋</div>
+              <div>
+                <h2
+                  className="font-display font-bold text-base uppercase tracking-tight leading-none"
+                  style={{ color: 'var(--text)' }}
+                >Nueva Cotización</h2>
+                <p
+                  className="text-[10px] font-bold uppercase tracking-widest mt-0.5"
+                  style={{ color: 'var(--text-muted)' }}
+                >Arma las opciones y comparte con el cliente</p>
+              </div>
             </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-lg transition-all"
+              style={{ color: 'var(--text-muted)', background: 'transparent' }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = 'var(--text)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
+            >✕</button>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-lg transition-all"
-            style={{ color: 'var(--text-muted)', background: 'transparent' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = 'var(--text)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}
-          >✕</button>
-        </div>
 
-        <div className="p-6 space-y-5">
+          <div className="p-6 space-y-5">
 
-          {/* ── Datos del cliente ── */}
-          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-            <div
-              className="px-5 py-3 flex items-center gap-2"
-              style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}
-            >
-              <span className="text-base">👤</span>
-              <p className="font-display font-bold text-xs uppercase tracking-widest" style={{ color: 'var(--text)' }}>
-                Datos del Cliente y Vehículo
-              </p>
-            </div>
-            <div className="p-4 grid grid-cols-2 gap-3" style={{ background: 'var(--surface)' }}>
-              <div>
-                <label className="lbl">Nombre del cliente *</label>
-                <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Nombre completo..." className="inp uppercase" />
+            {/* ── Datos del cliente ── */}
+            <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+              <div
+                className="px-5 py-3 flex items-center gap-2"
+                style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}
+              >
+                <span className="text-base">👤</span>
+                <p className="font-display font-bold text-xs uppercase tracking-widest" style={{ color: 'var(--text)' }}>
+                  Datos del Cliente y Vehículo
+                </p>
               </div>
-              <div>
-                <label className="lbl">Teléfono</label>
-                <input value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="9XX XXX XXX" className="inp font-mono" />
-              </div>
-              <div>
-                <label className="lbl">Placa del vehículo</label>
-                <input value={placa} onChange={e => setPlaca(e.target.value.toUpperCase())} placeholder="ABC-123" className="inp font-mono uppercase tracking-widest" style={{ color: 'var(--accent-teal)' }} />
-              </div>
-              <div>
-                <label className="lbl">Marca / Modelo</label>
-                <div className="flex gap-2">
-                  <input value={marca} onChange={e => setMarca(e.target.value)} placeholder="Toyota" className="inp uppercase flex-1" />
-                  <input value={modelo} onChange={e => setModelo(e.target.value)} placeholder="Corolla" className="inp uppercase flex-1" />
+              <div className="p-4 grid grid-cols-2 gap-3" style={{ background: 'var(--surface)' }}>
+                <div>
+                  <label className="lbl">Nombre del cliente *</label>
+                  <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Nombre completo..." className="inp uppercase" />
+                </div>
+                <div>
+                  <label className="lbl">Teléfono</label>
+                  <input value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="9XX XXX XXX" className="inp font-mono" />
+                </div>
+                <div>
+                  <label className="lbl">Placa del vehículo</label>
+                  <input value={placa} onChange={e => setPlaca(e.target.value.toUpperCase())} placeholder="ABC-123" className="inp font-mono uppercase tracking-widest" style={{ color: 'var(--accent-teal)' }} />
+                </div>
+                <div>
+                  <label className="lbl">Marca / Modelo</label>
+                  <div className="flex gap-2">
+                    <input value={marca} onChange={e => setMarca(e.target.value)} placeholder="Toyota" className="inp uppercase flex-1" />
+                    <input value={modelo} onChange={e => setModelo(e.target.value)} placeholder="Corolla" className="inp uppercase flex-1" />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* ── Opciones ── */}
-          <div className="space-y-4">
-            {opciones.map((opcion, oi) => {
-              const totOp = totalOpcion(opcion.items)
-              const colores = [
-                { ring: 'rgba(33,199,184,0.4)', bg: 'rgba(33,199,184,0.07)', accent: 'var(--accent-teal)', badge: 'rgba(33,199,184,0.15)' },
-                { ring: 'rgba(245,158,11,0.4)', bg: 'rgba(245,158,11,0.07)', accent: '#f59e0b', badge: 'rgba(245,158,11,0.15)' },
-                { ring: 'rgba(167,139,250,0.4)', bg: 'rgba(167,139,250,0.07)', accent: '#a78bfa', badge: 'rgba(167,139,250,0.15)' },
-                { ring: 'rgba(52,211,153,0.4)', bg: 'rgba(52,211,153,0.07)', accent: '#34d399', badge: 'rgba(52,211,153,0.15)' },
-                { ring: 'rgba(251,146,60,0.4)', bg: 'rgba(251,146,60,0.07)', accent: '#fb923c', badge: 'rgba(251,146,60,0.15)' },
-              ]
-              const col = colores[oi % colores.length]
-              return (
-                <div key={oi} className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${col.ring}`, background: col.bg }}>
-                  {/* Header opción */}
-                  <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: `1px solid ${col.ring}` }}>
-                    <div
-                      className="font-display w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
-                      style={{ background: col.badge, color: col.accent, border: `1px solid ${col.ring}` }}
-                    >{oi + 1}</div>
-                    <input
-                      value={opcion.titulo}
-                      onChange={e => setTituloOpcion(oi, e.target.value)}
-                      placeholder={`Nombre de la opción (ej: Castrol 5W-30, Liqui Moly...)`}
-                      className="bg-transparent outline-none flex-1 font-display font-bold text-sm uppercase tracking-wide"
-                      style={{ color: 'var(--text)' }}
-                    />
-                    {totOp > 0 && (
-                      <span className="font-mono font-bold text-sm shrink-0" style={{ color: col.accent }}>
-                        S/ {totOp.toFixed(2)}
-                      </span>
-                    )}
-                    {opciones.length > 1 && (
-                      <button
-                        onClick={() => eliminarOpcion(oi)}
-                        className="font-bold text-sm transition-colors shrink-0 ml-1"
-                        style={{ color: 'var(--text-muted)' }}
-                        onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
-                        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
-                      >✕</button>
-                    )}
-                  </div>
-
-                  {/* Ítems */}
-                  <div className="p-4 space-y-2">
-                    {opcion.items.map((item, ii) => (
-                      <div key={ii} className="flex gap-2 items-center">
-                        <input
-                          value={item.descripcion}
-                          onChange={e => setItemField(oi, ii, 'descripcion', e.target.value)}
-                          placeholder="Descripción del producto o servicio..."
-                          className="inp flex-1 text-sm"
-                          style={{ minWidth: 0 }}
-                        />
-                        <div
-                          className="flex items-center gap-1.5 rounded-xl px-3 py-2.5 shrink-0"
-                          style={{ background: col.badge, border: `1px solid ${col.ring}`, width: '110px' }}
-                        >
-                          <span className="font-display font-bold text-xs shrink-0" style={{ color: col.accent }}>S/</span>
-                          <input
-                            type="number"
-                            value={item.precio}
-                            onChange={e => setItemField(oi, ii, 'precio', e.target.value)}
-                            placeholder="0.00"
-                            step="0.50"
-                            className="font-mono bg-transparent outline-none font-bold text-sm w-full"
-                            style={{ color: col.accent }}
-                          />
-                        </div>
-                        <button
-                          onClick={() => eliminarItem(oi, ii)}
-                          disabled={opcion.items.length === 1}
-                          className="font-bold text-sm transition-colors shrink-0 disabled:opacity-20"
-                          style={{ color: 'var(--text-muted)' }}
-                          onMouseEnter={e => { if (opcion.items.length > 1) e.currentTarget.style.color = 'var(--accent)' }}
-                          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
-                        >✕</button>
-                      </div>
-                    ))}
-
-                    <button
-                      onClick={() => agregarItem(oi)}
-                      className="font-display text-[10px] font-bold uppercase tracking-widest px-3 py-2 rounded-xl transition-all mt-1"
-                      style={{ color: col.accent, background: col.badge, border: `1px dashed ${col.ring}` }}
-                    >+ Agregar ítem</button>
-
-                    {totOp > 0 && (
+            {/* ── Opciones ── */}
+            <div className="space-y-4">
+              {opciones.map((opcion, oi) => {
+                const totOp = totalOpcion(opcion.items)
+                const colores = [
+                  { ring: 'rgba(33,199,184,0.4)', bg: 'rgba(33,199,184,0.07)', accent: 'var(--accent-teal)', badge: 'rgba(33,199,184,0.15)' },
+                  { ring: 'rgba(245,158,11,0.4)', bg: 'rgba(245,158,11,0.07)', accent: '#f59e0b', badge: 'rgba(245,158,11,0.15)' },
+                  { ring: 'rgba(167,139,250,0.4)', bg: 'rgba(167,139,250,0.07)', accent: '#a78bfa', badge: 'rgba(167,139,250,0.15)' },
+                  { ring: 'rgba(52,211,153,0.4)', bg: 'rgba(52,211,153,0.07)', accent: '#34d399', badge: 'rgba(52,211,153,0.15)' },
+                  { ring: 'rgba(251,146,60,0.4)', bg: 'rgba(251,146,60,0.07)', accent: '#fb923c', badge: 'rgba(251,146,60,0.15)' },
+                ]
+                const col = colores[oi % colores.length]
+                return (
+                  <div key={oi} className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${col.ring}`, background: col.bg }}>
+                    {/* Header opción */}
+                    <div className="flex items-center gap-3 px-4 py-3" style={{ borderBottom: `1px solid ${col.ring}` }}>
                       <div
-                        className="flex items-center justify-between px-4 py-2.5 rounded-xl mt-2"
-                        style={{ background: col.badge, border: `1px solid ${col.ring}` }}
-                      >
-                        <span className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                          Total {opcion.titulo || `Opción ${oi + 1}`}
-                        </span>
-                        <span className="font-mono font-bold text-xl" style={{ color: col.accent }}>
+                        className="font-display w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
+                        style={{ background: col.badge, color: col.accent, border: `1px solid ${col.ring}` }}
+                      >{oi + 1}</div>
+                      <input
+                        value={opcion.titulo}
+                        onChange={e => setTituloOpcion(oi, e.target.value)}
+                        placeholder={`Nombre de la opción (ej: Castrol 5W-30, Liqui Moly...)`}
+                        className="bg-transparent outline-none flex-1 font-display font-bold text-sm uppercase tracking-wide"
+                        style={{ color: 'var(--text)' }}
+                      />
+                      {totOp > 0 && (
+                        <span className="font-mono font-bold text-sm shrink-0" style={{ color: col.accent }}>
                           S/ {totOp.toFixed(2)}
                         </span>
-                      </div>
-                    )}
+                      )}
+                      {opciones.length > 1 && (
+                        <button
+                          onClick={() => eliminarOpcion(oi)}
+                          className="font-bold text-sm transition-colors shrink-0 ml-1"
+                          style={{ color: 'var(--text-muted)' }}
+                          onMouseEnter={e => e.currentTarget.style.color = 'var(--accent)'}
+                          onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                        >✕</button>
+                      )}
+                    </div>
+
+                    {/* Ítems */}
+                    <div className="p-4 space-y-2">
+                      {opcion.items.map((item, ii) => (
+                        <div key={ii} className="flex gap-2 items-center">
+                          <input
+                            value={item.descripcion}
+                            onChange={e => setItemField(oi, ii, 'descripcion', e.target.value)}
+                            placeholder="Descripción del producto o servicio..."
+                            className="inp flex-1 text-sm"
+                            style={{ minWidth: 0 }}
+                          />
+                          <div
+                            className="flex items-center gap-1.5 rounded-xl px-3 py-2.5 shrink-0"
+                            style={{ background: col.badge, border: `1px solid ${col.ring}`, width: '110px' }}
+                          >
+                            <span className="font-display font-bold text-xs shrink-0" style={{ color: col.accent }}>S/</span>
+                            <input
+                              type="number"
+                              value={item.precio}
+                              onChange={e => setItemField(oi, ii, 'precio', e.target.value)}
+                              placeholder="0.00"
+                              step="0.50"
+                              className="font-mono bg-transparent outline-none font-bold text-sm w-full"
+                              style={{ color: col.accent }}
+                            />
+                          </div>
+                          <button
+                            onClick={() => eliminarItem(oi, ii)}
+                            disabled={opcion.items.length === 1}
+                            className="font-bold text-sm transition-colors shrink-0 disabled:opacity-20"
+                            style={{ color: 'var(--text-muted)' }}
+                            onMouseEnter={e => { if (opcion.items.length > 1) e.currentTarget.style.color = 'var(--accent)' }}
+                            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                          >✕</button>
+                        </div>
+                      ))}
+
+                      <button
+                        onClick={() => agregarItem(oi)}
+                        className="font-display text-[10px] font-bold uppercase tracking-widest px-3 py-2 rounded-xl transition-all mt-1"
+                        style={{ color: col.accent, background: col.badge, border: `1px dashed ${col.ring}` }}
+                      >+ Agregar ítem</button>
+
+                      {totOp > 0 && (
+                        <div
+                          className="flex items-center justify-between px-4 py-2.5 rounded-xl mt-2"
+                          style={{ background: col.badge, border: `1px solid ${col.ring}` }}
+                        >
+                          <span className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
+                            Total {opcion.titulo || `Opción ${oi + 1}`}
+                          </span>
+                          <span className="font-mono font-bold text-xl" style={{ color: col.accent }}>
+                            S/ {totOp.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
 
-            <button
-              onClick={agregarOpcion}
-              className="font-display w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-              style={{ background: 'var(--surface-2)', border: '1px dashed var(--border)', color: 'var(--text-muted)' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(245,158,11,0.5)'; e.currentTarget.style.color = '#f59e0b' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
-            >＋ Agregar otra opción / alternativa</button>
-          </div>
-
-          {/* ── Condiciones y Nota (para PDF) ── */}
-          <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-            <div
-              className="px-5 py-3 flex items-center gap-2"
-              style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}
-            >
-              <span className="text-base">📄</span>
-              <p className="font-display font-bold text-xs uppercase tracking-widest" style={{ color: 'var(--text)' }}>
-                Condiciones y Nota (aparecen en el PDF)
-              </p>
+              <button
+                onClick={agregarOpcion}
+                className="font-display w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                style={{ background: 'var(--surface-2)', border: '1px dashed var(--border)', color: 'var(--text-muted)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(245,158,11,0.5)'; e.currentTarget.style.color = '#f59e0b' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+              >＋ Agregar otra opción / alternativa</button>
             </div>
-            <div className="p-4 space-y-3" style={{ background: 'var(--surface)' }}>
-              <div>
-                <label className="lbl">Condiciones del servicio</label>
-                <textarea
-                  value={condiciones}
-                  onChange={e => setCondiciones(e.target.value)}
-                  placeholder="Ej: Precio incluye mano de obra. Garantía de 1,000 km o 1 mes..."
-                  rows={2}
-                  className="inp w-full text-sm resize-none"
-                  style={{ fontFamily: 'inherit' }}
-                />
-              </div>
-              <div>
-                <label className="lbl">Nota</label>
-                <textarea
-                  value={nota}
-                  onChange={e => setNota(e.target.value)}
-                  placeholder="Información adicional para el cliente..."
-                  rows={2}
-                  className="inp w-full text-sm resize-none"
-                  style={{ fontFamily: 'inherit' }}
-                />
-              </div>
-            </div>
-          </div>
 
-          {/* Error */}
-          {error && (
-            <div
-              className="px-4 py-3 rounded-xl font-bold text-sm"
-              style={{ background: 'rgba(255,106,31,0.08)', border: '1px solid rgba(255,106,31,0.3)', color: 'var(--accent)' }}
-            >❌ {error}</div>
-          )}
-
-          {/* Éxito + botones de acción */}
-          {guardada ? (
-            <div className="space-y-3">
+            {/* ── Condiciones y Nota ── */}
+            <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
               <div
-                className="px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-2"
-                style={{ background: 'rgba(33,199,184,0.08)', border: '1px solid rgba(33,199,184,0.3)', color: 'var(--accent-teal)' }}
-              >✅ Cotización guardada en Proformas</div>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={enviarWhatsApp}
-                  className="font-display font-bold py-4 rounded-2xl uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
-                  style={{ background: '#25d366', color: '#fff' }}
-                >💬 Enviar WhatsApp</button>
-                <button
-                  onClick={descargarPDF}
-                  disabled={loading}
-                  className="font-display font-bold py-4 rounded-2xl uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
-                  style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}
-                >{loading ? '⏳ Generando...' : '📥 Descargar PDF'}</button>
+                className="px-5 py-3 flex items-center gap-2"
+                style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}
+              >
+                <span className="text-base">📄</span>
+                <p className="font-display font-bold text-xs uppercase tracking-widest" style={{ color: 'var(--text)' }}>
+                  Condiciones y Nota (aparecen en el PDF)
+                </p>
               </div>
+              <div className="p-4 space-y-3" style={{ background: 'var(--surface)' }}>
+                <div>
+                  <label className="lbl">Condiciones del servicio</label>
+                  <textarea
+                    value={condiciones}
+                    onChange={e => setCondiciones(e.target.value)}
+                    placeholder="Ej: Precio incluye mano de obra. Garantía de 1,000 km o 1 mes..."
+                    rows={2}
+                    className="inp w-full text-sm resize-none"
+                    style={{ fontFamily: 'inherit' }}
+                  />
+                </div>
+                <div>
+                  <label className="lbl">Nota</label>
+                  <textarea
+                    value={nota}
+                    onChange={e => setNota(e.target.value)}
+                    placeholder="Información adicional para el cliente..."
+                    rows={2}
+                    className="inp w-full text-sm resize-none"
+                    style={{ fontFamily: 'inherit' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div
+                className="px-4 py-3 rounded-xl font-bold text-sm"
+                style={{ background: 'rgba(255,106,31,0.08)', border: '1px solid rgba(255,106,31,0.3)', color: 'var(--accent)' }}
+              >❌ {error}</div>
+            )}
+
+            {/* Botones finales */}
+            {guardada ? (
+              <div className="space-y-3">
+                <div
+                  className="px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-2"
+                  style={{ background: 'rgba(33,199,184,0.08)', border: '1px solid rgba(33,199,184,0.3)', color: 'var(--accent-teal)' }}
+                >✅ Cotización guardada en Proformas{correlativo ? ` — COT-${String(correlativo).padStart(4, '0')}` : ''}</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={enviarWhatsApp}
+                    className="font-display font-bold py-4 rounded-2xl uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-all"
+                    style={{ background: '#25d366', color: '#fff' }}
+                  >💬 Enviar WhatsApp</button>
+                  <button
+                    onClick={descargarPDF}
+                    disabled={loading}
+                    className="font-display font-bold py-4 rounded-2xl uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-all disabled:opacity-50"
+                    style={{ background: 'rgba(245,158,11,0.15)', color: '#f59e0b', border: '1px solid rgba(245,158,11,0.4)' }}
+                  >{loading ? '⏳ Generando...' : '📥 Descargar PDF'}</button>
+                </div>
+                <button
+                  onClick={() => {
+                    setGuardada(false)
+                    setVistaPrevia(false)
+                    setCorrelativo(null)
+                    setNombre(''); setTelefono(''); setPlaca(''); setMarca(''); setModelo('')
+                    setOpciones([opcionVacia()]); setCondiciones(''); setNota('')
+                  }}
+                  className="font-display w-full py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all"
+                  style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+                >↺ Nueva cotización</button>
+              </div>
+            ) : (
               <button
                 onClick={() => {
-                  setGuardada(false)
-                  setVistaPrevia(false)
-                  setNombre(''); setTelefono(''); setPlaca(''); setMarca(''); setModelo('')
-                  setOpciones([opcionVacia()]); setCondiciones(''); setNota('')
+                  if (!nombre.trim()) { setError('El nombre del cliente es obligatorio'); return }
+                  const tieneItems = opciones.some(o => o.items.some(i => i.descripcion.trim()))
+                  if (!tieneItems) { setError('Agrega al menos un ítem en alguna opción'); return }
+                  setError('')
+                  setVistaPrevia(true)
                 }}
-                className="font-display w-full py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all"
-                style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-              >↺ Nueva cotización</button>
-            </div>
-          ) : vistaPrevia ? (
-            /* ── VISTA PREVIA ── */
-            <div className="space-y-4">
-              {/* Panel de previsualización estilo WhatsApp/PDF */}
-              <div
-                className="rounded-2xl overflow-hidden"
-                style={{ border: '1px solid rgba(245,158,11,0.4)', background: 'rgba(245,158,11,0.04)' }}
-              >
-                {/* Header preview */}
-                <div
-                  className="px-5 py-4 flex items-center gap-3"
-                  style={{ borderBottom: '1px solid rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.1)' }}
-                >
-                  <span className="text-xl">👁</span>
-                  <div>
-                    <p className="font-display font-bold text-xs uppercase tracking-widest" style={{ color: '#f59e0b' }}>
-                      Vista Previa de Cotización
-                    </p>
-                    <p className="text-[10px] font-semibold mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                      Así se verá al enviarse
-                    </p>
-                  </div>
-                </div>
-
-                {/* Contenido preview */}
-                <div className="p-5 space-y-4">
-
-                  {/* Encabezado del documento */}
-                  <div
-                    className="rounded-xl p-4"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="font-display font-bold text-base uppercase tracking-tight" style={{ color: 'var(--text)' }}>
-                          📋 Cotización — {tallerNombre}
-                        </p>
-                        <p className="text-xs font-semibold mt-1" style={{ color: 'var(--text-muted)' }}>
-                          📅 {fecha.split('-').reverse().join('/')}
-                        </p>
-                      </div>
-                      {placa && (
-                        <div
-                          className="px-3 py-1.5 rounded-lg font-mono font-bold text-sm shrink-0"
-                          style={{ background: 'rgba(29,78,216,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)' }}
-                        >{placa.toUpperCase()}</div>
-                      )}
-                    </div>
-
-                    <div className="mt-3 pt-3 flex flex-wrap gap-3" style={{ borderTop: '1px solid var(--border)' }}>
-                      {nombre && (
-                        <div>
-                          <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Cliente</span>
-                          <p className="font-bold text-sm uppercase" style={{ color: 'var(--text)' }}>{nombre}</p>
-                        </div>
-                      )}
-                      {(marca || modelo) && (
-                        <div>
-                          <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Vehículo</span>
-                          <p className="font-bold text-sm uppercase" style={{ color: 'var(--text)' }}>{[marca, modelo].filter(Boolean).join(' ')}</p>
-                        </div>
-                      )}
-                      {telefono && (
-                        <div>
-                          <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Teléfono</span>
-                          <p className="font-bold text-sm font-mono" style={{ color: 'var(--text)' }}>{telefono}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Opciones */}
-                  {opciones.map((opcion, idx) => {
-                    const itemsFiltrados = opcion.items.filter(i => i.descripcion.trim())
-                    if (itemsFiltrados.length === 0) return null
-                    const tot = totalOpcion(opcion.items)
-                    const colores = [
-                      { ring: 'rgba(33,199,184,0.4)', bg: 'rgba(33,199,184,0.07)', accent: 'var(--accent-teal)', badge: 'rgba(33,199,184,0.12)' },
-                      { ring: 'rgba(245,158,11,0.4)', bg: 'rgba(245,158,11,0.07)', accent: '#f59e0b', badge: 'rgba(245,158,11,0.12)' },
-                      { ring: 'rgba(167,139,250,0.4)', bg: 'rgba(167,139,250,0.07)', accent: '#a78bfa', badge: 'rgba(167,139,250,0.12)' },
-                    ]
-                    const col = colores[idx % colores.length]
-                    return (
-                      <div key={idx} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${col.ring}`, background: col.bg }}>
-                        <div
-                          className="px-4 py-2.5 flex items-center justify-between"
-                          style={{ borderBottom: `1px solid ${col.ring}`, background: col.badge }}
-                        >
-                          <span className="font-display font-bold text-xs uppercase tracking-widest" style={{ color: col.accent }}>
-                            Opción {idx + 1}{opcion.titulo ? ` — ${opcion.titulo}` : ''}
-                          </span>
-                          {tot > 0 && (
-                            <span className="font-mono font-bold text-sm" style={{ color: col.accent }}>
-                              S/ {tot.toFixed(2)}
-                            </span>
-                          )}
-                        </div>
-                        <div className="p-3 space-y-1.5">
-                          {itemsFiltrados.map((item, ii) => (
-                            <div key={ii} className="flex items-center justify-between gap-3">
-                              <span className="text-sm" style={{ color: 'var(--text)' }}>
-                                • {item.descripcion}
-                              </span>
-                              {parseFloat(item.precio) > 0 && (
-                                <span className="font-mono font-bold text-sm shrink-0" style={{ color: col.accent }}>
-                                  S/ {parseFloat(item.precio).toFixed(2)}
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  })}
-
-                  {/* Condiciones y nota si tienen contenido */}
-                  {(condiciones.trim() || nota.trim()) && (
-                    <div className="rounded-xl p-4 space-y-3" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
-                      {condiciones.trim() && (
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>📌 Condiciones</p>
-                          <p className="text-sm" style={{ color: 'var(--text)' }}>{condiciones.trim()}</p>
-                        </div>
-                      )}
-                      {nota.trim() && (
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>📝 Nota</p>
-                          <p className="text-sm" style={{ color: 'var(--text)' }}>{nota.trim()}</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Botones de acción */}
-              <button
-                onClick={guardar}
-                disabled={loading}
-                className="font-display w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                className="font-display w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95"
                 style={{ background: 'rgba(245,158,11,0.9)', color: '#fff' }}
-              >{loading ? '⏳ Guardando...' : '✅ Confirmar y Guardar'}</button>
-
-              <button
-                onClick={() => setVistaPrevia(false)}
-                className="font-display w-full py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all"
-                style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-              >← Volver y editar</button>
-            </div>
-          ) : (
-            <button
-              onClick={() => {
-                if (!nombre.trim()) { setError('El nombre del cliente es obligatorio'); return }
-                const tieneItems = opciones.some(o => o.items.some(i => i.descripcion.trim()))
-                if (!tieneItems) { setError('Agrega al menos un ítem en alguna opción'); return }
-                setError('')
-                setVistaPrevia(true)
-              }}
-              className="font-display w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95"
-              style={{ background: 'rgba(245,158,11,0.9)', color: '#fff' }}
-            >👁 Vista Previa</button>
-          )}
+              >👁 Vista Previa</button>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
