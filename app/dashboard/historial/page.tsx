@@ -455,6 +455,7 @@ function ModalEmitir({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [consultando, setConsultando] = useState(false)
+  const [errorConsulta, setErrorConsulta] = useState('')
 
   // Precarga items desde el registro
   useEffect(() => {
@@ -514,17 +515,23 @@ function ModalEmitir({
     const d = doc.trim().replace(/\D/g, '')
     if (d.length !== 8 && d.length !== 11) return
     setConsultando(true)
+    setErrorConsulta('')
     try {
       const res = await fetch(`/api/consulta-cliente?doc=${d}`)
-      if (res.ok) {
-        const data = await res.json()
+      const data = await res.json()
+      if (res.ok && data.nombre) {
         setForm(prev => ({
           ...prev,
-          cliente_nombre: data.nombre ? toTitleCase(data.nombre) : prev.cliente_nombre,
-          cliente_dir: data.direccion ? toTitleCase(data.direccion) : prev.cliente_dir,
+          cliente_nombre: toTitleCase(data.nombre),
+          // Siempre reemplazar la dirección (vacía si es DNI, con valor si es RUC)
+          cliente_dir: data.direccion ? toTitleCase(data.direccion) : '',
         }))
+      } else {
+        setErrorConsulta(data.error || 'No se encontró el documento. Ingresa el nombre manualmente.')
       }
-    } catch {}
+    } catch {
+      setErrorConsulta('Error de conexión al consultar. Ingresa el nombre manualmente.')
+    }
     setConsultando(false)
   }
 
@@ -655,8 +662,9 @@ function ModalEmitir({
                 maxLength={11}
                 className="inp"
               />
-              {form.cliente_doc.length === 8 && !consultando && <p className="text-[10px] font-bold mt-1" style={{ color: 'var(--teal)' }}>→ Boleta de Venta</p>}
-              {form.cliente_doc.length === 11 && !consultando && <p className="text-[10px] font-bold mt-1" style={{ color: 'var(--success)' }}>→ Factura Electrónica</p>}
+              {form.cliente_doc.length === 8 && !consultando && !errorConsulta && <p className="text-[10px] font-bold mt-1" style={{ color: 'var(--teal)' }}>→ Boleta de Venta</p>}
+              {form.cliente_doc.length === 11 && !consultando && !errorConsulta && <p className="text-[10px] font-bold mt-1" style={{ color: 'var(--success)' }}>→ Factura Electrónica</p>}
+              {errorConsulta && <p className="text-[10px] font-bold mt-1" style={{ color: 'var(--amber)' }}>⚠️ {errorConsulta}</p>}
             </div>
 
             {/* Nombre */}
