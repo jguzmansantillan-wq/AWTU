@@ -577,10 +577,9 @@ export default function Sidebar({ tallerNombre, plan }: Props) {
         ref={navRef}
         style={{
           flex: 1,
-          overflowY: 'scroll',
+          overflowY: 'auto',
           overflowX: 'hidden',
           padding: collapsed ? '8px 8px' : '8px 10px',
-          scrollbarWidth: 'none',
         }}
       >
         {grupos.map(grupo => {
