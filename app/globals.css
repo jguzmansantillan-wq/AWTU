@@ -83,7 +83,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Inter', 'DM Sans', system-ui, -apple-system, sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -109,8 +109,8 @@ body {
   border: 1.5px solid var(--border);
   color: var(--text);
   border-radius: var(--radius-md);
-  padding: 10px 13px;
-  font-size: 13px;
+  padding: 11px 14px;
+  font-size: 15px;
   font-weight: 500;
   outline: none;
   transition: border-color var(--duration-fast) var(--ease-out),
@@ -128,7 +128,7 @@ select.inp option { background: var(--surface-2); color: var(--text); }
 /* Label */
 .lbl {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -151,9 +151,9 @@ select.inp option { background: var(--surface-2); color: var(--text); }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
+  padding: 3px 9px;
   border-radius: 99px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -167,8 +167,8 @@ select.inp option { background: var(--surface-2); color: var(--text); }
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 12px 20px;
-  font-size: 13px;
+  padding: 14px 22px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text);
   z-index: 9999;
