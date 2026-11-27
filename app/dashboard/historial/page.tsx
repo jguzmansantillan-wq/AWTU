@@ -8,9 +8,15 @@ type Servicio = {
   id: string; placa: string; nombre: string; marca: string; modelo: string
   monto: number; fecha: string; created_at: string; estado_facturacion: string
   otros_servicios: string; aceite_marca: string; aceite_visc: string
-  aceite_cantidad: number; filtro_aceite: string; filtro_aire: string
-  caja_marca: string; caja_tipo: string; refrig_marca: string; refrig_color: string
-  bujia_marca: string; km: number; proximo_km: number; telefono: string; anio: string
+  aceite_cantidad: number; aceite_inv_id?: string
+  aceites_extra?: { marca: string; cantidad: string; inventarioId: string }[]
+  filtro_aceite: string; filtro_aceite_inv_id?: string
+  filtro_aire: string; filtro_aire_inv_id?: string
+  caja_marca: string; caja_tipo: string; caja_cantidad?: number; caja_inv_id?: string
+  refrig_marca: string; refrig_color: string; refrig_cantidad?: number; refrig_inv_id?: string
+  bujia_marca: string; bujia_cantidad?: number; bujia_inv_id?: string
+  productos_adicionales?: { nombre: string; precio: string; cantidad: string; inventarioId: string }[]
+  km: number; proximo_km: number; telefono: string; anio: string
   tipo: 'servicio'
 }
 
@@ -845,9 +851,17 @@ export default function HistorialPage() {
   const totalProformas = registros.filter(r => r.tipo === 'proforma').length
   const ingresoTotal   = registros.reduce((s, r) => s + (r.monto || 0), 0)
 
+  const restaurarStock = async (invId: string | undefined, cantidad: number) => {
+    if (!invId || cantidad <= 0) return
+    const { data: prod } = await supabase.from('inventario').select('stock').eq('id', invId).single()
+    if (prod) await supabase.from('inventario').update({ stock: prod.stock + cantidad }).eq('id', invId)
+  }
+
   const eliminar = async (id: string, tipo: string) => {
     if (!confirm('¿Eliminar este registro?')) return
+
     if (tipo === 'venta') {
+      // Restaurar stock de ventas directas
       const venta = registros.find(r => r.id === id) as Venta
       if (venta && Array.isArray(venta.items)) {
         for (const item of venta.items) {
@@ -857,6 +871,48 @@ export default function HistorialPage() {
         }
       }
     }
+
+    if (tipo === 'servicio') {
+      // Restaurar stock de servicios de taller
+      const svc = registros.find(r => r.id === id) as Servicio
+      if (svc) {
+        const restauros: Promise<void>[] = []
+
+        // Aceite principal
+        if (svc.aceite_inv_id)
+          restauros.push(restaurarStock(svc.aceite_inv_id, svc.aceite_cantidad || 1))
+
+        // Aceites extra
+        if (Array.isArray(svc.aceites_extra)) {
+          for (const ae of svc.aceites_extra) {
+            if (ae.inventarioId) restauros.push(restaurarStock(ae.inventarioId, parseFloat(ae.cantidad) || 1))
+          }
+        }
+
+        // Filtros
+        if (svc.filtro_aceite_inv_id) restauros.push(restaurarStock(svc.filtro_aceite_inv_id, 1))
+        if (svc.filtro_aire_inv_id) restauros.push(restaurarStock(svc.filtro_aire_inv_id, 1))
+
+        // Aceite de Caja
+        if (svc.caja_inv_id) restauros.push(restaurarStock(svc.caja_inv_id, svc.caja_cantidad || 1))
+
+        // Refrigerante
+        if (svc.refrig_inv_id) restauros.push(restaurarStock(svc.refrig_inv_id, svc.refrig_cantidad || 1))
+
+        // Bujías
+        if (svc.bujia_inv_id) restauros.push(restaurarStock(svc.bujia_inv_id, svc.bujia_cantidad || 1))
+
+        // Productos adicionales
+        if (Array.isArray(svc.productos_adicionales)) {
+          for (const p of svc.productos_adicionales) {
+            if (p.inventarioId) restauros.push(restaurarStock(p.inventarioId, parseFloat(p.cantidad) || 1))
+          }
+        }
+
+        await Promise.all(restauros)
+      }
+    }
+
     const tabla = tipo === 'servicio' ? 'servicios' : tipo === 'proforma' ? 'proformas' : 'ventas'
     await supabase.from(tabla).delete().eq('id', id)
     setRegistros(prev => prev.filter(r => r.id !== id))

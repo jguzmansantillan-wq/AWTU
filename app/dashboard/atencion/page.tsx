@@ -153,16 +153,19 @@ export default function AtencionPage() {
   const [cajaMarca, setCajaMarca] = useState('')
   const [cajaInvId, setCajaInvId] = useState('')
   const [cajaTipo, setCajaTipo] = useState('Mecánica')
+  const [cajaQty, setCajaQty] = useState('1')
   const [precioCaja, setPrecioCaja] = useState('')
 
   const [refrigMarca, setRefrigMarca] = useState('')
   const [refrigInvId, setRefrigInvId] = useState('')
   const [refrigColor, setRefrigColor] = useState('')
+  const [refrigQty, setRefrigQty] = useState('1')
   const [precioRefrig, setPrecioRefrig] = useState('')
 
   const [bujaMarca, setBujaMarca] = useState('')
   const [bujaInvId, setBujaInvId] = useState('')
   const [bujaModelo, setBujaModelo] = useState('')
+  const [bujaQty, setBujaQty] = useState('1')
   const [precioBujias, setPrecioBujias] = useState('')
 
   const [productosAd, setProductosAd] = useState<ProductoAdicional[]>([])
@@ -225,9 +228,9 @@ export default function AtencionPage() {
     setAceitesExtra([])
     setFiltroAceite(''); setFiltroAceiteInvId(''); setFiltroAire(''); setFiltroAireInvId('')
     setPrecioAceite('')
-    setCajaMarca(''); setCajaInvId(''); setCajaTipo('Mecánica'); setPrecioCaja('')
-    setRefrigMarca(''); setRefrigInvId(''); setRefrigColor(''); setPrecioRefrig('')
-    setBujaMarca(''); setBujaInvId(''); setBujaModelo(''); setPrecioBujias('')
+    setCajaMarca(''); setCajaInvId(''); setCajaTipo('Mecánica'); setCajaQty('1'); setPrecioCaja('')
+    setRefrigMarca(''); setRefrigInvId(''); setRefrigColor(''); setRefrigQty('1'); setPrecioRefrig('')
+    setBujaMarca(''); setBujaInvId(''); setBujaModelo(''); setBujaQty('1'); setPrecioBujias('')
     setProductosAd([]); setOtrosServicios([])
     setMetodoPago('efectivo')
   }
@@ -288,13 +291,23 @@ export default function AtencionPage() {
       fecha_proxima: fechaProx.toISOString().slice(0, 10),
       aceite_marca: aceiteMarca.toUpperCase(), aceite_visc: aceiteVisc.toUpperCase(),
       aceite_cantidad: aceiteCantidad ? parseFloat(aceiteCantidad) : null,
+      aceite_inv_id: aceiteInvId || null,
+      aceites_extra: aceitesExtra,
       filtro_aceite: filtroAceite.toUpperCase(), filtro_aire: filtroAire.toUpperCase(),
+      filtro_aceite_inv_id: filtroAceiteInvId || null,
+      filtro_aire_inv_id: filtroAireInvId || null,
       precio_aceite: parseFloat(precioAceite) || 0,
       caja_marca: cajaMarca.toUpperCase(), caja_tipo: cajaTipo,
+      caja_cantidad: parseFloat(cajaQty) || 1,
+      caja_inv_id: cajaInvId || null,
       precio_caja: parseFloat(precioCaja) || 0,
       refrig_marca: refrigMarca.toUpperCase(), refrig_color: refrigColor,
+      refrig_cantidad: parseFloat(refrigQty) || 1,
+      refrig_inv_id: refrigInvId || null,
       precio_refrig: parseFloat(precioRefrig) || 0,
       bujia_marca: bujaMarca.toUpperCase(), bujia_modelo: bujaModelo,
+      bujia_cantidad: parseFloat(bujaQty) || 1,
+      bujia_inv_id: bujaInvId || null,
       precio_bujias: parseFloat(precioBujias) || 0,
       otros_servicios: otrosTexto,
       precio_otros: precioOtrosTotal,
@@ -315,9 +328,9 @@ export default function AtencionPage() {
     }
     if (filtroAceiteInvId) descuentos.push(descontarStock(filtroAceiteInvId, 1))
     if (filtroAireInvId) descuentos.push(descontarStock(filtroAireInvId, 1))
-    if (cajaInvId) descuentos.push(descontarStock(cajaInvId, 1))
-    if (refrigInvId) descuentos.push(descontarStock(refrigInvId, 1))
-    if (bujaInvId) descuentos.push(descontarStock(bujaInvId, 1))
+    if (cajaInvId) descuentos.push(descontarStock(cajaInvId, parseFloat(cajaQty) || 1))
+    if (refrigInvId) descuentos.push(descontarStock(refrigInvId, parseFloat(refrigQty) || 1))
+    if (bujaInvId) descuentos.push(descontarStock(bujaInvId, parseFloat(bujaQty) || 1))
     for (const p of productosAd) {
       if (p.inventarioId) descuentos.push(descontarStock(p.inventarioId, parseFloat(p.cantidad) || 1))
     }
@@ -654,11 +667,19 @@ export default function AtencionPage() {
                     placeholder="Marca..." className={inp + ' uppercase'}
                     items={invCaja.length > 0 ? invCaja : invTodos} />
                 </div>
-                <div>
-                  <label className={lbl}>Tipo</label>
-                  <select value={cajaTipo} onChange={e => setCajaTipo(e.target.value)} className={inp}>
-                    <option>Mecánica</option><option>Automática</option><option>CVT</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={lbl}>Tipo</label>
+                    <select value={cajaTipo} onChange={e => setCajaTipo(e.target.value)} className={inp}>
+                      <option>Mecánica</option><option>Automática</option><option>CVT</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={lbl}>Cantidad</label>
+                    <input type="number" value={cajaQty} onChange={e => setCajaQty(e.target.value)}
+                      placeholder="1" min="1" step="1"
+                      className={inp + ' font-mono text-center'} />
+                  </div>
                 </div>
                 <div>
                   <label className={lbl}>Precio (S/)</label>
@@ -674,9 +695,17 @@ export default function AtencionPage() {
                     placeholder="Marca..." className={inp + ' uppercase'}
                     items={invRefrig.length > 0 ? invRefrig : invTodos} />
                 </div>
-                <div>
-                  <label className={lbl}>Color / Tipo</label>
-                  <input value={refrigColor} onChange={e => setRefrigColor(e.target.value)} placeholder="Rojo, verde..." className={inp} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={lbl}>Color / Tipo</label>
+                    <input value={refrigColor} onChange={e => setRefrigColor(e.target.value)} placeholder="Rojo, verde..." className={inp} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Cantidad</label>
+                    <input type="number" value={refrigQty} onChange={e => setRefrigQty(e.target.value)}
+                      placeholder="1" min="1" step="1"
+                      className={inp + ' font-mono text-center'} />
+                  </div>
                 </div>
                 <div>
                   <label className={lbl}>Precio (S/)</label>
@@ -692,9 +721,17 @@ export default function AtencionPage() {
                     placeholder="Marca..." className={inp + ' uppercase'}
                     items={invBujias.length > 0 ? invBujias : invTodos} />
                 </div>
-                <div>
-                  <label className={lbl}>Modelo</label>
-                  <input value={bujaModelo} onChange={e => setBujaModelo(e.target.value)} placeholder="Iridium, Platinum..." className={inp} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={lbl}>Modelo</label>
+                    <input value={bujaModelo} onChange={e => setBujaModelo(e.target.value)} placeholder="Iridium, Platinum..." className={inp} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Cantidad</label>
+                    <input type="number" value={bujaQty} onChange={e => setBujaQty(e.target.value)}
+                      placeholder="1" min="1" step="1"
+                      className={inp + ' font-mono text-center'} />
+                  </div>
                 </div>
                 <div>
                   <label className={lbl}>Precio (S/)</label>
