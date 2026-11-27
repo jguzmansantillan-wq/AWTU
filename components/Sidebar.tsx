@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import type { ReactElement } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
@@ -190,6 +190,7 @@ export default function Sidebar({ tallerNombre, plan }: Props) {
   const [menuOpen,   setMenuOpen]   = useState(false)
   const [collapsed,  setCollapsed]  = useState(false)
   const [hovered,    setHovered]    = useState<string | null>(null)
+  const navRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -271,7 +272,7 @@ export default function Sidebar({ tallerNombre, plan }: Props) {
 
         {!collapsed && (
           <span style={{
-            fontSize: '13px',
+            fontSize: '15px',
             fontWeight: activo ? 600 : 500,
             letterSpacing: '-0.01em',
             overflow: 'hidden',
@@ -288,220 +289,6 @@ export default function Sidebar({ tallerNombre, plan }: Props) {
       </button>
     )
   }
-
-  // ── DESKTOP SIDEBAR ───────────────────────────────────────────────────────
-  const DesktopSidebar = () => (
-    <aside style={{
-      position: 'fixed',
-      left: 0,
-      top: 0,
-      height: '100%',
-      width: collapsed ? '64px' : '240px',
-      display: 'flex',
-      flexDirection: 'column',
-      zIndex: 20,
-      background: '#131F2B',
-      borderRight: '1px solid rgba(255,255,255,0.06)',
-      transition: `width ${220}ms cubic-bezier(0.16, 1, 0.3, 1)`,
-      overflow: 'hidden',
-    }}>
-
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: collapsed ? 'center' : 'space-between',
-        padding: collapsed ? '18px 0' : '16px 16px',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        flexShrink: 0,
-        minHeight: '60px',
-      }}>
-        {!collapsed && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
-            <div style={{
-              width: '30px',
-              height: '30px',
-              borderRadius: '8px',
-              background: 'linear-gradient(135deg, #16B8A6 0%, #0F9A8B 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
-              </svg>
-            </div>
-            <div style={{ overflow: 'hidden' }}>
-              <p style={{ color: '#F2F5F7', fontSize: '13px', fontWeight: 700, letterSpacing: '0.02em', lineHeight: 1.2, margin: 0 }}>AWTU</p>
-              <p style={{ color: '#6B7E8C', fontSize: '10px', fontWeight: 500, lineHeight: 1.2, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {tallerNombre || 'Mi Taller'}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {collapsed && (
-          <div style={{
-            width: '30px', height: '30px', borderRadius: '8px',
-            background: 'linear-gradient(135deg, #16B8A6 0%, #0F9A8B 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
-            </svg>
-          </div>
-        )}
-
-        {!collapsed && (
-          <button
-            onClick={() => setCollapsed(true)}
-            style={{
-              width: '28px', height: '28px', borderRadius: '7px', border: 'none',
-              background: 'transparent', color: '#6B7E8C', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: `color ${150}ms, background ${150}ms`, flexShrink: 0,
-            }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#F2F5F7'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#6B7E8C'; e.currentTarget.style.background = 'transparent' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6"/>
-            </svg>
-          </button>
-        )}
-      </div>
-
-      {/* Botón expandir (cuando colapsado) */}
-      {collapsed && (
-        <button
-          onClick={() => setCollapsed(false)}
-          style={{
-            width: '32px', height: '32px', margin: '8px auto 4px',
-            borderRadius: '8px', border: 'none',
-            background: 'transparent', color: '#6B7E8C', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: `color ${150}ms, background ${150}ms`,
-          }}
-          onMouseEnter={e => { e.currentTarget.style.color = '#F2F5F7'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
-          onMouseLeave={e => { e.currentTarget.style.color = '#6B7E8C'; e.currentTarget.style.background = 'transparent' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </button>
-      )}
-
-      {/* Navegación */}
-      <nav style={{
-        flex: 1,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        padding: collapsed ? '8px 8px' : '8px 10px',
-      }}>
-        {grupos.map(grupo => {
-          const items = todosModulos.filter(m => m.grupo === grupo.key)
-          if (items.length === 0) return null
-          return (
-            <div key={grupo.key} style={{ marginBottom: '4px' }}>
-              {grupo.label && !collapsed && (
-                <p style={{
-                  fontSize: '10px', fontWeight: 600, textTransform: 'uppercase',
-                  letterSpacing: '0.08em', color: '#6B7E8C',
-                  padding: '10px 12px 4px', margin: 0,
-                }}>
-                  {grupo.label}
-                </p>
-              )}
-              {grupo.label && collapsed && (
-                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '8px 4px' }} />
-              )}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-                {items.map(m => <NavItem key={m.id} m={m} />)}
-              </div>
-            </div>
-          )
-        })}
-
-        {/* Admin */}
-        {esAdmin && (
-          <div style={{ marginTop: '4px' }}>
-            {!collapsed && (
-              <p style={{
-                fontSize: '10px', fontWeight: 600, textTransform: 'uppercase',
-                letterSpacing: '0.08em', color: '#E6A94A',
-                padding: '10px 12px 4px', margin: 0,
-              }}>
-                Admin
-              </p>
-            )}
-            {collapsed && <div style={{ height: '1px', background: 'rgba(230,169,74,0.2)', margin: '8px 4px' }} />}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-              {modulosAdmin.map(m => <NavItem key={m.id} m={m} />)}
-            </div>
-          </div>
-        )}
-      </nav>
-
-      {/* Footer */}
-      <div style={{
-        padding: collapsed ? '12px 8px' : '12px',
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        flexShrink: 0,
-      }}>
-        {/* Plan badge */}
-        {!collapsed && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            padding: '8px 10px', borderRadius: '8px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.06)',
-            marginBottom: '8px',
-          }}>
-            <span style={{
-              width: '7px', height: '7px', borderRadius: '50%',
-              background: planDot[plan] || '#6B7E8C', flexShrink: 0,
-              boxShadow: `0 0 6px ${planDot[plan] || '#6B7E8C'}`,
-            }} />
-            <span style={{ fontSize: '11px', fontWeight: 500, color: '#A6B3BF', flex: 1 }}>Plan</span>
-            <span style={{ fontSize: '11px', fontWeight: 700, color: planDot[plan] || '#A6B3BF' }}>
-              {planLabel[plan] || (plan || '').toUpperCase()}
-            </span>
-          </div>
-        )}
-
-        {/* Cerrar sesión */}
-        <button
-          onClick={cerrarSesion}
-          title={collapsed ? 'Cerrar sesión' : undefined}
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: collapsed ? 'center' : 'flex-start',
-            gap: '8px',
-            padding: collapsed ? '10px' : '9px 10px',
-            borderRadius: '8px',
-            border: 'none',
-            background: 'transparent',
-            color: '#6B7E8C',
-            cursor: 'pointer',
-            fontSize: '12px',
-            fontWeight: 500,
-            transition: `background ${150}ms, color ${150}ms`,
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(229,107,111,0.1)'
-            e.currentTarget.style.color = '#E56B6F'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'transparent'
-            e.currentTarget.style.color = '#6B7E8C'
-          }}>
-          {icons.logout}
-          {!collapsed && <span>Cerrar sesión</span>}
-        </button>
-      </div>
-    </aside>
-  )
 
   // ── MOBILE: bottom nav + drawer ───────────────────────────────────────────
   const MobileNav = () => (
@@ -690,10 +477,204 @@ export default function Sidebar({ tallerNombre, plan }: Props) {
     </>
   )
 
+  // Renderizar DesktopSidebar inline (no como <DesktopSidebar />) para que
+  // el nav conserve su scrollTop entre renders causados por hover, etc.
+  const desktopJSX = (
+    <aside style={{
+      position: 'fixed',
+      left: 0,
+      top: 0,
+      height: '100%',
+      width: collapsed ? '64px' : '240px',
+      display: 'flex',
+      flexDirection: 'column',
+      zIndex: 20,
+      background: '#131F2B',
+      borderRight: '1px solid rgba(255,255,255,0.06)',
+      transition: `width ${220}ms cubic-bezier(0.16, 1, 0.3, 1)`,
+      overflow: 'hidden',
+    }}>
+
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: collapsed ? 'center' : 'space-between',
+        padding: collapsed ? '18px 0' : '16px 16px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        flexShrink: 0,
+        minHeight: '60px',
+      }}>
+        {!collapsed && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+            <div style={{
+              width: '30px', height: '30px', borderRadius: '8px',
+              background: 'linear-gradient(135deg, #16B8A6 0%, #0F9A8B 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+              </svg>
+            </div>
+            <div style={{ overflow: 'hidden' }}>
+              <p style={{ color: '#F2F5F7', fontSize: '13px', fontWeight: 700, letterSpacing: '0.02em', lineHeight: 1.2, margin: 0 }}>AWTU</p>
+              <p style={{ color: '#6B7E8C', fontSize: '10px', fontWeight: 500, lineHeight: 1.2, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {tallerNombre || 'Mi Taller'}
+              </p>
+            </div>
+          </div>
+        )}
+        {collapsed && (
+          <div style={{
+            width: '30px', height: '30px', borderRadius: '8px',
+            background: 'linear-gradient(135deg, #16B8A6 0%, #0F9A8B 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+            </svg>
+          </div>
+        )}
+        {!collapsed && (
+          <button
+            onClick={() => setCollapsed(true)}
+            style={{
+              width: '28px', height: '28px', borderRadius: '7px', border: 'none',
+              background: 'transparent', color: '#6B7E8C', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: `color ${150}ms, background ${150}ms`, flexShrink: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#F2F5F7'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#6B7E8C'; e.currentTarget.style.background = 'transparent' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {/* Botón expandir (cuando colapsado) */}
+      {collapsed && (
+        <button
+          onClick={() => setCollapsed(false)}
+          style={{
+            width: '32px', height: '32px', margin: '8px auto 4px',
+            borderRadius: '8px', border: 'none',
+            background: 'transparent', color: '#6B7E8C', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: `color ${150}ms, background ${150}ms`,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#F2F5F7'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#6B7E8C'; e.currentTarget.style.background = 'transparent' }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      )}
+
+      {/* Navegación — inline JSX para conservar scrollTop entre re-renders */}
+      <nav
+        ref={navRef}
+        style={{
+          flex: 1,
+          overflowY: 'scroll',
+          overflowX: 'hidden',
+          padding: collapsed ? '8px 8px' : '8px 10px',
+          scrollbarWidth: 'none',
+        }}
+      >
+        {grupos.map(grupo => {
+          const items = todosModulos.filter(m => m.grupo === grupo.key)
+          if (items.length === 0) return null
+          return (
+            <div key={grupo.key} style={{ marginBottom: '4px' }}>
+              {grupo.label && !collapsed && (
+                <p style={{
+                  fontSize: '11px', fontWeight: 600, textTransform: 'uppercase',
+                  letterSpacing: '0.08em', color: '#6B7E8C',
+                  padding: '10px 12px 4px', margin: 0,
+                }}>
+                  {grupo.label}
+                </p>
+              )}
+              {grupo.label && collapsed && (
+                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '8px 4px' }} />
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                {items.map(m => <NavItem key={m.id} m={m} />)}
+              </div>
+            </div>
+          )
+        })}
+
+        {esAdmin && (
+          <div style={{ marginTop: '4px' }}>
+            {!collapsed && (
+              <p style={{
+                fontSize: '11px', fontWeight: 600, textTransform: 'uppercase',
+                letterSpacing: '0.08em', color: '#E6A94A',
+                padding: '10px 12px 4px', margin: 0,
+              }}>
+                Admin
+              </p>
+            )}
+            {collapsed && <div style={{ height: '1px', background: 'rgba(230,169,74,0.2)', margin: '8px 4px' }} />}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+              {modulosAdmin.map(m => <NavItem key={m.id} m={m} />)}
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* Footer */}
+      <div style={{
+        padding: collapsed ? '12px 8px' : '12px',
+        borderTop: '1px solid rgba(255,255,255,0.06)',
+        flexShrink: 0,
+      }}>
+        {!collapsed && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '8px 10px', borderRadius: '8px',
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            marginBottom: '8px',
+          }}>
+            <span style={{
+              width: '7px', height: '7px', borderRadius: '50%',
+              background: planDot[plan] || '#6B7E8C', flexShrink: 0,
+              boxShadow: `0 0 6px ${planDot[plan] || '#6B7E8C'}`,
+            }} />
+            <span style={{ fontSize: '11px', fontWeight: 500, color: '#A6B3BF', flex: 1 }}>Plan</span>
+            <span style={{ fontSize: '11px', fontWeight: 700, color: planDot[plan] || '#A6B3BF' }}>
+              {planLabel[plan] || (plan || '').toUpperCase()}
+            </span>
+          </div>
+        )}
+        <button
+          onClick={cerrarSesion}
+          title={collapsed ? 'Cerrar sesión' : undefined}
+          style={{
+            width: '100%', display: 'flex', alignItems: 'center',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            gap: '8px', padding: collapsed ? '10px' : '9px 10px',
+            borderRadius: '8px', border: 'none', background: 'transparent',
+            color: '#6B7E8C', cursor: 'pointer', fontSize: '12px', fontWeight: 500,
+            transition: `background ${150}ms, color ${150}ms`,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(229,107,111,0.1)'; e.currentTarget.style.color = '#E56B6F' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6B7E8C' }}>
+          {icons.logout}
+          {!collapsed && <span>Cerrar sesión</span>}
+        </button>
+      </div>
+    </aside>
+  )
+
   return (
     <>
       <div className="hidden md:block">
-        <DesktopSidebar />
+        {desktopJSX}
       </div>
       <div className="md:hidden">
         <MobileNav />
