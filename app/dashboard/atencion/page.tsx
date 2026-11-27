@@ -154,18 +154,21 @@ export default function AtencionPage() {
   const [cajaInvId, setCajaInvId] = useState('')
   const [cajaTipo, setCajaTipo] = useState('Mecánica')
   const [cajaQty, setCajaQty] = useState('1')
+  const [cajaBasePrice, setCajaBasePrice] = useState(0)
   const [precioCaja, setPrecioCaja] = useState('')
 
   const [refrigMarca, setRefrigMarca] = useState('')
   const [refrigInvId, setRefrigInvId] = useState('')
   const [refrigColor, setRefrigColor] = useState('')
   const [refrigQty, setRefrigQty] = useState('1')
+  const [refrigBasePrice, setRefrigBasePrice] = useState(0)
   const [precioRefrig, setPrecioRefrig] = useState('')
 
   const [bujaMarca, setBujaMarca] = useState('')
   const [bujaInvId, setBujaInvId] = useState('')
   const [bujaModelo, setBujaModelo] = useState('')
   const [bujaQty, setBujaQty] = useState('1')
+  const [bujaBasePrice, setBujaBasePrice] = useState(0)
   const [precioBujias, setPrecioBujias] = useState('')
 
   const [productosAd, setProductosAd] = useState<ProductoAdicional[]>([])
@@ -175,9 +178,9 @@ export default function AtencionPage() {
 
   const total =
     (parseFloat(precioAceite) || 0) +
-    (parseFloat(precioCaja) || 0) +
-    (parseFloat(precioRefrig) || 0) +
-    (parseFloat(precioBujias) || 0) +
+    (cajaBasePrice > 0 ? cajaBasePrice * (parseFloat(cajaQty) || 1) : (parseFloat(precioCaja) || 0)) +
+    (refrigBasePrice > 0 ? refrigBasePrice * (parseFloat(refrigQty) || 1) : (parseFloat(precioRefrig) || 0)) +
+    (bujaBasePrice > 0 ? bujaBasePrice * (parseFloat(bujaQty) || 1) : (parseFloat(precioBujias) || 0)) +
     productosAd.reduce((s, p) => s + (parseFloat(p.precio) || 0) * (parseFloat(p.cantidad) || 1), 0) +
     otrosServicios.reduce((s, o) => s + (parseFloat(o.precio) || 0), 0)
 
@@ -228,9 +231,9 @@ export default function AtencionPage() {
     setAceitesExtra([])
     setFiltroAceite(''); setFiltroAceiteInvId(''); setFiltroAire(''); setFiltroAireInvId('')
     setPrecioAceite('')
-    setCajaMarca(''); setCajaInvId(''); setCajaTipo('Mecánica'); setCajaQty('1'); setPrecioCaja('')
-    setRefrigMarca(''); setRefrigInvId(''); setRefrigColor(''); setRefrigQty('1'); setPrecioRefrig('')
-    setBujaMarca(''); setBujaInvId(''); setBujaModelo(''); setBujaQty('1'); setPrecioBujias('')
+    setCajaMarca(''); setCajaInvId(''); setCajaTipo('Mecánica'); setCajaQty('1'); setCajaBasePrice(0); setPrecioCaja('')
+    setRefrigMarca(''); setRefrigInvId(''); setRefrigColor(''); setRefrigQty('1'); setRefrigBasePrice(0); setPrecioRefrig('')
+    setBujaMarca(''); setBujaInvId(''); setBujaModelo(''); setBujaQty('1'); setBujaBasePrice(0); setPrecioBujias('')
     setProductosAd([]); setOtrosServicios([])
     setMetodoPago('efectivo')
   }
@@ -300,15 +303,15 @@ export default function AtencionPage() {
       caja_marca: cajaMarca.toUpperCase(), caja_tipo: cajaTipo,
       caja_cantidad: parseFloat(cajaQty) || 1,
       caja_inv_id: cajaInvId || null,
-      precio_caja: parseFloat(precioCaja) || 0,
+      precio_caja: cajaBasePrice > 0 ? cajaBasePrice * (parseFloat(cajaQty) || 1) : (parseFloat(precioCaja) || 0),
       refrig_marca: refrigMarca.toUpperCase(), refrig_color: refrigColor,
       refrig_cantidad: parseFloat(refrigQty) || 1,
       refrig_inv_id: refrigInvId || null,
-      precio_refrig: parseFloat(precioRefrig) || 0,
+      precio_refrig: refrigBasePrice > 0 ? refrigBasePrice * (parseFloat(refrigQty) || 1) : (parseFloat(precioRefrig) || 0),
       bujia_marca: bujaMarca.toUpperCase(), bujia_modelo: bujaModelo,
       bujia_cantidad: parseFloat(bujaQty) || 1,
       bujia_inv_id: bujaInvId || null,
-      precio_bujias: parseFloat(precioBujias) || 0,
+      precio_bujias: bujaBasePrice > 0 ? bujaBasePrice * (parseFloat(bujaQty) || 1) : (parseFloat(precioBujias) || 0),
       otros_servicios: otrosTexto,
       precio_otros: precioOtrosTotal,
       productos_adicionales: productosAd,
@@ -658,84 +661,70 @@ export default function AtencionPage() {
           <div className="rounded-2xl" style={{ border: '1px solid var(--border)' }}>
             <SecHead icon="⚙️" title="Aceite de Caja · Refrigerante · Bujías" sub="Insumos adicionales del vehículo" accent="var(--accent)" />
             <div className="p-5 grid grid-cols-1 sm:grid-cols-3 gap-5" style={{ background: 'var(--surface)', borderRadius: '0 0 16px 16px' }}>
+              {/* ── Aceite de Caja ── */}
               <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'rgba(255,106,31,0.06)', border: '1px solid rgba(255,106,31,0.2)' }}>
                 <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--accent)' }}>⚙️ Aceite de Caja</p>
                 <div>
                   <label className={lbl}>Producto</label>
-                  <AutocompleteInput value={cajaMarca} onChange={setCajaMarca}
-                    onSelect={item => { setCajaMarca(item.nombre); setCajaInvId(item.id); setPrecioCaja(String(item.precio)) }}
-                    placeholder="Marca..." className={inp + ' uppercase'}
+                  <AutocompleteInput value={cajaMarca} onChange={v => { setCajaMarca(v); if (!v) { setCajaInvId(''); setCajaBasePrice(0); setPrecioCaja('') } }}
+                    onSelect={item => { setCajaMarca(item.nombre); setCajaInvId(item.id); setCajaBasePrice(item.precio); setPrecioCaja((item.precio * (parseFloat(cajaQty) || 1)).toFixed(2)) }}
+                    placeholder="Buscar en inventario..." className={inp + ' uppercase'}
                     items={invCaja.length > 0 ? invCaja : invTodos} />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className={lbl}>Tipo</label>
-                    <select value={cajaTipo} onChange={e => setCajaTipo(e.target.value)} className={inp}>
-                      <option>Mecánica</option><option>Automática</option><option>CVT</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className={lbl}>Cantidad</label>
-                    <input type="number" value={cajaQty} onChange={e => setCajaQty(e.target.value)}
-                      placeholder="1" min="1" step="1"
-                      className={inp + ' font-mono text-center'} />
-                  </div>
+                <div>
+                  <label className={lbl}>Cantidad</label>
+                  <input type="number" value={cajaQty}
+                    onChange={e => { setCajaQty(e.target.value); if (cajaBasePrice > 0) setPrecioCaja((cajaBasePrice * (parseFloat(e.target.value) || 1)).toFixed(2)) }}
+                    placeholder="1" min="1" step="1"
+                    className={inp + ' font-mono text-center'} />
                 </div>
                 <div>
-                  <label className={lbl}>Precio (S/)</label>
-                  <PrecioBox color="#FF6A1F" value={precioCaja} onChange={setPrecioCaja} />
+                  <label className={lbl}>Precio (S/){cajaBasePrice > 0 && cajaQty !== '1' && <span className="ml-1 normal-case font-normal" style={{ color: 'var(--text-subtle)' }}>S/{cajaBasePrice.toFixed(2)} × {cajaQty}</span>}</label>
+                  <PrecioBox color="#FF6A1F" value={cajaBasePrice > 0 ? (cajaBasePrice * (parseFloat(cajaQty) || 1)).toFixed(2) : precioCaja} onChange={v => { setPrecioCaja(v); if (cajaBasePrice === 0) setPrecioCaja(v) }} />
                 </div>
               </div>
+              {/* ── Refrigerante ── */}
               <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.2)' }}>
                 <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: '#f87171' }}>🌡️ Refrigerante</p>
                 <div>
                   <label className={lbl}>Producto</label>
-                  <AutocompleteInput value={refrigMarca} onChange={setRefrigMarca}
-                    onSelect={item => { setRefrigMarca(item.nombre); setRefrigInvId(item.id); setPrecioRefrig(String(item.precio)) }}
-                    placeholder="Marca..." className={inp + ' uppercase'}
+                  <AutocompleteInput value={refrigMarca} onChange={v => { setRefrigMarca(v); if (!v) { setRefrigInvId(''); setRefrigBasePrice(0); setPrecioRefrig('') } }}
+                    onSelect={item => { setRefrigMarca(item.nombre); setRefrigInvId(item.id); setRefrigBasePrice(item.precio); setPrecioRefrig((item.precio * (parseFloat(refrigQty) || 1)).toFixed(2)) }}
+                    placeholder="Buscar en inventario..." className={inp + ' uppercase'}
                     items={invRefrig.length > 0 ? invRefrig : invTodos} />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className={lbl}>Color / Tipo</label>
-                    <input value={refrigColor} onChange={e => setRefrigColor(e.target.value)} placeholder="Rojo, verde..." className={inp} />
-                  </div>
-                  <div>
-                    <label className={lbl}>Cantidad</label>
-                    <input type="number" value={refrigQty} onChange={e => setRefrigQty(e.target.value)}
-                      placeholder="1" min="1" step="1"
-                      className={inp + ' font-mono text-center'} />
-                  </div>
+                <div>
+                  <label className={lbl}>Cantidad</label>
+                  <input type="number" value={refrigQty}
+                    onChange={e => { setRefrigQty(e.target.value); if (refrigBasePrice > 0) setPrecioRefrig((refrigBasePrice * (parseFloat(e.target.value) || 1)).toFixed(2)) }}
+                    placeholder="1" min="1" step="1"
+                    className={inp + ' font-mono text-center'} />
                 </div>
                 <div>
-                  <label className={lbl}>Precio (S/)</label>
-                  <PrecioBox color="#f87171" value={precioRefrig} onChange={setPrecioRefrig} />
+                  <label className={lbl}>Precio (S/){refrigBasePrice > 0 && refrigQty !== '1' && <span className="ml-1 normal-case font-normal" style={{ color: 'var(--text-subtle)' }}>S/{refrigBasePrice.toFixed(2)} × {refrigQty}</span>}</label>
+                  <PrecioBox color="#f87171" value={refrigBasePrice > 0 ? (refrigBasePrice * (parseFloat(refrigQty) || 1)).toFixed(2) : precioRefrig} onChange={v => { if (refrigBasePrice === 0) setPrecioRefrig(v) }} />
                 </div>
               </div>
+              {/* ── Bujías ── */}
               <div className="flex flex-col gap-3 p-4 rounded-xl" style={{ background: 'rgba(255,194,60,0.06)', border: '1px solid rgba(255,194,60,0.25)' }}>
                 <p className="font-display text-[10px] font-bold uppercase tracking-widest" style={{ color: 'var(--accent-yellow)' }}>⚡ Bujías</p>
                 <div>
-                  <label className={lbl}>Marca</label>
-                  <AutocompleteInput value={bujaMarca} onChange={setBujaMarca}
-                    onSelect={item => { setBujaMarca(item.nombre); setBujaInvId(item.id); setPrecioBujias(String(item.precio)) }}
-                    placeholder="Marca..." className={inp + ' uppercase'}
+                  <label className={lbl}>Producto</label>
+                  <AutocompleteInput value={bujaMarca} onChange={v => { setBujaMarca(v); if (!v) { setBujaInvId(''); setBujaBasePrice(0); setPrecioBujias('') } }}
+                    onSelect={item => { setBujaMarca(item.nombre); setBujaInvId(item.id); setBujaBasePrice(item.precio); setPrecioBujias((item.precio * (parseFloat(bujaQty) || 1)).toFixed(2)) }}
+                    placeholder="Buscar en inventario..." className={inp + ' uppercase'}
                     items={invBujias.length > 0 ? invBujias : invTodos} />
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className={lbl}>Modelo</label>
-                    <input value={bujaModelo} onChange={e => setBujaModelo(e.target.value)} placeholder="Iridium, Platinum..." className={inp} />
-                  </div>
-                  <div>
-                    <label className={lbl}>Cantidad</label>
-                    <input type="number" value={bujaQty} onChange={e => setBujaQty(e.target.value)}
-                      placeholder="1" min="1" step="1"
-                      className={inp + ' font-mono text-center'} />
-                  </div>
+                <div>
+                  <label className={lbl}>Cantidad</label>
+                  <input type="number" value={bujaQty}
+                    onChange={e => { setBujaQty(e.target.value); if (bujaBasePrice > 0) setPrecioBujias((bujaBasePrice * (parseFloat(e.target.value) || 1)).toFixed(2)) }}
+                    placeholder="1" min="1" step="1"
+                    className={inp + ' font-mono text-center'} />
                 </div>
                 <div>
-                  <label className={lbl}>Precio (S/)</label>
-                  <PrecioBox color="#FFC23C" value={precioBujias} onChange={setPrecioBujias} />
+                  <label className={lbl}>Precio (S/){bujaBasePrice > 0 && bujaQty !== '1' && <span className="ml-1 normal-case font-normal" style={{ color: 'var(--text-subtle)' }}>S/{bujaBasePrice.toFixed(2)} × {bujaQty}</span>}</label>
+                  <PrecioBox color="#FFC23C" value={bujaBasePrice > 0 ? (bujaBasePrice * (parseFloat(bujaQty) || 1)).toFixed(2) : precioBujias} onChange={v => { if (bujaBasePrice === 0) setPrecioBujias(v) }} />
                 </div>
               </div>
             </div>
