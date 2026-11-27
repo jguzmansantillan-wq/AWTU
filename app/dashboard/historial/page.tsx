@@ -550,7 +550,7 @@ function ModalEmitir({
         precio_unitario: i.precio,
       }))
 
-      const fsRes = await fetch('/api/factusmart/emitir', {
+      const fsRes = await fetch('/api/factusmart/empresa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -560,6 +560,7 @@ function ModalEmitir({
           cliente_dir: form.cliente_dir,
           items: itemsParaFS,
           modo: form.modo,
+          taller_ruc: tallerInfo.ruc || '',
         }),
       })
 
