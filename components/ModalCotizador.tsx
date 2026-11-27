@@ -588,12 +588,19 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
       doc.text(tallerNombre.toUpperCase(), nameZoneX, nameY)
 
       if (hasSub) {
-        const sub = [tallerInfo.direccion, tallerInfo.telefono ? `Tel: ${tallerInfo.telefono}` : ''].filter(Boolean).join('  ·  ')
         doc.setFontSize(7)
         doc.setFont('helvetica', 'normal')
         doc.setTextColor(...C_GRAY_T)
-        const subLines = doc.splitTextToSize(sub, nameZoneW)
-        doc.text(subLines[0], nameZoneX, headerH / 2 + 6)
+        // Dirección y teléfono en líneas separadas para que no se corten
+        let subY = headerH / 2 + 6
+        if (tallerInfo.direccion) {
+          const dirLines = doc.splitTextToSize(tallerInfo.direccion, nameZoneW)
+          doc.text(dirLines[0], nameZoneX, subY)
+          subY += 5
+        }
+        if (tallerInfo.telefono) {
+          doc.text(`Tel: ${tallerInfo.telefono}`, nameZoneX, subY)
+        }
       }
 
       // Línea separadora
@@ -636,12 +643,12 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
       }
       doc.text(nombre.toUpperCase(), MARGIN + 6, y + 15)
 
-      // Vehículo (marca + modelo) debajo del nombre
+      // Vehículo (marca + modelo) debajo del nombre — sin emoji (jsPDF no los soporta)
       if (hasVehiculo) {
         doc.setTextColor(...C_GRAY_T)
         doc.setFontSize(8.5)
         doc.setFont('helvetica', 'normal')
-        doc.text(`🚗 ${vehiculo.toUpperCase()}`, MARGIN + 6, y + 23)
+        doc.text(vehiculo.toUpperCase(), MARGIN + 6, y + 23)
       }
 
       // Badge PLACA (derecha)
