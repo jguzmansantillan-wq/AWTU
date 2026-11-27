@@ -58,6 +58,7 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [guardada, setGuardada] = useState(false)
+  const [vistaPrevia, setVistaPrevia] = useState(false)
 
   // Cargar info del taller al montar
   useEffect(() => {
@@ -747,6 +748,7 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
               <button
                 onClick={() => {
                   setGuardada(false)
+                  setVistaPrevia(false)
                   setNombre(''); setTelefono(''); setPlaca(''); setMarca(''); setModelo('')
                   setOpciones([opcionVacia()]); setCondiciones(''); setNota('')
                 }}
@@ -754,13 +756,167 @@ export default function ModalCotizador({ tallerID, tallerNombre, onClose }: Moda
                 style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
               >↺ Nueva cotización</button>
             </div>
+          ) : vistaPrevia ? (
+            /* ── VISTA PREVIA ── */
+            <div className="space-y-4">
+              {/* Panel de previsualización estilo WhatsApp/PDF */}
+              <div
+                className="rounded-2xl overflow-hidden"
+                style={{ border: '1px solid rgba(245,158,11,0.4)', background: 'rgba(245,158,11,0.04)' }}
+              >
+                {/* Header preview */}
+                <div
+                  className="px-5 py-4 flex items-center gap-3"
+                  style={{ borderBottom: '1px solid rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.1)' }}
+                >
+                  <span className="text-xl">👁</span>
+                  <div>
+                    <p className="font-display font-bold text-xs uppercase tracking-widest" style={{ color: '#f59e0b' }}>
+                      Vista Previa de Cotización
+                    </p>
+                    <p className="text-[10px] font-semibold mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                      Así se verá al enviarse
+                    </p>
+                  </div>
+                </div>
+
+                {/* Contenido preview */}
+                <div className="p-5 space-y-4">
+
+                  {/* Encabezado del documento */}
+                  <div
+                    className="rounded-xl p-4"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-display font-bold text-base uppercase tracking-tight" style={{ color: 'var(--text)' }}>
+                          📋 Cotización — {tallerNombre}
+                        </p>
+                        <p className="text-xs font-semibold mt-1" style={{ color: 'var(--text-muted)' }}>
+                          📅 {fecha.split('-').reverse().join('/')}
+                        </p>
+                      </div>
+                      {placa && (
+                        <div
+                          className="px-3 py-1.5 rounded-lg font-mono font-bold text-sm shrink-0"
+                          style={{ background: 'rgba(29,78,216,0.12)', color: '#3b82f6', border: '1px solid rgba(59,130,246,0.3)' }}
+                        >{placa.toUpperCase()}</div>
+                      )}
+                    </div>
+
+                    <div className="mt-3 pt-3 flex flex-wrap gap-3" style={{ borderTop: '1px solid var(--border)' }}>
+                      {nombre && (
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Cliente</span>
+                          <p className="font-bold text-sm uppercase" style={{ color: 'var(--text)' }}>{nombre}</p>
+                        </div>
+                      )}
+                      {(marca || modelo) && (
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Vehículo</span>
+                          <p className="font-bold text-sm uppercase" style={{ color: 'var(--text)' }}>{[marca, modelo].filter(Boolean).join(' ')}</p>
+                        </div>
+                      )}
+                      {telefono && (
+                        <div>
+                          <span className="text-[9px] font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>Teléfono</span>
+                          <p className="font-bold text-sm font-mono" style={{ color: 'var(--text)' }}>{telefono}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Opciones */}
+                  {opciones.map((opcion, idx) => {
+                    const itemsFiltrados = opcion.items.filter(i => i.descripcion.trim())
+                    if (itemsFiltrados.length === 0) return null
+                    const tot = totalOpcion(opcion.items)
+                    const colores = [
+                      { ring: 'rgba(33,199,184,0.4)', bg: 'rgba(33,199,184,0.07)', accent: 'var(--accent-teal)', badge: 'rgba(33,199,184,0.12)' },
+                      { ring: 'rgba(245,158,11,0.4)', bg: 'rgba(245,158,11,0.07)', accent: '#f59e0b', badge: 'rgba(245,158,11,0.12)' },
+                      { ring: 'rgba(167,139,250,0.4)', bg: 'rgba(167,139,250,0.07)', accent: '#a78bfa', badge: 'rgba(167,139,250,0.12)' },
+                    ]
+                    const col = colores[idx % colores.length]
+                    return (
+                      <div key={idx} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${col.ring}`, background: col.bg }}>
+                        <div
+                          className="px-4 py-2.5 flex items-center justify-between"
+                          style={{ borderBottom: `1px solid ${col.ring}`, background: col.badge }}
+                        >
+                          <span className="font-display font-bold text-xs uppercase tracking-widest" style={{ color: col.accent }}>
+                            Opción {idx + 1}{opcion.titulo ? ` — ${opcion.titulo}` : ''}
+                          </span>
+                          {tot > 0 && (
+                            <span className="font-mono font-bold text-sm" style={{ color: col.accent }}>
+                              S/ {tot.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                        <div className="p-3 space-y-1.5">
+                          {itemsFiltrados.map((item, ii) => (
+                            <div key={ii} className="flex items-center justify-between gap-3">
+                              <span className="text-sm" style={{ color: 'var(--text)' }}>
+                                • {item.descripcion}
+                              </span>
+                              {parseFloat(item.precio) > 0 && (
+                                <span className="font-mono font-bold text-sm shrink-0" style={{ color: col.accent }}>
+                                  S/ {parseFloat(item.precio).toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+
+                  {/* Condiciones y nota si tienen contenido */}
+                  {(condiciones.trim() || nota.trim()) && (
+                    <div className="rounded-xl p-4 space-y-3" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
+                      {condiciones.trim() && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>📌 Condiciones</p>
+                          <p className="text-sm" style={{ color: 'var(--text)' }}>{condiciones.trim()}</p>
+                        </div>
+                      )}
+                      {nota.trim() && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>📝 Nota</p>
+                          <p className="text-sm" style={{ color: 'var(--text)' }}>{nota.trim()}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <button
+                onClick={guardar}
+                disabled={loading}
+                className="font-display w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                style={{ background: 'rgba(245,158,11,0.9)', color: '#fff' }}
+              >{loading ? '⏳ Guardando...' : '✅ Confirmar y Guardar'}</button>
+
+              <button
+                onClick={() => setVistaPrevia(false)}
+                className="font-display w-full py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all"
+                style={{ background: 'var(--surface-2)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+              >← Volver y editar</button>
+            </div>
           ) : (
             <button
-              onClick={guardar}
-              disabled={loading}
-              className="font-display w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+              onClick={() => {
+                if (!nombre.trim()) { setError('El nombre del cliente es obligatorio'); return }
+                const tieneItems = opciones.some(o => o.items.some(i => i.descripcion.trim()))
+                if (!tieneItems) { setError('Agrega al menos un ítem en alguna opción'); return }
+                setError('')
+                setVistaPrevia(true)
+              }}
+              className="font-display w-full py-4 rounded-2xl font-bold text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 active:scale-95"
               style={{ background: 'rgba(245,158,11,0.9)', color: '#fff' }}
-            >{loading ? '⏳ Guardando...' : '📋 Guardar Cotización'}</button>
+            >👁 Vista Previa</button>
           )}
         </div>
       </div>
