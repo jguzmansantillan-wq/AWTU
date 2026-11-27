@@ -256,3 +256,36 @@ select.inp option { background: var(--surface-2); color: var(--text); }
   background: var(--border-subtle);
   margin: 16px 0;
 }
+
+/* ── Escala de texto global — sube todos los tamaños fijos ─────
+   Los textos de Tailwind como text-[9px]/text-[10px]/text-xs
+   son demasiado pequeños en móvil y PC. Este bloque los sube
+   proporcionalmente sin romper layouts ni márgenes.
+   ──────────────────────────────────────────────────────────── */
+
+/* Labels y badges (eran 9-11px → ahora 12-13px) */
+.lbl                       { font-size: 13px; }
+.badge                     { font-size: 12px; }
+
+/* Inputs y toasts (eran 15px → ahora 16px) */
+.inp                       { font-size: 16px; }
+.notif                     { font-size: 16px; }
+
+/* Clases Tailwind de texto pequeño usadas en el JSX */
+.text-xs                   { font-size: 13px !important; }
+
+/* Arbitrarios muy pequeños → se suben un escalón */
+[class*="text-[9px]"]      { font-size: 11px !important; }
+[class*="text-[10px]"]     { font-size: 12px !important; }
+[class*="text-[11px]"]     { font-size: 13px !important; }
+[class*="text-[12px]"]     { font-size: 13px !important; }
+[class*="text-[13px]"]     { font-size: 14px !important; }
+
+/* Móvil: un poco más generoso */
+@media (max-width: 640px) {
+  [class*="text-[9px]"]    { font-size: 12px !important; }
+  [class*="text-[10px]"]   { font-size: 13px !important; }
+  [class*="text-[11px]"]   { font-size: 14px !important; }
+  .lbl                     { font-size: 14px; }
+  .inp                     { font-size: 16px; }
+}
